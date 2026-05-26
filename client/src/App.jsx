@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import ShowList from './components/ShowList';
 import ShowForm from './components/ShowForm';
 import CrewManager from './components/CrewManager';
@@ -21,6 +21,7 @@ function App({ demoMode = false }) {
   const [theme, setTheme] = useState(() => localStorage.getItem('ph-theme') || 'light');
   const [confirmModal, setConfirmModal] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'admin' | 'user' | null
+  const [username, setUsername] = useState(null);
 
   // Sync theme attribute to <html> and persist
   useEffect(() => {
@@ -85,7 +86,7 @@ function App({ demoMode = false }) {
 
     // Normal mode: fetch user role + all data
     Promise.all([
-      fetch('/api/me').then((r) => r.ok ? r.json() : null).then((d) => { if (d) setUserRole(d.role); }),
+      fetch('/api/me').then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setUserRole(d.role); setUsername(d.username); } }),
       fetchShows(),
       fetchCrew(),
       fetchTemplates(),
@@ -227,7 +228,7 @@ function App({ demoMode = false }) {
       {demoMode && <DemoBanner />}
 
       <header className="app-header">
-        {/* Row 1: logo + title */}
+        {/* Brand (always left) */}
         <div className="header-brand">
           <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg">
             <path d="M32 20 A 12 12 0 1 0 20 32 A 6 6 0 0 0 20 20" stroke="#5E7AC4" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
@@ -236,73 +237,67 @@ function App({ demoMode = false }) {
           <h1>Production Hub</h1>
         </div>
 
-        {/* Row 2: nav tabs + action buttons */}
-        <div className="header-row2">
-          <nav className="page-nav">
-            <button
-              className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
-              onClick={() => setPage('shows')}
-            >
-              Shows
-            </button>
-            <button
-              className={`nav-btn ${page === 'crew' ? 'active' : ''}`}
-              onClick={() => setPage('crew')}
-            >
-              Crew & Types
-            </button>
-          </nav>
+        {/* Nav tabs (centre on desktop, wraps to second row on mobile) */}
+        <nav className="page-nav">
+          <button
+            className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
+            onClick={() => setPage('shows')}
+          >
+            Shows
+          </button>
+          <button
+            className={`nav-btn ${page === 'crew' ? 'active' : ''}`}
+            onClick={() => setPage('crew')}
+          >
+            Crew & Types
+          </button>
+        </nav>
 
-          <div className="header-right">
-            {page === 'shows' && (
-              <>
-                {/* Sync is admin-only (hidden in demo mode and for regular users) */}
-                {!demoMode && userRole === 'admin' && (
-                  <button
-                    className="btn-sync"
-                    onClick={syncShows}
-                    disabled={syncStatus === 'loading'}
-                    title="Sync new shows from Excel spreadsheet"
-                  >
-                    {syncStatus === 'loading'
-                      ? 'Syncing…'
-                      : syncStatus?.error
-                      ? 'Error'
-                      : syncStatus?.added != null
-                      ? `+${syncStatus.added} added`
-                      : 'Sync'}
-                  </button>
-                )}
-                {!demoMode && (
-                  <button
-                    className="btn-sync"
-                    onClick={applyCrewTemplates}
-                    disabled={applyStatus === 'loading'}
-                    title="Auto-assign crew to active shows based on event type templates"
-                  >
-                    {applyStatus === 'loading'
-                      ? 'Applying…'
-                      : applyStatus?.error
-                      ? 'Error'
-                      : applyStatus?.updated != null
-                      ? `${applyStatus.updated} updated`
-                      : 'Apply Crew'}
-                  </button>
-                )}
-                <button className="btn-primary" onClick={() => setShowForm(true)}>
-                  + New
+        {/* Action buttons (right — admin tools hidden on mobile) */}
+        <div className="header-right">
+          {page === 'shows' && (
+            <>
+              {/* Sync — admin-only, hidden in demo mode and on mobile */}
+              {!demoMode && userRole === 'admin' && (
+                <button
+                  className="btn-sync header-desktop-only"
+                  onClick={syncShows}
+                  disabled={syncStatus === 'loading'}
+                  title="Sync new shows from Excel spreadsheet"
+                >
+                  {syncStatus === 'loading' ? 'Syncing…'
+                    : syncStatus?.error ? 'Error'
+                    : syncStatus?.added != null ? `+${syncStatus.added} added`
+                    : 'Sync'}
                 </button>
-              </>
-            )}
-            <button
-              className="btn-theme-toggle"
-              onClick={toggleTheme}
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? '☀' : '◑'}
-            </button>
-          </div>
+              )}
+              {!demoMode && (
+                <button
+                  className="btn-sync header-desktop-only"
+                  onClick={applyCrewTemplates}
+                  disabled={applyStatus === 'loading'}
+                  title="Auto-assign crew to active shows based on event type templates"
+                >
+                  {applyStatus === 'loading' ? 'Applying…'
+                    : applyStatus?.error ? 'Error'
+                    : applyStatus?.updated != null ? `${applyStatus.updated} updated`
+                    : 'Apply Crew'}
+                </button>
+              )}
+              <button className="btn-primary" onClick={() => setShowForm(true)}>
+                + New
+              </button>
+            </>
+          )}
+          <button
+            className="btn-theme-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? '☀' : '◑'}
+          </button>
+          {!demoMode && <UserMenu username={username} userRole={userRole} />}
         </div>
       </header>
 
@@ -367,6 +362,56 @@ function App({ demoMode = false }) {
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
+      )}
+    </div>
+  );
+}
+
+// ── User avatar + logout panel ────────────────────────────────────────────────
+function UserMenu({ username, userRole }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const initials = (username || '?').slice(0, 2).toUpperCase();
+
+  const logout = async () => {
+    try { await fetch('/logout', { method: 'POST', credentials: 'same-origin' }); } catch {}
+    window.location.href = '/login';
+  };
+
+  return (
+    <div className="user-menu" ref={ref}>
+      <button
+        className="user-avatar-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="User menu"
+        title={username || 'Account'}
+      >
+        {initials}
+      </button>
+
+      {open && (
+        <div className="user-menu-panel">
+          <div className="user-menu-info">
+            <span className="user-menu-name">{username || 'User'}</span>
+            {userRole && (
+              <span className={`user-menu-role user-menu-role--${userRole}`}>{userRole}</span>
+            )}
+          </div>
+          <div className="user-menu-divider" />
+          <button className="user-menu-logout" onClick={logout}>
+            Sign out
+          </button>
+        </div>
       )}
     </div>
   );

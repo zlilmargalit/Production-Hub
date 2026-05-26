@@ -122,11 +122,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
           </div>
         </div>
         <div className="show-actions">
-          <button className="btn-icon" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
+          <button className="btn-action" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
             {expanded ? '−' : '+'}
           </button>
-          <button className="btn-icon" onClick={() => onEdit(show)} title="Edit">✎</button>
-          <button className="btn-icon btn-danger" onClick={() => onDelete(show.id)} title="Delete">✕</button>
+          <button className="btn-action" onClick={() => onEdit(show)}>Edit</button>
+          <button className="btn-action btn-action--danger" onClick={() => onDelete(show.id)}>Delete</button>
         </div>
       </div>
 

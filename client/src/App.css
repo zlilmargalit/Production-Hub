@@ -186,9 +186,10 @@ body {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--text);
+  /* Flat 3-part flex: brand | nav | right */
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0;
   padding: 0 40px;
   padding-top: env(safe-area-inset-top, 0px);
   height: calc(72px + env(safe-area-inset-top, 0px));
@@ -214,21 +215,15 @@ body {
 }
 
 .header-logo-svg { width: 22px; height: 22px; display: block; flex-shrink: 0; }
-/* Logo colors come from the SVG itself — keep the original blue+orange */
 
-/* single toggle lives in header-right — always visible */
-
-.header-row2 {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  flex: 1;
-}
+/* Desktop: hide-on-mobile utility */
+.header-desktop-only { display: inline-flex !important; }
 
 .page-nav {
   display: flex;
   gap: 4px;
   margin-left: 48px;
+  flex-shrink: 0;
 }
 
 .header-right {
@@ -363,33 +358,134 @@ body {
   border-color: var(--text-3);
 }
 
-/* Icon buttons — always visible, clean bordered style */
+/* Icon buttons — kept for non-card uses */
 .btn-icon {
   background: none;
   border: 1px solid transparent;
   cursor: pointer;
-  padding: 7px 10px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
-  font-size: 1rem;
+  font-size: 0.875rem;
   line-height: 1;
   color: var(--text-2);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
-  min-width: 32px;
-  min-height: 32px;
+  min-width: 30px;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.btn-icon:hover {
-  background: var(--surface-sunk);
+.btn-icon:hover { background: var(--surface-sunk); color: var(--text); border-color: var(--border); }
+.btn-icon.btn-danger:hover { background: var(--clay-bg); color: var(--clay); border-color: var(--clay); }
+
+/* Text action buttons — used in show cards (+ / Edit / Delete) */
+.btn-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+  white-space: nowrap;
+}
+.btn-action:hover { color: var(--text); background: var(--surface-sunk); }
+.btn-action--danger:hover { color: var(--clay); background: var(--clay-bg); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   USER AVATAR + LOGOUT PANEL
+   ═══════════════════════════════════════════════════════════════════════ */
+.user-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.user-avatar-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.user-avatar-btn:hover { opacity: 0.88; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 9999;
+  animation: menuIn 0.12s ease;
+}
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.user-menu-info {
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.user-menu-name {
+  font-size: 0.875rem;
+  font-weight: 600;
   color: var(--text);
-  border-color: var(--border);
 }
-.btn-icon.btn-danger:hover {
-  background: var(--clay-bg);
+.user-menu-role {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  width: fit-content;
+}
+.user-menu-role--admin { background: var(--accent-soft); color: var(--accent); }
+.user-menu-role--user  { background: var(--surface-sunk); color: var(--text-2); }
+
+.user-menu-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0;
+}
+
+.user-menu-logout {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  font-family: inherit;
   color: var(--clay);
-  border-color: var(--clay);
+  cursor: pointer;
+  transition: background 0.1s;
 }
+.user-menu-logout:hover { background: var(--clay-bg); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    LOADING / ERROR / EMPTY
@@ -2095,20 +2191,49 @@ body {
    MOBILE
    ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+  /* ── Header: two visual rows ──────────────────────────────────────────
+     Row 1: [brand ........ header-right (+New, theme, user)]
+     Row 2: [page-nav full-width]
+     Admin-only sync/apply buttons hidden.
+  ───────────────────────────────────────────────────────────────────── */
   .app-header {
-    flex-direction: column;
-    padding: max(12px, env(safe-area-inset-top, 12px)) 16px 10px;
+    flex-wrap: wrap;
+    padding: max(12px, env(safe-area-inset-top, 12px)) 16px 0;
     height: auto;
-    gap: 10px;
+    gap: 0;
+    align-items: center;
   }
-  .header-brand { width: 100%; gap: 12px; }
+  .header-brand {
+    flex: 0 0 auto;
+    gap: 10px;
+    padding-bottom: 10px;
+  }
   .header-brand h1 { font-size: 1.125rem; }
-  .header-row2 { width: 100%; gap: 10px; }
-  .page-nav { margin-left: 0; gap: 0; flex-shrink: 0; }
-  /* Prevent nav button text from wrapping on narrow screens */
-  .nav-btn { padding: 6px 0; font-size: 0.8125rem; margin: 0 10px 0 0; white-space: nowrap; }
-  .header-right { gap: 6px; flex-shrink: 0; }
-  .btn-sync { padding: 6px 10px; font-size: 0.7rem; }
+
+  /* nav wraps to its own full-width row */
+  .page-nav {
+    order: 99;
+    flex: 0 0 100%;
+    margin-left: 0;
+    gap: 0;
+    border-top: 1px solid var(--border-light);
+    padding: 4px 0 6px;
+  }
+  .nav-btn {
+    padding: 6px 0;
+    font-size: 0.8125rem;
+    margin: 0 12px 0 0;
+    white-space: nowrap;
+  }
+
+  /* right-side buttons go right of brand on row 1 */
+  .header-right {
+    margin-left: auto;
+    gap: 6px;
+    padding-bottom: 10px;
+  }
+  /* Admin-only sync buttons hidden on mobile */
+  .header-desktop-only { display: none !important; }
   .btn-primary { padding: 7px 12px; font-size: 0.75rem; }
 
   .app-main { padding: 24px 16px 60px; }
@@ -2128,17 +2253,20 @@ body {
 
   .shows-grid { grid-template-columns: 1fr; gap: 12px; }
 
-  .show-card-header { padding: 20px 20px 16px; }
+  .show-card-header { padding: 18px 16px 14px; }
   .show-card-title h2 { font-size: 1rem; white-space: normal; }
-  .show-details { padding: 18px 20px 20px; }
+  .show-details { padding: 16px 16px 18px; }
   .details-grid { grid-template-columns: 1fr; gap: 14px; }
 
-  /* Footer: keep all three groups on one row */
-  .show-card-footer { padding: 12px 14px; gap: 6px; }
-  .footer-left { gap: 4px; }
+  /* Footer: single row, compact — wrap only if truly necessary */
+  .show-card-footer { padding: 10px 12px; gap: 4px; flex-wrap: nowrap; }
+  .footer-left { gap: 4px; flex-shrink: 0; }
+  .btn-brief, .btn-pdf { padding: 6px 10px; font-size: 0.75rem; }
   /* Prevent Invoice/Receipt from stacking */
-  .quick-checks { flex-wrap: nowrap; gap: 4px 12px; }
-  .quick-check { font-size: 0.75rem; gap: 5px; }
+  .quick-checks { flex-wrap: nowrap; gap: 4px 8px; flex-shrink: 0; }
+  .quick-check { font-size: 0.72rem; gap: 4px; white-space: nowrap; }
+  /* Logistics button — always fits */
+  .btn-tasks { padding: 6px 12px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; }
 
   .modal-overlay { padding: 0; align-items: flex-end; }
   .modal {
@@ -2156,4 +2284,7 @@ body {
   .crew-list { grid-template-columns: 1fr; }
   .templates-list { grid-template-columns: 1fr; }
   .custom-fields-grid { grid-template-columns: 1fr; }
+
+  /* User menu panel: anchor right edge to viewport */
+  .user-menu-panel { right: -8px; min-width: 180px; }
 }
