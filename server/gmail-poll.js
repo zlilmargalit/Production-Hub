@@ -92,13 +92,14 @@ async function checkGmail({ force = false } = {}) {
           });
           const data = attRes.data.data.replace(/-/g, '+').replace(/_/g, '/');
           const buf  = Buffer.from(data, 'base64');
-          fs.writeFileSync(XLSX_PATH, buf);
+          await require('fs').promises.writeFile(XLSX_PATH, buf);
           console.log(`[gmail] Saved xlsx from message ${msg.id} (${buf.length} bytes)`);
 
-          const existing = JSON.parse(fs.readFileSync(SHOWS_FILE, 'utf8'));
+          const { readJsonCached, writeJsonAndCache } = require('./cache');
+          const existing = await readJsonCached('shows', SHOWS_FILE, []);
           const newShows = findNewShows(XLSX_PATH, existing);
           if (newShows.length > 0) {
-            fs.writeFileSync(SHOWS_FILE, JSON.stringify([...existing, ...newShows], null, 2));
+            await writeJsonAndCache('shows', SHOWS_FILE, [...existing, ...newShows]);
             totalAdded += newShows.length;
             console.log(`[gmail] Imported ${newShows.length} new shows`);
           } else {

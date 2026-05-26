@@ -1,18 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
+const { readJsonCached, writeJsonAndCache } = require('../cache');
 
 const SHOWS_FILE = path.join(__dirname, '../data/shows.json');
 const DEFAULT_XLSX = path.join(__dirname, '../../אסף אמדורסקי לוח הופעות.xlsx');
 
-const readShows = () => {
-  if (!fs.existsSync(SHOWS_FILE)) return [];
-  return JSON.parse(fs.readFileSync(SHOWS_FILE, 'utf8'));
-};
-const writeShows = (shows) => fs.writeFileSync(SHOWS_FILE, JSON.stringify(shows, null, 2));
+const readShows  = () => readJsonCached('shows', SHOWS_FILE, []);
+const writeShows = (shows) => writeJsonAndCache('shows', SHOWS_FILE, shows);
+
+const pathExists = (p) => fsp.access(p).then(() => true).catch(() => false);
 
 // Map raw event type from the xlsx to our app's event type labels
 function mapEventType(sheetName, rawType) {
@@ -166,13 +167,14 @@ function findNewShows(xlsxPath, existingShows) {
 }
 
 // POST /api/import/preview — returns what would be added without saving
-router.post('/preview', (req, res) => {
+router.post('/preview', async (req, res) => {
   const xlsxPath = req.body.path || DEFAULT_XLSX;
-  if (!fs.existsSync(xlsxPath)) {
+  if (!(await pathExists(xlsxPath))) {
     return res.status(404).json({ error: 'Excel file not found', path: xlsxPath });
   }
   try {
-    const newShows = findNewShows(xlsxPath, readShows());
+    const existing = await readShows();
+    const newShows = findNewShows(xlsxPath, existing);
     res.json({
       count: newShows.length,
       shows: newShows.map(s => ({ date: s.date, name: s.name, eventType: s.eventType })),
@@ -185,7 +187,6 @@ router.post('/preview', (req, res) => {
 // POST /api/import/sync — checks Gmail first (if configured), then syncs from local xlsx
 router.post('/sync', async (req, res) => {
   let gmailAdded = 0;
-  // Lazy-require to avoid circular dependency at module load time
   try {
     const { checkGmail } = require('../gmail-poll');
     const result = await checkGmail({ force: true }); // force = bypass time-window check
@@ -194,15 +195,14 @@ router.post('/sync', async (req, res) => {
     console.error('[sync] Gmail check skipped:', err.message);
   }
 
-  // Also sync from local xlsx (dedup ensures no double-counting)
   const xlsxPath = req.body.path || DEFAULT_XLSX;
-  if (!fs.existsSync(xlsxPath)) {
+  if (!(await pathExists(xlsxPath))) {
     return res.json({ added: gmailAdded });
   }
   try {
-    const existing = readShows();
+    const existing = await readShows();
     const newShows = findNewShows(xlsxPath, existing);
-    if (newShows.length > 0) writeShows([...existing, ...newShows]);
+    if (newShows.length > 0) await writeShows([...existing, ...newShows]);
     res.json({ added: newShows.length + gmailAdded, shows: newShows });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -4,3 +4,5 @@ client/node_modules/
 client/dist/
 server/data/gmail-credentials.json
 server/data/gmail-token.json
+.env
+server/.env

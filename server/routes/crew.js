@@ -1,42 +1,50 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { readJsonCached, writeJsonAndCache, invalidate } = require('../cache');
 
 const DATA_FILE = path.join(__dirname, '../data/crew.json');
+const CACHE_KEY = 'crew';
 
-const readCrew = () => {
-  if (!fs.existsSync(DATA_FILE)) return [];
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-};
+const readCrew = () => readJsonCached(CACHE_KEY, DATA_FILE, []);
+const writeCrew = (crew) => writeJsonAndCache(CACHE_KEY, DATA_FILE, crew);
 
-const writeCrew = (crew) => {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(crew, null, 2));
-};
-
-router.get('/', (req, res) => res.json(readCrew()));
-
-router.post('/', (req, res) => {
-  const crew = readCrew();
-  const member = { id: uuidv4(), ...req.body };
-  crew.push(member);
-  writeCrew(crew);
-  res.status(201).json(member);
+router.get('/', async (req, res, next) => {
+  try {
+    res.json(await readCrew());
+  } catch (err) { next(err); }
 });
 
-router.put('/:id', (req, res) => {
-  const crew = readCrew();
-  const idx = crew.findIndex((m) => m.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: 'Not found' });
-  crew[idx] = { ...crew[idx], ...req.body };
-  writeCrew(crew);
-  res.json(crew[idx]);
+router.post('/', async (req, res, next) => {
+  try {
+    const crew = await readCrew();
+    const member = { id: uuidv4(), ...req.body };
+    crew.push(member);
+    await writeCrew(crew);
+    res.status(201).json(member);
+  } catch (err) { next(err); }
 });
 
-router.delete('/:id', (req, res) => {
-  writeCrew(readCrew().filter((m) => m.id !== req.params.id));
-  res.status(204).send();
+router.put('/:id', async (req, res, next) => {
+  try {
+    const crew = await readCrew();
+    const idx = crew.findIndex((m) => m.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Not found' });
+    crew[idx] = { ...crew[idx], ...req.body };
+    await writeCrew(crew);
+    res.json(crew[idx]);
+  } catch (err) { next(err); }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const crew = await readCrew();
+    await writeCrew(crew.filter((m) => m.id !== req.params.id));
+    // crew changes affect rendered show pages (technical-crew text uses names/roles)
+    invalidate('shows');
+    res.status(204).send();
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

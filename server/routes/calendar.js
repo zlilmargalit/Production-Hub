@@ -2,7 +2,9 @@ const express = require('express');
 const router  = express.Router();
 const { google } = require('googleapis');
 const fs   = require('fs');
+const fsp  = require('fs').promises;
 const path = require('path');
+const { readJsonCached } = require('../cache');
 
 const CREDENTIALS_PATH   = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH         = path.join(__dirname, '../data/gmail-token.json');
@@ -10,7 +12,9 @@ const DATA_FILE          = path.join(__dirname, '../data/shows.json');
 const CREW_FILE          = path.join(__dirname, '../data/crew.json');
 const CALENDAR_CFG_FILE  = path.join(__dirname, '../data/calendar-config.json');
 
-// Read calendar ID from config file; fall back to 'primary'
+// Read calendar ID from config file; fall back to 'primary'.
+// Kept sync because it's only called at the start of route handlers where
+// the cost is negligible and we don't want to thread async through callers.
 function getCalendarId() {
   try {
     return JSON.parse(fs.readFileSync(CALENDAR_CFG_FILE, 'utf8')).calendarId || 'primary';
@@ -23,15 +27,20 @@ function isConfigured() {
   return fs.existsSync(CREDENTIALS_PATH) && fs.existsSync(TOKEN_PATH);
 }
 
+// OAuth client setup is bootstrap-time-equivalent; sync reads here are fine.
 function getOAuthClient() {
   const creds  = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
   const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
   const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
   client.setCredentials(tokens);
-  client.on('tokens', (newTokens) => {
-    const current = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify({ ...current, ...newTokens }, null, 2));
+  client.on('tokens', async (newTokens) => {
+    try {
+      const current = JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
+      await fsp.writeFile(TOKEN_PATH, JSON.stringify({ ...current, ...newTokens }, null, 2));
+    } catch (e) {
+      console.error('[calendar] token refresh write failed:', e.message);
+    }
   });
   return client;
 }
@@ -118,11 +127,13 @@ router.get('/config', async (req, res) => {
 });
 
 // POST /api/calendar/config — save selected calendar ID
-router.post('/config', (req, res) => {
-  const { calendarId } = req.body;
-  if (!calendarId) return res.status(400).json({ error: 'calendarId required' });
-  fs.writeFileSync(CALENDAR_CFG_FILE, JSON.stringify({ calendarId }, null, 2));
-  res.json({ ok: true, calendarId });
+router.post('/config', async (req, res, next) => {
+  try {
+    const { calendarId } = req.body;
+    if (!calendarId) return res.status(400).json({ error: 'calendarId required' });
+    await fsp.writeFile(CALENDAR_CFG_FILE, JSON.stringify({ calendarId }, null, 2));
+    res.json({ ok: true, calendarId });
+  } catch (err) { next(err); }
 });
 
 // POST /api/calendar/invite/:showId?test=1
@@ -134,11 +145,11 @@ router.post('/invite/:showId', async (req, res) => {
     return res.status(503).json({ error: 'Google Calendar not configured. Run gmail-auth.js first.' });
   }
 
-  const shows = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  const shows = await readJsonCached('shows', DATA_FILE, []);
   const show  = shows.find((s) => s.id === req.params.showId);
   if (!show) return res.status(404).json({ error: 'Show not found' });
 
-  const crew = fs.existsSync(CREW_FILE) ? JSON.parse(fs.readFileSync(CREW_FILE, 'utf8')) : [];
+  const crew = await readJsonCached('crew', CREW_FILE, []);
   const testMode = req.query.test === '1' || req.body.test === true;
 
   // Build attendees list

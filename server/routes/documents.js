@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const path = require('path');
 const {
   Document,
@@ -15,13 +14,10 @@ const {
   TableCell,
   WidthType,
 } = require('docx');
+const { readJsonCached } = require('../cache');
 
 const DATA_FILE = path.join(__dirname, '../data/shows.json');
-
-const readShows = () => {
-  if (!fs.existsSync(DATA_FILE)) return [];
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-};
+const readShows = () => readJsonCached('shows', DATA_FILE, []);
 
 function field(label, value) {
   return new Paragraph({
@@ -46,7 +42,8 @@ function sectionHeader(text) {
 }
 
 router.get('/:id', async (req, res) => {
-  const show = readShows().find((s) => s.id === req.params.id);
+  const shows = await readShows();
+  const show = shows.find((s) => s.id === req.params.id);
   if (!show) return res.status(404).json({ error: 'Show not found' });
 
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('he-IL') : '-');
