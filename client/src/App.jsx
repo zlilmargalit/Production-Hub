@@ -3,8 +3,9 @@ import ShowList from './components/ShowList';
 import ShowForm from './components/ShowForm';
 import CrewManager from './components/CrewManager';
 import ConfirmModal from './components/ConfirmModal';
+import DemoBanner from './components/DemoBanner';
 
-function App() {
+function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
   const [crew, setCrew] = useState([]);
   const [templates, setTemplates] = useState({});
@@ -18,7 +19,8 @@ function App() {
   const [syncStatus, setSyncStatus] = useState(null);
   const [applyStatus, setApplyStatus] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('ph-theme') || 'light');
-  const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm, danger? }
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [userRole, setUserRole] = useState(null); // 'admin' | 'user' | null
 
   // Sync theme attribute to <html> and persist
   useEffect(() => {
@@ -64,7 +66,26 @@ function App() {
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     setError(null);
+
+    if (demoMode) {
+      // Demo: load everything from the single demo data endpoint
+      fetch('/api/demo/data')
+        .then((r) => r.json())
+        .then((d) => {
+          setShows(d.shows || []);
+          setCrew(d.crew || []);
+          setTemplates(d.templates || {});
+          setFieldTemplates(d.fieldTemplates || {});
+          setEventTypes(d.eventTypes || []);
+        })
+        .catch(() => setError('Could not load demo data'))
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    // Normal mode: fetch user role + all data
     Promise.all([
+      fetch('/api/me').then((r) => r.ok ? r.json() : null).then((d) => { if (d) setUserRole(d.role); }),
       fetchShows(),
       fetchCrew(),
       fetchTemplates(),
@@ -73,28 +94,38 @@ function App() {
     ])
       .catch((err) => setError(err.message || 'Could not connect to server'))
       .finally(() => setLoading(false));
-  }, [fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes]);
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+  // ── Mutations — real (normal mode) ────────────────────────────────────────
   const saveFieldTemplate = useCallback(async (eventType, fields) => {
+    if (demoMode) {
+      setFieldTemplates((prev) => ({ ...prev, [eventType]: fields }));
+      return;
+    }
     await fetch(`/api/field-templates/${encodeURIComponent(eventType)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fields),
     });
     setFieldTemplates((prev) => ({ ...prev, [eventType]: fields }));
-  }, []);
+  }, [demoMode]);
 
   const saveEventTypes = useCallback(async (types) => {
+    if (demoMode) { setEventTypes(types); return; }
     await fetch('/api/event-types', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(types),
     });
     setEventTypes(types);
-  }, []);
+  }, [demoMode]);
 
   const createShow = useCallback(async (data) => {
+    if (demoMode) {
+      const fakeShow = { id: 'demo-' + Date.now(), ...data, tasks: data.tasks || [], createdAt: new Date().toISOString() };
+      setShows((prev) => [...prev, fakeShow]);
+      return fakeShow;
+    }
     const res = await fetch('/api/shows', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -102,9 +133,14 @@ function App() {
     });
     const created = await res.json();
     setShows((prev) => [...prev, created]);
-  }, []);
+    return created;
+  }, [demoMode]);
 
   const updateShow = useCallback(async (id, data) => {
+    if (demoMode) {
+      setShows((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
+      return;
+    }
     const res = await fetch(`/api/shows/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -112,7 +148,7 @@ function App() {
     });
     const updated = await res.json();
     setShows((prev) => prev.map((s) => (s.id === id ? updated : s)));
-  }, []);
+  }, [demoMode]);
 
   const deleteShow = useCallback((id) => {
     const show = shows.find((s) => s.id === id);
@@ -122,11 +158,11 @@ function App() {
       danger: true,
       onConfirm: async () => {
         setConfirmModal(null);
-        await fetch(`/api/shows/${id}`, { method: 'DELETE' });
+        if (!demoMode) await fetch(`/api/shows/${id}`, { method: 'DELETE' });
         setShows((prev) => prev.filter((s) => s.id !== id));
       },
     });
-  }, [shows]);
+  }, [shows, demoMode]);
 
   const handleSubmit = useCallback(
     async (data) => {
@@ -142,6 +178,7 @@ function App() {
   );
 
   const applyCrewTemplates = useCallback(async () => {
+    if (demoMode) return; // no-op in demo
     setApplyStatus('loading');
     try {
       const res = await fetch('/api/shows/apply-crew-templates', { method: 'POST' });
@@ -153,9 +190,10 @@ function App() {
       setApplyStatus({ error: true });
       setTimeout(() => setApplyStatus(null), 4000);
     }
-  }, [fetchShows]);
+  }, [fetchShows, demoMode]);
 
   const syncShows = useCallback(async () => {
+    if (demoMode) return;
     setSyncStatus('loading');
     try {
       const res = await fetch('/api/import/sync', {
@@ -171,7 +209,7 @@ function App() {
       setSyncStatus({ error: true });
       setTimeout(() => setSyncStatus(null), 4000);
     }
-  }, [fetchShows]);
+  }, [fetchShows, demoMode]);
 
   const openEdit = useCallback((show) => {
     setEditingShow(show);
@@ -186,8 +224,10 @@ function App() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="app">
+      {demoMode && <DemoBanner />}
+
       <header className="app-header">
-        {/* Row 1: logo + title + mobile-only toggle */}
+        {/* Row 1: logo + title */}
         <div className="header-brand">
           <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg">
             <path d="M32 20 A 12 12 0 1 0 20 32 A 6 6 0 0 0 20 20" stroke="#5E7AC4" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
@@ -196,7 +236,7 @@ function App() {
           <h1>Production Hub</h1>
         </div>
 
-        {/* Row 2: nav tabs + action buttons together */}
+        {/* Row 2: nav tabs + action buttons */}
         <div className="header-row2">
           <nav className="page-nav">
             <button
@@ -216,34 +256,39 @@ function App() {
           <div className="header-right">
             {page === 'shows' && (
               <>
-                <button
-                  className="btn-sync"
-                  onClick={syncShows}
-                  disabled={syncStatus === 'loading'}
-                  title="Sync new shows from Excel spreadsheet"
-                >
-                  {syncStatus === 'loading'
-                    ? 'Syncing…'
-                    : syncStatus?.error
-                    ? 'Error'
-                    : syncStatus?.added != null
-                    ? `+${syncStatus.added} added`
-                    : 'Sync'}
-                </button>
-                <button
-                  className="btn-sync"
-                  onClick={applyCrewTemplates}
-                  disabled={applyStatus === 'loading'}
-                  title="Auto-assign crew to active shows based on event type templates"
-                >
-                  {applyStatus === 'loading'
-                    ? 'Applying…'
-                    : applyStatus?.error
-                    ? 'Error'
-                    : applyStatus?.updated != null
-                    ? `${applyStatus.updated} updated`
-                    : 'Apply Crew'}
-                </button>
+                {/* Sync is admin-only (hidden in demo mode and for regular users) */}
+                {!demoMode && userRole === 'admin' && (
+                  <button
+                    className="btn-sync"
+                    onClick={syncShows}
+                    disabled={syncStatus === 'loading'}
+                    title="Sync new shows from Excel spreadsheet"
+                  >
+                    {syncStatus === 'loading'
+                      ? 'Syncing…'
+                      : syncStatus?.error
+                      ? 'Error'
+                      : syncStatus?.added != null
+                      ? `+${syncStatus.added} added`
+                      : 'Sync'}
+                  </button>
+                )}
+                {!demoMode && (
+                  <button
+                    className="btn-sync"
+                    onClick={applyCrewTemplates}
+                    disabled={applyStatus === 'loading'}
+                    title="Auto-assign crew to active shows based on event type templates"
+                  >
+                    {applyStatus === 'loading'
+                      ? 'Applying…'
+                      : applyStatus?.error
+                      ? 'Error'
+                      : applyStatus?.updated != null
+                      ? `${applyStatus.updated} updated`
+                      : 'Apply Crew'}
+                  </button>
+                )}
                 <button className="btn-primary" onClick={() => setShowForm(true)}>
                   + New
                 </button>
@@ -288,13 +333,16 @@ function App() {
         ) : (
           <CrewManager
             crew={crew}
-            setCrew={setCrew}
+            setCrew={demoMode
+              ? (updater) => setCrew(updater)
+              : setCrew}
             templates={templates}
             setTemplates={setTemplates}
             fieldTemplates={fieldTemplates}
             onSaveFieldTemplate={saveFieldTemplate}
             eventTypes={eventTypes}
             onSaveEventTypes={saveEventTypes}
+            demoMode={demoMode}
           />
         )}
       </main>

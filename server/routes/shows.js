@@ -10,31 +10,27 @@ const { v4: uuidv4 } = require('uuid');
 const { Readable } = require('stream');
 const { google } = require('googleapis');
 
-const { readJsonCached, writeJsonAndCache, invalidate } = require('../cache');
+const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { htmlToPdfBuffer } = require('../pdf');
+const { dataPath, cacheKey } = require('../utils/userData');
 
 const execFileP = promisify(execFile);
 
-// ── Paths & config ──────────────────────────────────────────────────────────
-const DATA_FILE = path.join(__dirname, '../data/shows.json');
-const CREW_FILE = path.join(__dirname, '../data/crew.json');
-const FIELD_TEMPLATES_FILE = path.join(__dirname, '../data/field-templates.json');
-const TEMPLATES_FILE = path.join(__dirname, '../data/templates.json');
+// ── Static paths (Google credentials remain global) ─────────────────────────
 const CREDENTIALS_PATH = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH       = path.join(__dirname, '../data/gmail-token.json');
 
-// PDF_DIR: on cloud, set PDF_DIR='' or leave unset → PDF is streamed back as a download
 const PDF_DIR = process.env.PDF_DIR !== undefined
   ? process.env.PDF_DIR
   : '/Users/zlilmargalit/Desktop/Production/דפי תיאום';
 const TEMPLATE_DOC_ID = process.env.TEMPLATE_DOC_ID || '1ZBXxhG14W91wBKdvW96Qu8-kQmIX2ZpNY58psVsqhDs';
 
-// ── Cached file readers ─────────────────────────────────────────────────────
-const readShows  = () => readJsonCached('shows', DATA_FILE, []);
-const writeShows = (shows) => writeJsonAndCache('shows', DATA_FILE, shows);
-const readCrew   = () => readJsonCached('crew', CREW_FILE, []);
-const readFieldTemplates = () => readJsonCached('fieldTemplates', FIELD_TEMPLATES_FILE, {});
-const readTemplates = () => readJsonCached('templates', TEMPLATES_FILE, {});
+// ── Per-user cached file readers ────────────────────────────────────────────
+const readShows  = (uid) => readJsonCached(cacheKey(uid, 'shows'),          dataPath(uid, 'shows.json'),           []);
+const writeShows = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'),          shows);
+const readCrew   = (uid) => readJsonCached(cacheKey(uid, 'crew'),           dataPath(uid, 'crew.json'),            []);
+const readFieldTemplates = (uid) => readJsonCached(cacheKey(uid, 'fieldTemplates'), dataPath(uid, 'field-templates.json'), {});
+const readTemplates      = (uid) => readJsonCached(cacheKey(uid, 'templates'),      dataPath(uid, 'templates.json'),       {});
 
 // ── Google auth (async-safe) ───────────────────────────────────────────────
 async function getGoogleAuth() {
@@ -322,13 +318,13 @@ async function createBriefDoc(payload, imageUrl) {
 // ─── CRUD routes ───────────────────────────────────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await readShows());
+    res.json(await readShows(req.userId));
   } catch (err) { next(err); }
 });
 
 router.post('/', async (req, res, next) => {
   try {
-    const shows = await readShows();
+    const shows = await readShows(req.userId);
     const newShow = {
       id: uuidv4(),
       ...req.body,
@@ -336,26 +332,26 @@ router.post('/', async (req, res, next) => {
       createdAt: new Date().toISOString(),
     };
     shows.push(newShow);
-    await writeShows(shows);
+    await writeShows(req.userId, shows);
     res.status(201).json(newShow);
   } catch (err) { next(err); }
 });
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const shows = await readShows();
+    const shows = await readShows(req.userId);
     const idx = shows.findIndex((s) => s.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Show not found' });
     shows[idx] = { ...shows[idx], ...req.body };
-    await writeShows(shows);
+    await writeShows(req.userId, shows);
     res.json(shows[idx]);
   } catch (err) { next(err); }
 });
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    const shows = await readShows();
-    await writeShows(shows.filter((s) => s.id !== req.params.id));
+    const shows = await readShows(req.userId);
+    await writeShows(req.userId, shows.filter((s) => s.id !== req.params.id));
     res.status(204).send();
   } catch (err) { next(err); }
 });
@@ -364,9 +360,9 @@ router.delete('/:id', async (req, res, next) => {
 router.post('/apply-crew-templates', async (req, res, next) => {
   try {
     const [templates, crew, shows] = await Promise.all([
-      readTemplates(),
-      readCrew(),
-      readShows(),
+      readTemplates(req.userId),
+      readCrew(req.userId),
+      readShows(req.userId),
     ]);
 
     const buildCrewText = (ids) =>
@@ -389,7 +385,7 @@ router.post('/apply-crew-templates', async (req, res, next) => {
       };
     });
 
-    await writeShows(newShows);
+    await writeShows(req.userId, newShows);
     res.json({ updated });
   } catch (err) { next(err); }
 });
@@ -397,11 +393,11 @@ router.post('/apply-crew-templates', async (req, res, next) => {
 // ─── Brief (Google Docs creator) ───────────────────────────────────────────
 router.post('/:id/brief', async (req, res) => {
   try {
-    const shows = await readShows();
+    const shows = await readShows(req.userId);
     const show = shows.find((s) => s.id === req.params.id);
     if (!show) return res.status(404).json({ error: 'Show not found' });
 
-    const [crew, fieldTemplates] = await Promise.all([readCrew(), readFieldTemplates()]);
+    const [crew, fieldTemplates] = await Promise.all([readCrew(req.userId), readFieldTemplates(req.userId)]);
 
     const formatDate = (d) => {
       if (!d) return '';
@@ -518,11 +514,11 @@ router.post('/:id/brief', async (req, res) => {
 // ─── PDF generation (refactored to puppeteer w/ cached browser) ────────────
 router.post('/:id/pdf', async (req, res) => {
   try {
-    const shows = await readShows();
+    const shows = await readShows(req.userId);
     const show = shows.find((s) => s.id === req.params.id);
     if (!show) return res.status(404).json({ error: 'Show not found' });
 
-    const [crew, fieldTemplates] = await Promise.all([readCrew(), readFieldTemplates()]);
+    const [crew, fieldTemplates] = await Promise.all([readCrew(req.userId), readFieldTemplates(req.userId)]);
 
     const assignedCrew = (show.crewIds || [])
       .map((id) => crew.find((m) => m.id === id))

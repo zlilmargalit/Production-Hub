@@ -1,37 +1,38 @@
-// Load .env from server/.env (takes precedence over the parent process env
-// only for keys not already set — Railway env vars still win).
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const fsp = require('fs').promises;
-const path = require('path');
-const os = require('os');
+const express  = require('express');
+const cors     = require('cors');
+const fs       = require('fs');
+const fsp      = require('fs').promises;
+const path     = require('path');
+const os       = require('os');
 const chokidar = require('chokidar');
+const { v4: uuidv4 } = require('uuid');
 
-const { COOKIE_NAME, signToken, checkAuthed, cookieOptions } = require('./auth');
+const {
+  COOKIE_NAME, signToken, getAuthUser, checkAuthed,
+  cookieOptions, verifyCredentials, hashPassword,
+  loadUsers, saveUsers,
+} = require('./auth');
 const loginPage = require('./login-page');
 
-const showsRouter = require('./routes/shows');
-const documentsRouter = require('./routes/documents');
-const crewRouter = require('./routes/crew');
-const templatesRouter = require('./routes/templates');
-const eventTypesRouter = require('./routes/event-types');
-const fieldTemplatesRouter = require('./routes/field-templates');
+const showsRouter         = require('./routes/shows');
+const documentsRouter     = require('./routes/documents');
+const crewRouter          = require('./routes/crew');
+const templatesRouter     = require('./routes/templates');
+const eventTypesRouter    = require('./routes/event-types');
+const fieldTemplatesRouter= require('./routes/field-templates');
 const { router: importRouter, findNewShows, DEFAULT_XLSX } = require('./routes/import');
-const calendarRouter = require('./routes/calendar');
+const calendarRouter      = require('./routes/calendar');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
+const { ensureUserDir } = require('./utils/userData');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3001;
 
-// ── Auth ────────────────────────────────────────────────────────────────────
-// A single shared username/password protects the whole site (API + frontend).
-// Credentials come from .env (AUTH_USER / AUTH_PASSWORD) — refuse to start if
-// the password is left at the placeholder so we never deploy "change-me".
+// ── Auth config ──────────────────────────────────────────────────────────────
 const AUTH_USER     = process.env.AUTH_USER || 'admin';
 const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
 
@@ -44,31 +45,30 @@ if (AUTH_PASSWORD === 'change-me-please' && process.env.NODE_ENV === 'production
   process.exit(1);
 }
 
-// Railway/Heroku-style proxy → trust X-Forwarded-Proto so cookies get `secure`
 app.set('trust proxy', 1);
-
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: false })); // for /login POST
+app.use(express.urlencoded({ extended: false }));
 
-// ── Public routes (must be declared BEFORE the auth middleware) ────────────
-// Health check stays public so PaaS uptime probes don't trigger auth.
+// ── Client dist path (used by /demo) ────────────────────────────────────────
+const CLIENT_DIST = path.join(__dirname, '../client/dist');
+
+// ── Public routes (before auth gate) ────────────────────────────────────────
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 // Login page
 app.get('/login', (req, res) => {
-  // If already authed, bounce to home
   if (checkAuthed(req)) return res.redirect('/');
   res.type('html').send(loginPage({ error: req.query.error === '1' }));
 });
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body || {};
-  if (username === AUTH_USER && password === AUTH_PASSWORD) {
-    res.cookie(COOKIE_NAME, signToken(username), cookieOptions(req));
+  const authUser = verifyCredentials(username, password);
+  if (authUser) {
+    res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
     return res.redirect('/');
   }
-  // Wrong credentials — re-show the page with an error flag
   res.status(401).type('html').send(loginPage({ error: true, username }));
 });
 
@@ -77,38 +77,151 @@ app.post('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// PWA assets that the login page references must be public too
+// Registration
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, password2 } = req.body || {};
+
+    if (!username || !password) {
+      return res.status(400).type('html').send(
+        loginPage({ tab: 'register', regError: 'Username and password are required' })
+      );
+    }
+    if (password !== password2) {
+      return res.status(400).type('html').send(
+        loginPage({ tab: 'register', regError: 'Passwords do not match' })
+      );
+    }
+    if (password.length < 6) {
+      return res.status(400).type('html').send(
+        loginPage({ tab: 'register', regError: 'Password must be at least 6 characters' })
+      );
+    }
+    if (!/^[a-zA-Z0-9_\-]+$/.test(username)) {
+      return res.status(400).type('html').send(
+        loginPage({ tab: 'register', regError: 'Username may only contain letters, numbers, _ and -' })
+      );
+    }
+
+    // Check uniqueness against admin and existing users
+    if (username === AUTH_USER) {
+      return res.status(409).type('html').send(
+        loginPage({ tab: 'register', regError: 'Username already taken' })
+      );
+    }
+    const users = loadUsers();
+    if (users.find((u) => u.username === username)) {
+      return res.status(409).type('html').send(
+        loginPage({ tab: 'register', regError: 'Username already taken' })
+      );
+    }
+
+    const newUser = {
+      id:           uuidv4(),
+      username,
+      passwordHash: hashPassword(password),
+      role:         'user',
+      createdAt:    new Date().toISOString(),
+    };
+    users.push(newUser);
+    saveUsers(users);
+
+    // Create the user's data directory with empty default files
+    await ensureUserDir(newUser.id);
+
+    // Auto-login
+    const authUser = { userId: newUser.id, username, role: 'user' };
+    res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
+    return res.redirect('/');
+  } catch (err) {
+    console.error('[register]', err.message);
+    res.status(500).type('html').send(
+      loginPage({ tab: 'register', regError: 'Registration failed — please try again' })
+    );
+  }
+});
+
+// Demo mode — serve the React app with window.__DEMO__ injected (no auth)
+app.get('/demo', (req, res) => {
+  try {
+    const indexPath = path.join(CLIENT_DIST, 'index.html');
+    if (!fs.existsSync(indexPath)) {
+      return res.status(503).send('<p>App not built yet — run npm run build in client/</p>');
+    }
+    const html = fs.readFileSync(indexPath, 'utf8');
+    res.type('html').send(
+      html.replace('</head>', '<script>window.__DEMO__=true;</script></head>')
+    );
+  } catch (err) {
+    res.status(500).send('Demo unavailable');
+  }
+});
+
+// Demo data endpoint (no auth)
+app.get('/api/demo/data', (req, res) => {
+  try {
+    const demo = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/demo.json'), 'utf8'));
+    res.json(demo);
+  } catch {
+    res.json({ shows: [], crew: [], eventTypes: [], fieldTemplates: {}, templates: {} });
+  }
+});
+
+// PWA assets
 app.get(['/manifest.json', '/apple-touch-icon.png', '/icon-180.png', '/icon-192.png', '/icon-512.png'], (req, res, next) => {
-  const file = path.join(__dirname, '../client/dist', req.path);
+  const file = path.join(CLIENT_DIST, req.path);
   if (fs.existsSync(file)) return res.sendFile(file);
   next();
 });
 
-// ── Auth gate ──────────────────────────────────────────────────────────────
-// Cookie session OR Basic auth header (for curl/scripts). Anything else:
-//   - HTML requests → redirect to /login
-//   - API requests  → 401 JSON
+// ── Auth gate ────────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  if (checkAuthed(req)) return next();
+  const authUser = getAuthUser(req);
+  if (authUser) {
+    req.userId   = authUser.userId;
+    req.userRole = authUser.role;
+    req.username = authUser.username;
+    return next();
+  }
   if (req.path.startsWith('/api/') || req.xhr || req.get('accept')?.includes('application/json')) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   res.redirect('/login');
 });
 
-app.use('/api/shows', showsRouter);
-app.use('/api/documents', documentsRouter);
-app.use('/api/crew', crewRouter);
-app.use('/api/templates', templatesRouter);
-app.use('/api/event-types', eventTypesRouter);
-app.use('/api/field-templates', fieldTemplatesRouter);
-app.use('/api/import', importRouter);
-app.use('/api/calendar', calendarRouter);
+// ── Who-am-I (after auth gate) ───────────────────────────────────────────────
+app.get('/api/me', (req, res) => {
+  res.json({ userId: req.userId, username: req.username, role: req.userRole });
+});
 
-// ── Centralised error handler ───────────────────────────────────────────────
-// All async route handlers wrap their work in try/catch + next(err); this
-// middleware turns any uncaught error into a structured 500 instead of
-// leaking the stack trace or hanging the request.
+// ── Admin-only: user management ───────────────────────────────────────────────
+app.get('/api/users', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const users = loadUsers().map(({ id, username, role, createdAt }) => ({ id, username, role, createdAt }));
+  res.json(users);
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'User not found' });
+  users.splice(idx, 1);
+  saveUsers(users);
+  res.status(204).send();
+});
+
+// ── API routers ──────────────────────────────────────────────────────────────
+app.use('/api/shows',          showsRouter);
+app.use('/api/documents',      documentsRouter);
+app.use('/api/crew',           crewRouter);
+app.use('/api/templates',      templatesRouter);
+app.use('/api/event-types',    eventTypesRouter);
+app.use('/api/field-templates',fieldTemplatesRouter);
+app.use('/api/import',         importRouter);
+app.use('/api/calendar',       calendarRouter);
+
+// ── Error handler ────────────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('[error]', req.method, req.path, '—', err.message);
@@ -116,8 +229,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error', details: err.message });
 });
 
-// ── Serve built React app ──────────────────────────────────────────────────
-const CLIENT_DIST = path.join(__dirname, '../client/dist');
+// ── Static React app ─────────────────────────────────────────────────────────
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST));
   app.get('*', (req, res) => {
@@ -125,7 +237,7 @@ if (fs.existsSync(CLIENT_DIST)) {
   });
 }
 
-// ── File watcher: auto-import when the xlsx is replaced ────────────────────
+// ── File watcher: auto-import xlsx ───────────────────────────────────────────
 const SHOWS_FILE = path.join(__dirname, 'data/shows.json');
 
 async function autoImport(xlsxPath) {
@@ -136,7 +248,7 @@ async function autoImport(xlsxPath) {
       await writeJsonAndCache('shows', SHOWS_FILE, [...existing, ...newShows]);
       console.log(`[import] Auto-imported ${newShows.length} new shows from ${path.basename(xlsxPath)}`);
     } else {
-      console.log(`[import] No new shows found in updated file.`);
+      console.log('[import] No new shows found in updated file.');
     }
   } catch (err) {
     console.error('[import] Auto-import failed:', err.message);
@@ -153,7 +265,7 @@ if (fs.existsSync(DEFAULT_XLSX)) {
   console.log(`[import] Watching for changes: ${path.basename(DEFAULT_XLSX)}`);
 }
 
-// ── Graceful shutdown ──────────────────────────────────────────────────────
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
 async function gracefulExit(signal) {
   console.log(`\n[server] ${signal} received — shutting down…`);
   await shutdownPuppeteer().catch(() => {});
@@ -169,12 +281,13 @@ app.listen(PORT, () => {
 
   console.log('');
   console.log('┌─────────────────────────────────────────────┐');
-  console.log(`│  Production Hub is running                  │`);
-  console.log(`│                                             │`);
+  console.log('│  Production Hub is running                  │');
+  console.log('│                                             │');
   console.log(`│  Local:   http://localhost:${PORT}           │`);
   console.log(`│  Network: http://${networkIp}:${PORT}        │`);
-  console.log(`│                                             │`);
+  console.log('│                                             │');
   console.log(`│  Login: ${AUTH_USER} / (see server/.env)         │`);
+  console.log('│  Demo:  /demo  (no login required)          │');
   console.log('└─────────────────────────────────────────────┘');
   console.log('');
   startGmailPolling();

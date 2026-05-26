@@ -1,0 +1,113 @@
+{
+  "shows": [
+    {
+      "id": "demo-show-1",
+      "name": "חתונת לוי-כהן",
+      "date": "2026-06-14",
+      "eventType": "חתונה",
+      "venue": "אולם האגם, ראשון לציון",
+      "address": "רחוב הנמל 12, ראשון לציון",
+      "parking": "חניון תת-קרקעי, כניסה מרחוב הים",
+      "transportation": "מוניות מסודרות לאמן",
+      "contacts": "דינה לוי: 052-1234567",
+      "venueContact": "יוסי מנהל האולם: 050-9876543",
+      "schedule": "17:00 הגעת הצוות\n18:00 סאונד-צ'ק\n19:30 קבלת פנים\n21:00 טקס\n22:30 מסיבה",
+      "technicalCrew": "סאונד – דן לוי | תאורה – מיקי רוז",
+      "crewIds": ["demo-crew-1", "demo-crew-2"],
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "לאשר תפריט אוכל לצוות", "completed": true },
+        { "text": "לשלוח דף תיאום לסאונדמן", "completed": false }
+      ],
+      "notes": "כלה מבקשת שיר פתיחה בגיטרה אקוסטית",
+      "createdAt": "2026-05-01T10:00:00.000Z"
+    },
+    {
+      "id": "demo-show-2",
+      "name": "בר מצווה – יואב שמיר",
+      "date": "2026-06-28",
+      "eventType": "בר מצווה",
+      "venue": "מלון דן, תל אביב",
+      "address": "רחוב הירקון 99, תל אביב",
+      "parking": "וולט חניה מהטלפון",
+      "transportation": "רכב פרטי",
+      "contacts": "אבא – עמוס שמיר: 054-3334444",
+      "technicalCrew": "סאונד – דן לוי",
+      "crewIds": ["demo-crew-1"],
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [],
+      "createdAt": "2026-05-05T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-3",
+      "name": "אירוע שנתי – חברת טכנוסטאר",
+      "date": "2026-07-10",
+      "eventType": "אירוע חברה",
+      "venue": "Reading Power Station, תל אביב",
+      "address": "שדרות רוקח 228, תל אביב",
+      "parking": "חניון ציבורי בסמוך",
+      "contacts": "הדי – מנהלת פרויקט: 053-7778889",
+      "schedule": "19:00 הגעה\n20:00 קוקטייל\n21:00 הופעה\n22:30 אפטר-פארטי",
+      "technicalCrew": "סאונד – דן לוי | תאורה – מיקי רוז | הפקה – רונה אבן",
+      "crewIds": ["demo-crew-1", "demo-crew-2", "demo-crew-3"],
+      "food": "בופה מלא לכל הצוות",
+      "invoice": true,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "לוגו החברה לסטייג'-באק", "completed": true },
+        { "text": "רשימת שירים מאושרת", "completed": true },
+        { "text": "אישור בטחון כניסה", "completed": false }
+      ],
+      "createdAt": "2026-05-10T11:00:00.000Z"
+    },
+    {
+      "id": "demo-show-4",
+      "name": "סולו אקוסטי – ערב שישי",
+      "date": "2026-06-06",
+      "eventType": "סולו אקוסטי",
+      "venue": "בר הוד, תל אביב",
+      "address": "נחלת בנימין 40, תל אביב",
+      "contacts": "יאיר מנהל הבר: 050-1112233",
+      "technicalCrew": "סאונד – דן לוי",
+      "crewIds": ["demo-crew-1"],
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [],
+      "createdAt": "2026-05-15T08:00:00.000Z"
+    },
+    {
+      "id": "demo-show-5",
+      "name": "הופעת להקה – פסטיבל הים",
+      "date": "2026-08-22",
+      "eventType": "הופעת להקה",
+      "venue": "חוף גורדון, תל אביב",
+      "address": "טיילת גורדון, תל אביב",
+      "parking": "חניה ציבורית ב-400 מ'",
+      "contacts": "מנהל פסטיבל: 054-9990001",
+      "schedule": "16:00 הגעה + פריקה\n17:30 סאונד-צ'ק\n20:00 הופעה\n22:00 סיום",
+      "technicalCrew": "סאונד – דן לוי | תאורה – מיקי רוז",
+      "crewIds": ["demo-crew-1", "demo-crew-2"],
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "Rider טכני לפסטיבל", "completed": false }
+      ],
+      "createdAt": "2026-05-20T14:00:00.000Z"
+    }
+  ],
+  "crew": [
+    { "id": "demo-crew-1", "name": "דן לוי", "role": "סאונד", "phone": "052-1111111", "email": "dan@demo.com", "eventTypes": ["חתונה", "בר מצווה", "אירוע חברה", "סולו אקוסטי", "הופעת להקה"] },
+    { "id": "demo-crew-2", "name": "מיקי רוז", "role": "תאורה", "phone": "052-2222222", "email": "miki@demo.com", "eventTypes": ["חתונה", "אירוע חברה", "הופעת להקה"] },
+    { "id": "demo-crew-3", "name": "רונה אבן", "role": "הפקה", "phone": "052-3333333", "email": "rona@demo.com", "eventTypes": ["אירוע חברה"] }
+  ],
+  "eventTypes": ["חתונה", "בר מצווה", "בת מצווה", "אירוע חברה", "הופעת אולם", "הופעת להקה", "אירוע פרטי", "סולו אקוסטי", "חזרה", "יום הולדת"],
+  "templates": {},
+  "fieldTemplates": {}
+}

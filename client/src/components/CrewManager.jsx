@@ -28,7 +28,7 @@ function buildCrewText(crewIds, crew) {
     .join(' | ');
 }
 
-function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes }) {
+function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, demoMode = false }) {
   const [tab, setTab] = useState('members');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -39,6 +39,15 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   const closeForm = () => { setShowForm(false); setEditing(null); };
 
   const saveMember = async (data) => {
+    if (demoMode) {
+      if (editing) {
+        setCrew((prev) => prev.map((m) => (m.id === editing.id ? { ...m, ...data } : m)));
+      } else {
+        setCrew((prev) => [...prev, { id: 'demo-crew-' + Date.now(), ...data }]);
+      }
+      closeForm();
+      return;
+    }
     if (editing) {
       const res = await fetch(`/api/crew/${editing.id}`, {
         method: 'PUT',
@@ -66,7 +75,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       message: member ? `Remove "${member.name}" from all shows and templates? This cannot be undone.` : 'Delete this crew member?',
       onConfirm: async () => {
         setConfirmModal(null);
-        await fetch(`/api/crew/${id}`, { method: 'DELETE' });
+        if (!demoMode) await fetch(`/api/crew/${id}`, { method: 'DELETE' });
         setCrew((prev) => prev.filter((m) => m.id !== id));
         setTemplates((prev) => {
           const next = { ...prev };
@@ -80,11 +89,13 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   };
 
   const saveTemplate = async (eventType, crewIds) => {
-    await fetch(`/api/templates/${encodeURIComponent(eventType)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ crewIds }),
-    });
+    if (!demoMode) {
+      await fetch(`/api/templates/${encodeURIComponent(eventType)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ crewIds }),
+      });
+    }
     setTemplates((prev) => ({ ...prev, [eventType]: crewIds }));
   };
 

@@ -1936,6 +1936,28 @@ body {
 .custom-field-file { font-size: 0.8125rem; color: var(--text-2); }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   DEMO BANNER
+   ═══════════════════════════════════════════════════════════════════════ */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--amber-bg);
+  border-bottom: 2px solid var(--amber);
+  color: var(--amber-deep);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 10px 40px;
+  letter-spacing: 0.01em;
+}
+[data-theme="dark"] .demo-banner {
+  background: var(--amber-bg);
+  border-bottom-color: var(--amber);
+  color: var(--amber);
+}
+.demo-banner-icon { font-size: 1rem; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════
    MOBILE
    ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {

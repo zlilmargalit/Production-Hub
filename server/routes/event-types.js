@@ -1,26 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
+const { dataPath, cacheKey } = require('../utils/userData');
 
-const DATA_FILE = path.join(__dirname, '../data/event-types.json');
-const CACHE_KEY = 'eventTypes';
-
-const read = () => readJsonCached(CACHE_KEY, DATA_FILE, []);
-const write = (d) => writeJsonAndCache(CACHE_KEY, DATA_FILE, d);
+const read  = (uid) => readJsonCached(cacheKey(uid, 'eventTypes'), dataPath(uid, 'event-types.json'), []);
+const write = (uid, d) => writeJsonAndCache(cacheKey(uid, 'eventTypes'), dataPath(uid, 'event-types.json'), d);
 
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await read());
+    res.json(await read(req.userId));
   } catch (err) { next(err); }
 });
 
-// Full replace (client sends the ordered array)
 router.put('/', async (req, res, next) => {
   try {
     const types = req.body;
     if (!Array.isArray(types)) return res.status(400).json({ error: 'Expected array' });
-    await write(types);
+    await write(req.userId, types);
     res.json(types);
   } catch (err) { next(err); }
 });

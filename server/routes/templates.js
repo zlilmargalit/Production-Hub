@@ -1,36 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
+const { dataPath, cacheKey } = require('../utils/userData');
 
-const DATA_FILE = path.join(__dirname, '../data/templates.json');
-const CREW_FILE = path.join(__dirname, '../data/crew.json');
-const CACHE_KEY = 'templates';
-
-const readTemplates = () => readJsonCached(CACHE_KEY, DATA_FILE, {});
-const writeTemplates = (t) => writeJsonAndCache(CACHE_KEY, DATA_FILE, t);
-const readCrew = () => readJsonCached('crew', CREW_FILE, []);
+const readTemplates  = (uid) => readJsonCached(cacheKey(uid, 'templates'), dataPath(uid, 'templates.json'), {});
+const writeTemplates = (uid, t) => writeJsonAndCache(cacheKey(uid, 'templates'), dataPath(uid, 'templates.json'), t);
+const readCrew       = (uid) => readJsonCached(cacheKey(uid, 'crew'), dataPath(uid, 'crew.json'), []);
 
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await readTemplates());
+    res.json(await readTemplates(req.userId));
   } catch (err) { next(err); }
 });
 
 router.put('/:eventType', async (req, res, next) => {
   try {
-    const templates = await readTemplates();
+    const templates = await readTemplates(req.userId);
     const eventType = decodeURIComponent(req.params.eventType);
     templates[eventType] = req.body.crewIds || [];
-    await writeTemplates(templates);
+    await writeTemplates(req.userId, templates);
     res.json({ eventType, crewIds: templates[eventType] });
   } catch (err) { next(err); }
 });
 
-// Returns the formatted technicalCrew string for an event type
 router.get('/:eventType/text', async (req, res, next) => {
   try {
-    const [templates, crew] = await Promise.all([readTemplates(), readCrew()]);
+    const [templates, crew] = await Promise.all([readTemplates(req.userId), readCrew(req.userId)]);
     const eventType = decodeURIComponent(req.params.eventType);
     const ids = templates[eventType] || [];
     const text = ids

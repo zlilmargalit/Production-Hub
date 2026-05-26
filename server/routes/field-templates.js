@@ -1,28 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
+const { dataPath, cacheKey } = require('../utils/userData');
 
-const FILE = path.join(__dirname, '../data/field-templates.json');
-const CACHE_KEY = 'fieldTemplates';
+const read  = (uid) => readJsonCached(cacheKey(uid, 'fieldTemplates'), dataPath(uid, 'field-templates.json'), {});
+const write = (uid, d) => writeJsonAndCache(cacheKey(uid, 'fieldTemplates'), dataPath(uid, 'field-templates.json'), d);
 
-const read = () => readJsonCached(CACHE_KEY, FILE, {});
-const write = (d) => writeJsonAndCache(CACHE_KEY, FILE, d);
-
-// GET /api/field-templates
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await read());
+    res.json(await read(req.userId));
   } catch (err) { next(err); }
 });
 
-// PUT /api/field-templates/:eventType  — body is array of field definitions
 router.put('/:eventType', async (req, res, next) => {
   try {
     const et = decodeURIComponent(req.params.eventType);
-    const d = await read();
-    d[et] = req.body; // array of { id, label, type }
-    await write(d);
+    const d  = await read(req.userId);
+    d[et]    = req.body;
+    await write(req.userId, d);
     res.json(d[et]);
   } catch (err) { next(err); }
 });
