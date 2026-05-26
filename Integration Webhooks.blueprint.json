@@ -1,0 +1,645 @@
+{
+    "name": "Integration Webhooks",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 3168458,
+                "maxResults": 1
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 0
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "Create Brief-webhook"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "module": "airtable:ActionGetRecord",
+            "version": 3,
+            "parameters": {
+                "__IMTCONN__": 13437472
+            },
+            "mapper": {
+                "id": "{{1.recordid}}",
+                "base": "appC8PK5DEBdbAi7z",
+                "table": "tblmhxUMHNSkkJVY9",
+                "useColumnId": false
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "base": {
+                            "mode": "chose",
+                            "label": "Concert Production Manager"
+                        },
+                        "table": {
+                            "mode": "chose",
+                            "label": "Events"
+                        },
+                        "useColumnId": {
+                            "mode": "chose"
+                        }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "airtable3"
+                            },
+                            "label": "My Airtable OAuth connection (User ID: usrP4cdKgnogJRn2Z)"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTCONN__",
+                        "type": "account:airtable3,airtable2",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "base",
+                        "type": "select",
+                        "label": "Base",
+                        "required": true
+                    },
+                    {
+                        "name": "useColumnId",
+                        "type": "boolean",
+                        "label": "Use Column ID",
+                        "required": true
+                    },
+                    {
+                        "name": "table",
+                        "type": "select",
+                        "label": "Table",
+                        "required": true
+                    },
+                    {
+                        "name": "id",
+                        "type": "text",
+                        "label": "Record ID",
+                        "required": true
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "id",
+                        "type": "text",
+                        "label": "ID"
+                    },
+                    {
+                        "name": "createdTime",
+                        "type": "date",
+                        "label": "Created Time"
+                    },
+                    {
+                        "name": "Event Name",
+                        "type": "text",
+                        "label": "Event Name"
+                    },
+                    {
+                        "name": "Date",
+                        "time": false,
+                        "type": "date",
+                        "label": "Date"
+                    },
+                    {
+                        "name": "Event Type",
+                        "spec": {
+                            "label": "Record ID"
+                        },
+                        "type": "array",
+                        "label": "Event Type"
+                    },
+                    {
+                        "name": "Venue",
+                        "type": "text",
+                        "label": "Venue"
+                    },
+                    {
+                        "name": "Address",
+                        "type": "text",
+                        "label": "Address"
+                    },
+                    {
+                        "name": "Parking",
+                        "type": "text",
+                        "label": "Parking"
+                    },
+                    {
+                        "name": "Crew",
+                        "spec": {
+                            "label": "Record ID"
+                        },
+                        "type": "array",
+                        "label": "Crew"
+                    },
+                    {
+                        "name": "Transportation",
+                        "type": "text",
+                        "label": "Transportation"
+                    },
+                    {
+                        "name": "Schedule",
+                        "type": "text",
+                        "label": "Schedule",
+                        "multiline": true
+                    },
+                    {
+                        "name": "Contacts",
+                        "type": "text",
+                        "label": "Contacts",
+                        "multiline": true
+                    },
+                    {
+                        "name": "Additional Details",
+                        "type": "text",
+                        "label": "Additional Details",
+                        "multiline": true
+                    },
+                    {
+                        "name": "Tasks",
+                        "spec": {
+                            "label": "Record ID"
+                        },
+                        "type": "array",
+                        "label": "Tasks"
+                    },
+                    {
+                        "name": "מוזמנים",
+                        "type": "text",
+                        "label": "מוזמנים",
+                        "multiline": true
+                    },
+                    {
+                        "name": "נמר",
+                        "type": "boolean",
+                        "label": "נמר"
+                    },
+                    {
+                        "name": "Venue Contact",
+                        "type": "text",
+                        "label": "Venue Contact"
+                    },
+                    {
+                        "name": "Notes",
+                        "type": "text",
+                        "label": "Notes",
+                        "multiline": true
+                    },
+                    {
+                        "name": "Ready for Brief",
+                        "type": "text",
+                        "label": "Ready for Brief"
+                    },
+                    {
+                        "name": "Ready for brief Checkbox",
+                        "type": "boolean",
+                        "label": "Ready for brief Checkbox"
+                    },
+                    {
+                        "name": "Pickup Time",
+                        "type": "text",
+                        "label": "Pickup Time"
+                    },
+                    {
+                        "name": "Secondary Stop",
+                        "type": "text",
+                        "label": "Secondary Stop"
+                    },
+                    {
+                        "name": "Brief File",
+                        "spec": [
+                            {
+                                "name": "id",
+                                "type": "text",
+                                "label": "ID"
+                            },
+                            {
+                                "name": "width",
+                                "type": "uinteger",
+                                "label": "Width"
+                            },
+                            {
+                                "name": "height",
+                                "type": "uinteger",
+                                "label": "Height"
+                            },
+                            {
+                                "name": "url",
+                                "type": "url",
+                                "label": "URL"
+                            },
+                            {
+                                "name": "filename",
+                                "type": "filename",
+                                "label": "File name"
+                            },
+                            {
+                                "name": "size",
+                                "type": "uinteger",
+                                "label": "Size"
+                            },
+                            {
+                                "name": "type",
+                                "type": "text",
+                                "label": "MIME type"
+                            },
+                            {
+                                "name": "thumbnails",
+                                "spec": [
+                                    {
+                                        "name": "small",
+                                        "spec": [
+                                            {
+                                                "name": "url",
+                                                "type": "url",
+                                                "label": "URL"
+                                            },
+                                            {
+                                                "name": "width",
+                                                "type": "uinteger",
+                                                "label": "Width"
+                                            },
+                                            {
+                                                "name": "height",
+                                                "type": "uinteger",
+                                                "label": "Height"
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Small"
+                                    },
+                                    {
+                                        "name": "large",
+                                        "spec": [
+                                            {
+                                                "name": "url",
+                                                "type": "url",
+                                                "label": "URL"
+                                            },
+                                            {
+                                                "name": "width",
+                                                "type": "uinteger",
+                                                "label": "Width"
+                                            },
+                                            {
+                                                "name": "height",
+                                                "type": "uinteger",
+                                                "label": "Height"
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Large"
+                                    },
+                                    {
+                                        "name": "full",
+                                        "spec": [
+                                            {
+                                                "name": "url",
+                                                "type": "url",
+                                                "label": "URL"
+                                            },
+                                            {
+                                                "name": "width",
+                                                "type": "uinteger",
+                                                "label": "Width"
+                                            },
+                                            {
+                                                "name": "height",
+                                                "type": "uinteger",
+                                                "label": "Height"
+                                            }
+                                        ],
+                                        "type": "collection",
+                                        "label": "Full"
+                                    }
+                                ],
+                                "type": "collection",
+                                "label": "Thumbnails"
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Brief File"
+                    },
+                    {
+                        "name": "Created",
+                        "type": "date",
+                        "label": "Created"
+                    },
+                    {
+                        "name": "Reminder Date",
+                        "type": "text",
+                        "label": "Reminder Date"
+                    },
+                    {
+                        "name": "Sound",
+                        "type": "array",
+                        "label": "Sound"
+                    },
+                    {
+                        "name": "Lighting",
+                        "type": "array",
+                        "label": "Lighting"
+                    },
+                    {
+                        "name": "Backline",
+                        "type": "array",
+                        "label": "Backline"
+                    },
+                    {
+                        "name": "Production",
+                        "type": "array",
+                        "label": "Production"
+                    },
+                    {
+                        "name": "Crew List",
+                        "type": "array",
+                        "label": "Crew List"
+                    },
+                    {
+                        "name": "Crew Emails",
+                        "type": "array",
+                        "label": "Crew Emails"
+                    },
+                    {
+                        "name": "Briefs",
+                        "spec": {
+                            "label": "Record ID"
+                        },
+                        "type": "array",
+                        "label": "Briefs"
+                    },
+                    {
+                        "name": "Last Modified",
+                        "type": "date",
+                        "label": "Last Modified"
+                    },
+                    {
+                        "name": "Record ID",
+                        "type": "text",
+                        "label": "Record ID"
+                    },
+                    {
+                        "name": "Create Brief",
+                        "spec": [
+                            {
+                                "name": "label",
+                                "type": "text",
+                                "label": "Label"
+                            },
+                            {
+                                "name": "url",
+                                "type": "url",
+                                "label": "URL"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Create Brief"
+                    },
+                    {
+                        "name": "Invoice",
+                        "type": "boolean",
+                        "label": "Invoice"
+                    },
+                    {
+                        "name": "Receipt",
+                        "type": "boolean",
+                        "label": "Receipt"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 4,
+            "module": "google-docs:createADocumentFromTemplate",
+            "version": 1,
+            "parameters": {
+                "__IMTCONN__": 11423982
+            },
+            "mapper": {
+                "from": "drive",
+                "name": "דף תיאום {{3.`Event Name`}} {{3.Date}}",
+                "select": "dropdown",
+                "document": "/1ZBXxhG14W91wBKdvW96Qu8-kQmIX2ZpNY58psVsqhDs",
+                "folderId": "/15iF5IghdzQwGokYwcShpFALiiCRZMPpo",
+                "requests": {
+                    "DATE": "{{formatDate(3.Date; \"DD.MM.YYYY\")}}",
+                    "VENUE": "{{3.Venue}}",
+                    "ADDRESS": "{{3.Address}}",
+                    "PARKING": "{{3.Parking}}",
+                    "CONTACTS": "{{3.Contacts}}",
+                    "SCHEDULE": "{{3.Schedule}}",
+                    "CREW_LIST": "{{3.`Crew List`}}",
+                    "EVENT_NAME": "{{3.`Event Name`}}",
+                    "ADDITIONAL_DETAILS": "{{3.`Additional Details`}}"
+                },
+                "destination": "drive"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 0
+                },
+                "restore": {
+                    "expect": {
+                        "from": {
+                            "label": "My Drive"
+                        },
+                        "select": {
+                            "label": "By Dropdown"
+                        },
+                        "document": {
+                            "path": [
+                                "טמפלייט דף תיאום"
+                            ]
+                        },
+                        "folderId": {
+                            "mode": "chose",
+                            "path": [
+                                "הפקות"
+                            ]
+                        },
+                        "destination": {
+                            "label": "My Drive"
+                        }
+                    },
+                    "parameters": {
+                        "__IMTCONN__": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "google"
+                            },
+                            "label": "My Google connection (zlilmargalit0@gmail.com)"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTCONN__",
+                        "type": "account:google",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "select",
+                        "type": "select",
+                        "label": "Create a Document from a Template",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "map",
+                                "dropdown"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "type": "text",
+                        "label": "Title",
+                        "required": true
+                    },
+                    {
+                        "name": "destination",
+                        "type": "select",
+                        "label": "New Drive Location",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "drive",
+                                "share",
+                                "team"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "type": "select",
+                        "label": "Choose a Drive",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "drive",
+                                "share",
+                                "team"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "document",
+                        "type": "file",
+                        "label": "Document ID",
+                        "required": true
+                    },
+                    {
+                        "name": "requests",
+                        "spec": [
+                            {
+                                "name": "DATE",
+                                "type": "any"
+                            },
+                            {
+                                "name": "VENUE",
+                                "type": "any"
+                            },
+                            {
+                                "name": "ADDRESS",
+                                "type": "any"
+                            },
+                            {
+                                "name": "EVENT_NAME",
+                                "type": "any"
+                            },
+                            {
+                                "name": "CREW_LIST",
+                                "type": "any"
+                            },
+                            {
+                                "name": "PARKING",
+                                "type": "any"
+                            },
+                            {
+                                "name": "SCHEDULE",
+                                "type": "any"
+                            },
+                            {
+                                "name": "CONTACTS",
+                                "type": "any"
+                            },
+                            {
+                                "name": "ADDITIONAL_DETAILS",
+                                "type": "any"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Values"
+                    },
+                    {
+                        "name": "folderId",
+                        "type": "folder",
+                        "label": "New Document's Location",
+                        "required": true
+                    }
+                ]
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu2.make.com",
+        "notes": []
+    }
+}
