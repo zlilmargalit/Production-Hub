@@ -187,13 +187,22 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        {/* Row 1: logo + title */}
+        {/* Row 1: logo + title + mobile-only toggle */}
         <div className="header-brand">
           <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg">
             <path d="M32 20 A 12 12 0 1 0 20 32 A 6 6 0 0 0 20 20" stroke="#5E7AC4" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
             <path d="M17.5 16 L 24 20 L 17.5 24 Z" fill="#F3BE7A" stroke="#F3BE7A" strokeWidth="1.5" strokeLinejoin="round"/>
           </svg>
           <h1>Production Hub</h1>
+          {/* Mobile only — sits at far right of row 1 */}
+          <button
+            className="btn-theme-toggle header-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? '☀' : '◑'}
+          </button>
         </div>
 
         {/* Row 2: nav tabs + action buttons together */}
@@ -250,7 +259,7 @@ function App() {
               </>
             )}
             <button
-              className="btn-theme-toggle header-toggle"
+              className="btn-theme-toggle header-toggle-desktop"
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle theme"
