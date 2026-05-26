@@ -295,7 +295,7 @@ function TaskManager({ show, onUpdate }) {
 
         {/* Calendar selector */}
         <div className="cal-picker-row">
-          <span className="cal-picker-label">📅 Calendar:</span>
+          <span className="cal-picker-label">Calendar:</span>
           <button className="cal-picker-btn" ref={calBtnRef} onClick={openCalPicker}>
             {calConfig ? calConfig.calendarName : 'primary'} ▾
           </button>
@@ -327,7 +327,7 @@ function TaskManager({ show, onUpdate }) {
             disabled={inviteStatus === 'loading'}
             title="Test — sends invite only to zlilmargalit0@gmail.com"
           >
-            📅 Test invite (my email only)
+            Test invite (my email only)
           </button>
           <button
             className="btn-calendar-invite btn-calendar-invite--full"
@@ -335,7 +335,7 @@ function TaskManager({ show, onUpdate }) {
             disabled={inviteStatus === 'loading'}
             title="Send calendar invite to all crew members assigned to this show"
           >
-            📅 Invite all crew
+            Invite all crew
           </button>
         </div>
         {inviteStatus && inviteStatus !== 'loading' && (
@@ -354,20 +354,18 @@ function TaskManager({ show, onUpdate }) {
         {/* Type selector */}
         <div className="task-type-row">
           {[
-            { key: 'checkbox', icon: '☑', label: 'Checkbox' },
-            { key: 'text',     icon: '¶',  label: 'Text' },
-            { key: 'image',    icon: '🖼', label: 'Image' },
-            { key: 'file',     icon: '📎', label: 'File' },
-          ].map(({ key, icon, label }) => (
+            { key: 'checkbox', label: 'Checkbox' },
+            { key: 'text',     label: 'Text' },
+            { key: 'image',    label: 'Image' },
+            { key: 'file',     label: 'File' },
+          ].map(({ key, label }) => (
             <button
               key={key}
               className={`task-type-btn ${newTaskType === key ? 'active' : ''}`}
               onClick={() => { setNewTaskType(key); setPendingFile(null); }}
               type="button"
-              title={label}
             >
-              <span className="task-type-icon">{icon}</span>
-              <span className="task-type-label">{label}</span>
+              {label}
             </button>
           ))}
         </div>
@@ -424,8 +422,8 @@ function TaskManager({ show, onUpdate }) {
                   <input type="checkbox" checked={t.completed || false} onChange={() => toggleTask(t.id)} />
                 )}
                 {t.type !== 'checkbox' && (
-                  <span className="task-type-dot">
-                    {t.type === 'text' ? '¶' : t.type === 'image' ? '🖼' : '📎'}
+                  <span className="task-type-badge">
+                    {t.type === 'text' ? 'T' : t.type === 'image' ? 'IMG' : 'FILE'}
                   </span>
                 )}
 

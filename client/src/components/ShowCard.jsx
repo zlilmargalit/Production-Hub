@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import TaskManager from './TaskManager';
+import { etColorIdx } from '../utils/etColor';
 
 function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }) {
   const [expanded, setExpanded] = useState(false);
@@ -99,10 +100,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     return crewPalette[hash % crewPalette.length];
   };
 
-  // Deterministic palette slot for event type (10 slots → CSS data-et-idx)
-  const etIdx = show.eventType
-    ? (show.eventType.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 10).toString()
-    : undefined;
+  // Deterministic palette slot for event type (16 slots → CSS data-et-idx)
+  const etIdx = etColorIdx(show.eventType);
   const initialsFor = (name) =>
     (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 

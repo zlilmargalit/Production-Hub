@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ConfirmModal from './ConfirmModal';
+import { etColorIdx } from '../utils/etColor';
 const uuidv4 = () => crypto.randomUUID();
 
 // Consistent palette color per role (cycles through 6 palette-derived colors)
@@ -185,7 +186,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                         {(m.eventTypes || []).length > 0 && (
                           <div className="crew-event-types">
                             {m.eventTypes.map((t) => (
-                              <span key={t} className="tag" dir="auto">{t}</span>
+                              <span key={t} className="tag" dir="auto" data-et-idx={etColorIdx(t)}>{t}</span>
                             ))}
                           </div>
                         )}
@@ -339,7 +340,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
           const isEditingFields = editingFieldsType === et;
 
           return (
-            <div key={et} className={`template-card ${isEditingCrew || isEditingFields ? 'editing' : ''}`}>
+            <div key={et} className={`template-card ${isEditingCrew || isEditingFields ? 'editing' : ''}`} data-et-idx={etColorIdx(et)}>
               {/* Single compact header — buttons LEFT, event type name RIGHT (RTL) */}
               <div className="template-card-header">
                 <div className="template-header-actions">
