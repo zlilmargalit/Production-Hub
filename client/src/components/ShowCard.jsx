@@ -12,12 +12,10 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     .filter((m) => m.role === 'נגן')
     .map((m) => m.name)
     .join(' | ');
-  // Technical crew display — always exclude musicians, built from live crewIds
   const techCrewDisplay = assignedCrew.length > 0
     ? assignedCrew.filter((m) => m.role !== 'נגן').map((m) => `${m.role} – ${m.name}`).join(' | ')
     : show.technicalCrew;
 
-  // Custom field definitions for this show's event type
   const customDefs = (show.eventType && fieldTemplates?.[show.eventType]) || [];
 
   const formatDate = (d) => {
@@ -33,18 +31,13 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     onUpdateShow(show.id, { ...show, [field]: !show[field] });
   };
 
-  // PDF toggle logic:
-  // Standard fields default to true (appear in PDF unless explicitly set to false)
-  // Image-type custom fields default to true (show image by default)
-  // Other custom fields (cf_*) default to false (hidden unless explicitly set to true)
   const isPdfOn = (key) => {
-    // check_ items and non-standard fields default to OFF (must be explicitly enabled)
     if (key.startsWith('check_')) return show.pdfFields?.[key] === true;
     if (!key.startsWith('cf_')) return show.pdfFields?.[key] !== false;
     const defId = key.slice(3);
     const def = customDefs.find((d) => d.id === defId);
-    if (def?.type === 'image') return show.pdfFields?.[key] !== false; // image: default on
-    return show.pdfFields?.[key] === true; // other custom fields: default off
+    if (def?.type === 'image') return show.pdfFields?.[key] !== false;
+    return show.pdfFields?.[key] === true;
   };
 
   const togglePdf = (key) => {
@@ -80,7 +73,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
       if (!res.ok) { setPdfStatus('error'); setTimeout(() => setPdfStatus(null), 4000); return; }
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/pdf')) {
-        // Cloud mode: stream as download
         const blob = await res.blob();
         const cd = res.headers.get('content-disposition') || '';
         const nameMatch = cd.match(/filename\*=UTF-8''(.+)/i) || cd.match(/filename="?([^"]+)"?/i);
@@ -97,15 +89,28 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     }
   };
 
+  // Detect Hebrew so the heading can pick the right font stack via :lang(he)
+  const isHebrew = (show.name && /[\u0590-\u05FF]/.test(show.name)) ? 'he' : 'en';
+
+  // Stable color per crew member (deterministic hash → palette)
+  const crewPalette = ['#3852B4', '#5E7AC4', '#F08D39', '#C26C1F', '#1F2D6E', '#B07729', '#8F4F1A', '#7A8FE0'];
+  const colorFor = (id) => {
+    const hash = (id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    return crewPalette[hash % crewPalette.length];
+  };
+  const initialsFor = (name) =>
+    (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
   return (
-    <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`}>
+    <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''}>
+      <div className="show-card-band" />
       <div className="show-card-header">
         <div className="show-card-title">
-          <h2 dir="rtl">{show.name}</h2>
+          {show.eventType && <div className="show-card-type" dir="auto">{show.eventType}</div>}
+          <h2 dir="auto" lang={isHebrew}>{show.name}</h2>
           <div className="show-meta">
-            {show.eventType && <span className="tag" dir="auto">{show.eventType}</span>}
-            {show.date && <span className="meta-item">{formatDate(show.date)}</span>}
-            {show.venue && <span className="meta-item meta-sep" dir="auto">{show.venue}</span>}
+            {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
+            {show.venue && <span className="meta-item" dir="auto">{show.venue}</span>}
             {show.invoice && <span className="badge badge-invoice">Invoice</span>}
             {show.receipt && <span className="badge badge-receipt">Receipt</span>}
             {(show.archived && !show.invoice) && <span className="badge badge-archive">Archive</span>}
@@ -139,6 +144,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
               <div className="crew-chips">
                 {assignedCrew.filter((m) => m.role !== 'נגן').map((m) => (
                   <div key={m.id} className="crew-chip">
+                    <span className="crew-chip-avatar" style={{ background: colorFor(m.id) }}>{initialsFor(m.name)}</span>
                     <span className="crew-chip-name">{m.name}</span>
                     {m.role && <span className="crew-chip-role">{m.role}</span>}
                   </div>
@@ -156,7 +162,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
                   <span className="pdf-toggle-text">PDF</span>
                 </label>
               </div>
-              <pre dir="rtl">{show.schedule}</pre>
+              <pre dir="auto">{show.schedule}</pre>
             </div>
           )}
 
@@ -170,7 +176,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
                 </label>
               )}
             </div>
-            {show.additionalDetails && <p dir="rtl" style={{ marginBottom: 8 }}>{show.additionalDetails}</p>}
+            {show.additionalDetails && <p dir="auto" style={{ marginBottom: 8 }}>{show.additionalDetails}</p>}
             <div className="additional-checks">
               {show.eventType === 'אני גיטרה' && (
                 <div className="check-pdf-pair">
@@ -217,7 +223,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
             </div>
           </div>
 
-          {/* Custom fields from event type template */}
           {customDefs.length > 0 && (
             <div className="detail-full">
               <strong>Custom Fields</strong>
@@ -280,14 +285,13 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
                   <span className="pdf-toggle-text">PDF</span>
                 </label>
               </div>
-              <p dir="rtl">{show.notes}</p>
+              <p dir="auto">{show.notes}</p>
             </div>
           )}
         </div>
       )}
 
       <div className="show-card-footer">
-        {/* Left: document actions */}
         <div className="footer-left">
           <button
             className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
@@ -311,7 +315,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
           </button>
         </div>
 
-        {/* Center: status checkboxes */}
         <div className="quick-checks">
           <label className="quick-check">
             <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
@@ -323,7 +326,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
           </label>
         </div>
 
-        {/* Right: Logistics */}
         <button
           className={`btn-tasks ${showTasks ? 'active' : ''}`}
           onClick={() => setShowTasks(!showTasks)}

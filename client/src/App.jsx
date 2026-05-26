@@ -187,22 +187,13 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        {/* Row 1: logo + title + mobile-only toggle */}
+        {/* Row 1: logo + title */}
         <div className="header-brand">
           <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg">
             <path d="M32 20 A 12 12 0 1 0 20 32 A 6 6 0 0 0 20 20" stroke="#5E7AC4" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
             <path d="M17.5 16 L 24 20 L 17.5 24 Z" fill="#F3BE7A" stroke="#F3BE7A" strokeWidth="1.5" strokeLinejoin="round"/>
           </svg>
           <h1>Production Hub</h1>
-          {/* Mobile-only: theme toggle in row 1 so it doesn't crowd row 2 */}
-          <button
-            className="btn-theme-toggle header-toggle-mobile"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? '☀' : '◑'}
-          </button>
         </div>
 
         {/* Row 2: nav tabs + action buttons together */}
@@ -237,7 +228,7 @@ function App() {
                     ? 'Error'
                     : syncStatus?.added != null
                     ? `+${syncStatus.added} added`
-                    : '↓ Sync'}
+                    : 'Sync'}
                 </button>
                 <button
                   className="btn-sync"
@@ -250,8 +241,8 @@ function App() {
                     : applyStatus?.error
                     ? 'Error'
                     : applyStatus?.updated != null
-                    ? `✓ ${applyStatus.updated} updated`
-                    : '⚙ Crew'}
+                    ? `${applyStatus.updated} updated`
+                    : 'Apply Crew'}
                 </button>
                 <button className="btn-primary" onClick={() => setShowForm(true)}>
                   + New
@@ -278,7 +269,7 @@ function App() {
           </div>
         ) : error ? (
           <div className="error-state">
-            <div className="error-icon">⚠</div>
+            <div className="error-icon">!</div>
             <p className="error-title">Could not reach server</p>
             <p className="error-sub">{error}</p>
             <button className="btn-primary" onClick={() => window.location.reload()}>

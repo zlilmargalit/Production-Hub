@@ -5,7 +5,6 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow 
   const [filter, setFilter] = useState('upcoming');
 
   const now = new Date().toISOString().slice(0, 10);
-
   const isArchived = (s) => s.invoice || s.archived;
 
   const filtered = shows.filter((s) => {
@@ -31,6 +30,26 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow 
 
   return (
     <div>
+      {/* Editorial page header */}
+      <div className="page-header-edit">
+        <div className="page-header-left">
+          <h1 className="page-title">Shows<span className="page-title-dot">.</span></h1>
+          <p className="page-subtitle">
+            <span className="page-subtitle-num">{shows.length.toString().padStart(2, '0')}</span>
+            <span className="page-subtitle-line" />
+            <span>productions on the books</span>
+          </p>
+        </div>
+        <div className="page-marquee" aria-hidden="true">
+          <span className="page-marquee-track">
+            <span>Production Hub</span><span>·</span>
+            <span>Production Hub</span><span>·</span>
+            <span>Production Hub</span><span>·</span>
+            <span>Production Hub</span><span>·</span>
+          </span>
+        </div>
+      </div>
+
       <div className="filter-bar">
         {[
           { key: 'upcoming', label: 'Upcoming' },
@@ -51,10 +70,10 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow 
 
       {sorted.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🎤</div>
+          <div className="empty-icon" aria-hidden="true" />
           <p>No shows in this view</p>
           <p className="empty-sub">
-            {filter === 'upcoming' ? 'Click "+ New Show" to add one' : 'Try a different filter'}
+            {filter === 'upcoming' ? 'Click "+ New" to add one' : 'Try a different filter'}
           </p>
         </div>
       ) : (
