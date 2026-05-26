@@ -12,6 +12,7 @@ const ALLOWED_SENDERS  = ['noa@hamonvolume.com', 'zlilmargalit0@gmail.com'];
 const POLL_INTERVAL_MS = 60 * 60 * 1000; // every 1 hour
 
 function isConfigured() {
+  if (process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN) return true;
   return fs.existsSync(CREDENTIALS_PATH) && fs.existsSync(TOKEN_PATH);
 }
 
@@ -24,15 +25,24 @@ function isPollingTime() {
 }
 
 function getOAuthClient() {
-  const creds = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
+  const creds = process.env.GMAIL_CREDENTIALS
+    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
+    : JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
   const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+  const tokens = process.env.GMAIL_TOKEN
+    ? JSON.parse(process.env.GMAIL_TOKEN)
+    : JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
   client.setCredentials(tokens);
-  // Persist refreshed access tokens automatically
+  // Persist refreshed access tokens to disk only when reading from disk.
+  // On Railway the filesystem is ephemeral — env tokens stay valid until
+  // they expire, and the OAuth refresh token in them keeps issuing new ones.
   client.on('tokens', (newTokens) => {
-    const current = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify({ ...current, ...newTokens }, null, 2));
+    if (process.env.GMAIL_TOKEN) return;
+    try {
+      const current = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+      fs.writeFileSync(TOKEN_PATH, JSON.stringify({ ...current, ...newTokens }, null, 2));
+    } catch {}
   });
   return client;
 }

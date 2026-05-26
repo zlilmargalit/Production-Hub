@@ -23,18 +23,38 @@ function getCalendarId() {
   }
 }
 
+// Credentials come from either env vars (Railway / production) or local files
+// (gitignored, for dev). Env vars take precedence so cloud deploys work
+// without checking secrets into the repo.
 function isConfigured() {
+  if (process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN) return true;
   return fs.existsSync(CREDENTIALS_PATH) && fs.existsSync(TOKEN_PATH);
+}
+
+function loadCreds() {
+  return process.env.GMAIL_CREDENTIALS
+    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
+    : JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
+}
+
+function loadTokens() {
+  return process.env.GMAIL_TOKEN
+    ? JSON.parse(process.env.GMAIL_TOKEN)
+    : JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
 }
 
 // OAuth client setup is bootstrap-time-equivalent; sync reads here are fine.
 function getOAuthClient() {
-  const creds  = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
+  const creds  = loadCreds();
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
   const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+  const tokens = loadTokens();
   client.setCredentials(tokens);
+  // Token refresh — only persist to disk if we're reading from disk (not env).
+  // On Railway the filesystem is ephemeral; the env-var token will continue
+  // working until it expires, at which point you re-issue it locally.
   client.on('tokens', async (newTokens) => {
+    if (process.env.GMAIL_TOKEN) return;
     try {
       const current = JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
       await fsp.writeFile(TOKEN_PATH, JSON.stringify({ ...current, ...newTokens }, null, 2));
