@@ -879,6 +879,69 @@ body {
 .task-item:hover .task-remove { opacity: 1; }
 .task-remove:hover { color: var(--red); }
 
+/* ─── Confirm Modal ─── */
+.confirm-overlay { z-index: 600; }
+
+.confirm-modal {
+  max-width: 380px !important;
+  padding: 28px 28px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirm-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.confirm-icon--danger { color: var(--red); }
+.confirm-icon--info   { color: var(--accent); }
+
+.confirm-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.confirm-message {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 300px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  width: 100%;
+  justify-content: center;
+}
+
+.confirm-actions .btn-secondary { min-width: 90px; }
+
+.btn-confirm-danger {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  min-width: 90px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn-confirm-danger:hover { opacity: 0.88; }
+.btn-confirm-danger:active { transform: scale(0.97); }
+
 /* ─── Modal ─── */
 .modal-overlay {
   position: fixed;

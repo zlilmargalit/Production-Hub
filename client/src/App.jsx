@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ShowList from './components/ShowList';
 import ShowForm from './components/ShowForm';
 import CrewManager from './components/CrewManager';
+import ConfirmModal from './components/ConfirmModal';
 
 function App() {
   const [shows, setShows] = useState([]);
@@ -17,6 +18,7 @@ function App() {
   const [syncStatus, setSyncStatus] = useState(null);
   const [applyStatus, setApplyStatus] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('ph-theme') || 'light');
+  const [confirmModal, setConfirmModal] = useState(null); // { title, message, onConfirm, danger? }
 
   // Sync theme attribute to <html> and persist
   useEffect(() => {
@@ -112,11 +114,19 @@ function App() {
     setShows((prev) => prev.map((s) => (s.id === id ? updated : s)));
   }, []);
 
-  const deleteShow = useCallback(async (id) => {
-    if (!confirm('Delete this show?')) return;
-    await fetch(`/api/shows/${id}`, { method: 'DELETE' });
-    setShows((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  const deleteShow = useCallback((id) => {
+    const show = shows.find((s) => s.id === id);
+    setConfirmModal({
+      title: 'Delete Show',
+      message: show ? `Delete "${show.name}"? This cannot be undone.` : 'Delete this show? This cannot be undone.',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await fetch(`/api/shows/${id}`, { method: 'DELETE' });
+        setShows((prev) => prev.filter((s) => s.id !== id));
+      },
+    });
+  }, [shows]);
 
   const handleSubmit = useCallback(
     async (data) => {
@@ -297,6 +307,16 @@ function App() {
           eventTypes={eventTypes}
           onSubmit={handleSubmit}
           onClose={closeForm}
+        />
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          danger={confirmModal.danger !== false}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
         />
       )}
     </div>

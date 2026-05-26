@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import ConfirmModal from './ConfirmModal';
 
 const MODES = ['מונית', 'ואן', 'עצמאית'];
 
@@ -83,7 +84,9 @@ function TaskManager({ show, onUpdate }) {
     onUpdate(show.id, { ...show, tasks: tasks.filter((t) => t.id !== id) });
 
   const [inviteStatus, setInviteStatus] = useState(null);
-  const sendCalendarInvite = async (testMode = false) => {
+  const [confirmModal, setConfirmModal] = useState(null);
+
+  const doSendCalendarInvite = async (testMode = false) => {
     setInviteStatus('loading');
     try {
       const url = `/api/calendar/invite/${show.id}${testMode ? '?test=1' : ''}`;
@@ -95,6 +98,18 @@ function TaskManager({ show, onUpdate }) {
       setInviteStatus({ error: err.message });
       setTimeout(() => setInviteStatus(null), 5000);
     }
+  };
+
+  const sendCalendarInvite = (testMode = false) => {
+    setConfirmModal({
+      title: testMode ? 'Send Test Invite' : 'Send Invite to All Crew',
+      message: testMode
+        ? 'Send a calendar invite to your email only (zlilmargalit0@gmail.com)?'
+        : `Send a calendar invite to all crew members assigned to "${show.name}"?`,
+      danger: false,
+      confirmLabel: 'Send',
+      onConfirm: () => { setConfirmModal(null); doSendCalendarInvite(testMode); },
+    });
   };
 
   // Calendar config (which calendar to search)
@@ -285,6 +300,17 @@ function TaskManager({ show, onUpdate }) {
           </ul>
         )}
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          danger={confirmModal.danger !== false}
+          confirmLabel={confirmModal.confirmLabel || 'Yes'}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 }

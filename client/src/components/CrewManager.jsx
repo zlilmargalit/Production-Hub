@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ConfirmModal from './ConfirmModal';
 const uuidv4 = () => crypto.randomUUID();
 
 // Consistent palette color per role (cycles through 6 palette-derived colors)
@@ -31,6 +32,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   const [tab, setTab] = useState('members');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   const openAdd = () => { setEditing(null); setShowForm(true); };
   const openEdit = (m) => { setEditing(m); setShowForm(true); };
@@ -57,16 +59,23 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
     closeForm();
   };
 
-  const deleteMember = async (id) => {
-    if (!confirm('Delete this crew member?')) return;
-    await fetch(`/api/crew/${id}`, { method: 'DELETE' });
-    setCrew((prev) => prev.filter((m) => m.id !== id));
-    setTemplates((prev) => {
-      const next = { ...prev };
-      Object.keys(next).forEach((et) => {
-        next[et] = next[et].filter((cid) => cid !== id);
-      });
-      return next;
+  const deleteMember = (id) => {
+    const member = crew.find((m) => m.id === id);
+    setConfirmModal({
+      title: 'Delete Crew Member',
+      message: member ? `Remove "${member.name}" from all shows and templates? This cannot be undone.` : 'Delete this crew member?',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await fetch(`/api/crew/${id}`, { method: 'DELETE' });
+        setCrew((prev) => prev.filter((m) => m.id !== id));
+        setTemplates((prev) => {
+          const next = { ...prev };
+          Object.keys(next).forEach((et) => {
+            next[et] = next[et].filter((cid) => cid !== id);
+          });
+          return next;
+        });
+      },
     });
   };
 
@@ -164,6 +173,16 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       {showForm && (
         <CrewForm member={editing} eventTypes={eventTypes || []} onSubmit={saveMember} onClose={closeForm} />
       )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          danger={confirmModal.danger !== false}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 }
@@ -208,8 +227,14 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
     setNewTypeName('');
   };
   const deleteEventType = (et) => {
-    if (!confirm(`Delete event type "${et}"? This won't remove existing shows.`)) return;
-    onSaveEventTypes(eventTypes.filter((t) => t !== et));
+    setConfirmModal({
+      title: 'Delete Event Type',
+      message: `Delete "${et}"? Existing shows with this type won't be affected.`,
+      onConfirm: () => {
+        setConfirmModal(null);
+        onSaveEventTypes(eventTypes.filter((t) => t !== et));
+      },
+    });
   };
 
   // ── Field editing state ──
