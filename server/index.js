@@ -9,7 +9,9 @@ const fsp = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const chokidar = require('chokidar');
-const basicAuth = require('express-basic-auth');
+
+const { COOKIE_NAME, signToken, checkAuthed, cookieOptions } = require('./auth');
+const loginPage = require('./login-page');
 
 const showsRouter = require('./routes/shows');
 const documentsRouter = require('./routes/documents');
@@ -42,21 +44,57 @@ if (AUTH_PASSWORD === 'change-me-please' && process.env.NODE_ENV === 'production
   process.exit(1);
 }
 
-const authMiddleware = basicAuth({
-  users: { [AUTH_USER]: AUTH_PASSWORD },
-  challenge: true,                 // tell browsers to show the login prompt
-  realm: 'Production Hub',
-  unauthorizedResponse: () => ({ error: 'Authentication required' }),
-});
+// Railway/Heroku-style proxy → trust X-Forwarded-Proto so cookies get `secure`
+app.set('trust proxy', 1);
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: false })); // for /login POST
 
+// ── Public routes (must be declared BEFORE the auth middleware) ────────────
 // Health check stays public so PaaS uptime probes don't trigger auth.
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
-// Everything else — API and static frontend — sits behind basic auth.
-app.use(authMiddleware);
+// Login page
+app.get('/login', (req, res) => {
+  // If already authed, bounce to home
+  if (checkAuthed(req)) return res.redirect('/');
+  res.type('html').send(loginPage({ error: req.query.error === '1' }));
+});
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === AUTH_USER && password === AUTH_PASSWORD) {
+    res.cookie(COOKIE_NAME, signToken(username), cookieOptions(req));
+    return res.redirect('/');
+  }
+  // Wrong credentials — re-show the page with an error flag
+  res.status(401).type('html').send(loginPage({ error: true, username }));
+});
+
+app.post('/logout', (req, res) => {
+  res.clearCookie(COOKIE_NAME, { path: '/' });
+  res.redirect('/login');
+});
+
+// PWA assets that the login page references must be public too
+app.get(['/manifest.json', '/apple-touch-icon.png', '/icon-180.png', '/icon-192.png', '/icon-512.png'], (req, res, next) => {
+  const file = path.join(__dirname, '../client/dist', req.path);
+  if (fs.existsSync(file)) return res.sendFile(file);
+  next();
+});
+
+// ── Auth gate ──────────────────────────────────────────────────────────────
+// Cookie session OR Basic auth header (for curl/scripts). Anything else:
+//   - HTML requests → redirect to /login
+//   - API requests  → 401 JSON
+app.use((req, res, next) => {
+  if (checkAuthed(req)) return next();
+  if (req.path.startsWith('/api/') || req.xhr || req.get('accept')?.includes('application/json')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  res.redirect('/login');
+});
 
 app.use('/api/shows', showsRouter);
 app.use('/api/documents', documentsRouter);
