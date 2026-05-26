@@ -466,37 +466,34 @@ body {
 }
 
 /* ─── EVENT TYPE COLOR MAP ─────────────────────────────────────────────
-   Each event type gets a distinct hue from the Nordic palette so the
-   grid has instant visual rhythm. */
+   Colors are assigned dynamically via data-et-idx (computed by hashing the
+   event type string in ShowCard.jsx) so any user-defined type gets a colour.
+   10 slots cover the full Nordic palette. */
 .show-card { --et-color: var(--accent); --et-bg: var(--accent-soft); }
 
-/* ── Light mode ── */
-.show-card[data-event-type="חתונה"]        { --et-color: #3852B4; --et-bg: #E8ECF7; } /* indigo */
-.show-card[data-event-type="בר מצווה"]     { --et-color: #5E7AC4; --et-bg: #ECEFF8; } /* periwinkle */
-.show-card[data-event-type="בת מצווה"]     { --et-color: #8B5CF6; --et-bg: #EDE9FE; } /* violet */
-.show-card[data-event-type="אני גיטרה"]    { --et-color: #F08D39; --et-bg: #FCE3CC; } /* orange */
-.show-card[data-event-type="הופעת אולם"]   { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber-deep */
-.show-card[data-event-type="הופעת להקה"]   { --et-color: #1F2D6E; --et-bg: #DCE1F0; } /* navy */
-.show-card[data-event-type="אירוע חברה"]   { --et-color: #0E7490; --et-bg: #CFFAFE; } /* teal */
-.show-card[data-event-type="אירוע פרטי"]   { --et-color: #C26C1F; --et-bg: #FCE3CC; } /* burnt-orange */
-.show-card[data-event-type="סולו אקוסטי"]  { --et-color: #8F4F1A; --et-bg: #F4DDC4; } /* burnt */
-.show-card[data-event-type="חזרה"]         { --et-color: #6B6259; --et-bg: #EBE7E0; } /* warm-gray */
-.show-card[data-event-type="יום הולדת"]    { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber */
-.show-card[data-event-type="מסיבה"]        { --et-color: #D97706; --et-bg: #FEF3C7; } /* yellow-amber */
+/* ── Light mode — 10 palette slots ── */
+.show-card[data-et-idx="0"] { --et-color: #3852B4; --et-bg: #E8ECF7; } /* indigo */
+.show-card[data-et-idx="1"] { --et-color: #5E7AC4; --et-bg: #ECEFF8; } /* periwinkle */
+.show-card[data-et-idx="2"] { --et-color: #8B5CF6; --et-bg: #EDE9FE; } /* violet */
+.show-card[data-et-idx="3"] { --et-color: #F08D39; --et-bg: #FCE3CC; } /* orange */
+.show-card[data-et-idx="4"] { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber-deep */
+.show-card[data-et-idx="5"] { --et-color: #1F2D6E; --et-bg: #DCE1F0; } /* navy */
+.show-card[data-et-idx="6"] { --et-color: #C26C1F; --et-bg: #FCE3CC; } /* burnt-orange */
+.show-card[data-et-idx="7"] { --et-color: #8F4F1A; --et-bg: #F4DDC4; } /* burnt */
+.show-card[data-et-idx="8"] { --et-color: #6B6259; --et-bg: #EBE7E0; } /* warm-gray */
+.show-card[data-et-idx="9"] { --et-color: #0E7490; --et-bg: #CFFAFE; } /* teal */
 
 /* ── Dark mode overrides ── */
-[data-theme="dark"] .show-card[data-event-type="חתונה"]        { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] .show-card[data-event-type="בר מצווה"]     { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] .show-card[data-event-type="בת מצווה"]     { --et-color: #A78BFA; --et-bg: rgba(167,139,250,0.14); }
-[data-theme="dark"] .show-card[data-event-type="אני גיטרה"]    { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
-[data-theme="dark"] .show-card[data-event-type="הופעת אולם"]   { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] .show-card[data-event-type="הופעת להקה"]   { --et-color: #A3B4DD; --et-bg: rgba(163,180,221,0.14); }
-[data-theme="dark"] .show-card[data-event-type="אירוע חברה"]   { --et-color: #22D3EE; --et-bg: rgba(34,211,238,0.12); }
-[data-theme="dark"] .show-card[data-event-type="אירוע פרטי"]   { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
-[data-theme="dark"] .show-card[data-event-type="סולו אקוסטי"]  { --et-color: #C26C1F; --et-bg: rgba(194,108,31,0.14); }
-[data-theme="dark"] .show-card[data-event-type="חזרה"]         { --et-color: #9A9189; --et-bg: rgba(154,145,137,0.14); }
-[data-theme="dark"] .show-card[data-event-type="יום הולדת"]    { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] .show-card[data-event-type="מסיבה"]        { --et-color: #FCD34D; --et-bg: rgba(252,211,77,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="0"] { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="1"] { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="2"] { --et-color: #A78BFA; --et-bg: rgba(167,139,250,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="3"] { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="4"] { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="5"] { --et-color: #A3B4DD; --et-bg: rgba(163,180,221,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="6"] { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="7"] { --et-color: #C26C1F; --et-bg: rgba(194,108,31,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="8"] { --et-color: #9A9189; --et-bg: rgba(154,145,137,0.14); }
+[data-theme="dark"] .show-card[data-et-idx="9"] { --et-color: #22D3EE; --et-bg: rgba(34,211,238,0.12); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    PAGE HEADING — editorial display + scrolling marquee
@@ -1283,6 +1280,143 @@ body {
 .task-remove:hover { color: var(--clay); background: var(--clay-bg); }
 
 .no-tasks { font-size: 0.8125rem; color: var(--text-3); padding: 6px 0; font-style: italic; }
+
+/* ─── Task type selector ─────────────────────────────────────────────── */
+.task-type-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.task-type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.task-type-btn:hover { border-color: var(--text-3); color: var(--text); }
+.task-type-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.task-type-icon { font-size: 0.9em; }
+.task-type-label { font-size: 0.75rem; }
+
+/* ─── Task file / image add row ─────────────────────────────────────── */
+.task-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.task-file-btn {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.task-file-btn:hover { border-color: var(--text-2); color: var(--text); }
+.task-img-preview-sm {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+/* ─── Image width slider (add-new + in-list) ─────────────────────────── */
+.task-img-width-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+.task-img-width-label {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  min-width: 110px;
+}
+.task-img-slider {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ─── Task textarea ─────────────────────────────────────────────────── */
+.task-textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  margin-bottom: 8px;
+}
+
+/* ─── Typed task item ────────────────────────────────────────────────── */
+.task-type-dot {
+  font-size: 0.875rem;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.task-item--text .task-body,
+.task-item--image .task-body,
+.task-item--file .task-body { align-items: flex-start; }
+.task-text-value {
+  font-size: 0.8125rem;
+  color: var(--text-2);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.task-img-block { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.task-img-preview {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+/* ─── Brief toggle inside task item ─────────────────────────────────── */
+.task-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.task-brief-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  font-family: inherit;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.task-item:hover .task-brief-toggle { opacity: 1; }
+.task-brief-toggle input[type='checkbox'] { width: 12px; height: 12px; accent-color: var(--accent); }
+.task-brief-toggle input:checked ~ .task-brief-label { color: var(--accent); }
+.task-brief-label { font-size: 0.6875rem; letter-spacing: 0.04em; text-transform: uppercase; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    PDF TOGGLE (per-field, on detail panel)

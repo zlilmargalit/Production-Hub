@@ -108,6 +108,39 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
 
   return (
     <div>
+      {/* Editorial page header — matches Shows page style */}
+      <div className="page-header-edit">
+        <div className="page-header-left">
+          <h1 className="page-title">
+            {tab === 'members' ? 'Crew' : 'Event Types'}
+            <span className="page-title-dot">.</span>
+          </h1>
+          <p className="page-subtitle">
+            {tab === 'members' ? (
+              <>
+                <span className="page-subtitle-num">{crew.length.toString().padStart(2, '0')}</span>
+                <span className="page-subtitle-line" />
+                <span>team members</span>
+              </>
+            ) : (
+              <>
+                <span className="page-subtitle-num">{(eventTypes || []).length.toString().padStart(2, '0')}</span>
+                <span className="page-subtitle-line" />
+                <span>event types defined</span>
+              </>
+            )}
+          </p>
+        </div>
+        <div className="page-marquee" aria-hidden="true">
+          <span className="page-marquee-track">
+            <span>Crew & Types</span><span>·</span>
+            <span>Crew & Types</span><span>·</span>
+            <span>Crew & Types</span><span>·</span>
+            <span>Crew & Types</span><span>·</span>
+          </span>
+        </div>
+      </div>
+
       <div className="crew-header">
         <div className="crew-tab-bar">
           <button

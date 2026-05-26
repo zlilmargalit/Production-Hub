@@ -98,11 +98,16 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     const hash = (id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     return crewPalette[hash % crewPalette.length];
   };
+
+  // Deterministic palette slot for event type (10 slots → CSS data-et-idx)
+  const etIdx = show.eventType
+    ? (show.eventType.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 10).toString()
+    : undefined;
   const initialsFor = (name) =>
     (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   return (
-    <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''}>
+    <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
       <div className="show-card-band" />
       <div className="show-card-header">
         <div className="show-card-title">
