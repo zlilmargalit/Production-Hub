@@ -287,30 +287,29 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
       )}
 
       <div className="show-card-footer">
-        {/* Document actions — Brief + PDF are related */}
-        <button
-          className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
-          onClick={createBrief}
-          disabled={briefStatus === 'loading'}
-        >
-          {briefStatus === 'loading' ? 'Sending...' :
-           briefStatus === 'sent' ? 'Sent ✓' :
-           briefStatus === 'error' ? 'Error' :
-           'Brief'}
-        </button>
-        <button
-          className={`btn-pdf ${pdfStatus === 'saved' ? 'saved' : pdfStatus === 'error' ? 'error' : ''}`}
-          onClick={savePdf}
-          disabled={pdfStatus === 'loading'}
-        >
-          {pdfStatus === 'loading' ? 'Saving...' :
-           pdfStatus === 'saved' ? 'Saved ✓' :
-           pdfStatus === 'error' ? 'Error' :
-           'PDF'}
-        </button>
-
-        {/* Spacer L */}
-        <div style={{ flex: 1 }} />
+        {/* Left: document actions */}
+        <div className="footer-left">
+          <button
+            className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
+            onClick={createBrief}
+            disabled={briefStatus === 'loading'}
+          >
+            {briefStatus === 'loading' ? 'Sending...' :
+             briefStatus === 'sent' ? 'Sent ✓' :
+             briefStatus === 'error' ? 'Error' :
+             'Brief'}
+          </button>
+          <button
+            className={`btn-pdf ${pdfStatus === 'saved' ? 'saved' : pdfStatus === 'error' ? 'error' : ''}`}
+            onClick={savePdf}
+            disabled={pdfStatus === 'loading'}
+          >
+            {pdfStatus === 'loading' ? 'Saving...' :
+             pdfStatus === 'saved' ? 'Saved ✓' :
+             pdfStatus === 'error' ? 'Error' :
+             'PDF'}
+          </button>
+        </div>
 
         {/* Center: status checkboxes */}
         <div className="quick-checks">
@@ -324,10 +323,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
           </label>
         </div>
 
-        {/* Spacer R */}
-        <div style={{ flex: 1 }} />
-
-        {/* Far right: Logistics */}
+        {/* Right: Logistics */}
         <button
           className={`btn-tasks ${showTasks ? 'active' : ''}`}
           onClick={() => setShowTasks(!showTasks)}

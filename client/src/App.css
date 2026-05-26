@@ -147,8 +147,9 @@ body {
   margin-left: auto;
 }
 
-/* Single theme toggle (inside header-right) — visible on both desktop and mobile */
+/* Desktop: show toggle in header-right, hide the mobile-row-1 copy */
 .header-toggle { display: flex; align-items: center; justify-content: center; }
+.header-toggle-mobile { display: none; }
 
 .nav-btn {
   background: none;
@@ -528,10 +529,18 @@ body {
 .show-card-footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
   padding: 10px 14px;
   background: var(--surface);
-  flex-wrap: wrap;
+}
+
+/* Left group: Brief + PDF */
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Brief */
@@ -1391,15 +1400,16 @@ body {
     gap: 6px;
   }
 
-  /* Row 1: logo + title (flex:1 pushes toggle to far right) */
+  /* Row 1: logo + title + mobile theme toggle at far right */
   .header-brand { width: 100%; gap: 8px; }
   .header-brand h1 { font-size: 0.8125rem; white-space: nowrap; flex: 1; }
   .header-logo-svg { width: 24px; height: 24px; }
 
-  /* Theme toggle sits at the end of header-right on mobile */
-  .header-toggle { width: 32px; height: 32px; flex-shrink: 0; }
+  /* Mobile: show toggle in row 1, hide the row-2 copy */
+  .header-toggle-mobile { display: flex; margin-left: auto; width: 32px; height: 32px; flex-shrink: 0; }
+  .header-toggle { display: none; }
 
-  /* Row 2: nav tabs + action buttons in one horizontal row */
+  /* Row 2: nav tabs + action buttons in one horizontal row (no toggle) */
   .header-row2 { display: flex; flex-direction: row; align-items: center; width: 100%; gap: 5px; }
   .page-nav { margin-left: 0; gap: 4px; flex-shrink: 0; }
   .nav-btn { padding: 6px 12px; font-size: 0.8125rem; min-height: 32px; }
@@ -1448,33 +1458,28 @@ body {
     word-break: break-word;
   }
 
-  /* ── Card footer: two rows ──────────────────────────────────────────────
-     Row 1: [Brief] [PDF]  ............  [Invoice ☐] [Receipt ☐]  [Logistics]
-     On very small screens everything wraps cleanly
-  ───────────────────────────────────────────────────────────────────────── */
+  /* ── Card footer: [Brief PDF]  [Invoice ☐ Receipt ☐]  [Logistics] ──── */
   .show-card-footer {
-    padding: 8px 12px;
-    flex-wrap: wrap;
-    gap: 6px;
+    padding: 8px 10px;
+    gap: 4px;
   }
 
-  /* Remove the flex:1 spacers so buttons wrap naturally */
-  .show-card-footer > div[style] { flex: 0 !important; }
+  .footer-left { gap: 5px; }
 
   .btn-brief, .btn-pdf, .btn-tasks, .btn-calendar-invite {
-    padding: 7px 12px;
-    font-size: 0.8125rem;
+    padding: 7px 10px;
+    font-size: 0.8rem;
     min-height: 34px;
   }
 
   .quick-checks {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: nowrap;
   }
 
   .quick-check {
-    font-size: 0.8125rem;
+    font-size: 0.8rem;
     white-space: nowrap;
   }
 
