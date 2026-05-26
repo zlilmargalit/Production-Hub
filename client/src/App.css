@@ -84,7 +84,9 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0 32px;
-  height: 56px;
+  /* safe-area-inset-top handles iPhone notch / Dynamic Island */
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(56px + env(safe-area-inset-top, 0px));
   background: var(--header-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -113,7 +115,8 @@ body {
   padding: 28px 24px;
 }
 
-/* ─── Header layout (desktop: single row) ─── */
+/* ─── Header layout (desktop) ─── */
+/* app-header: brand (left) | row2 (right, containing nav + actions) */
 .header-brand {
   display: flex;
   align-items: center;
@@ -122,6 +125,17 @@ body {
 }
 
 .header-logo-svg { flex-shrink: 0; display: block; }
+
+/* Mobile toggle (inside header-brand) — hidden on desktop */
+.header-toggle { display: none; }
+
+/* Row2 wrapper: flex row on both desktop and mobile */
+.header-row2 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
 
 .page-nav {
   display: flex;
@@ -135,6 +149,9 @@ body {
   align-items: center;
   margin-left: auto;
 }
+
+/* Desktop toggle (inside header-right) — visible on desktop, hidden on mobile */
+.header-toggle-desktop { display: flex; align-items: center; justify-content: center; }
 
 .nav-btn {
   background: none;
@@ -1365,77 +1382,35 @@ body {
   html, body { overflow-x: hidden; -webkit-overflow-scrolling: touch; }
   .app { min-height: 100dvh; overflow-x: hidden; }
 
-  /* ── HEADER: 2-row grid layout ─────────────────────────────────────────
-     Row 1: [logo + title]  ............  [theme toggle]
-     Row 2: [Shows] [Crew & Types]  [Sync] [⚙ Crew] [+ New]
+  /* ── HEADER ───────────────────────────────────────────────────────────────
+     Row 1: [logo]  [PRODUCTION HUB]  ·········  [◑ toggle]
+     Row 2: [Shows] [Crew & Types]    [↓Sync] [⚙Crew] [+New]
   ───────────────────────────────────────────────────────────────────────── */
   .app-header {
-    display: grid;
-    grid-template-areas:
-      "brand  right"
-      "nav    right";
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    padding: max(8px, env(safe-area-inset-top, 8px)) 12px 6px;
     height: auto;
-    gap: 0;
+    gap: 6px;
   }
 
-  .header-brand {
-    grid-area: brand;
-    align-self: center;
-    gap: 8px;
-  }
-
-  .header-brand h1 {
-    font-size: 0.8125rem;
-    white-space: nowrap;
-  }
-
+  /* Row 1: logo + title (flex:1 pushes toggle to far right) */
+  .header-brand { width: 100%; gap: 8px; }
+  .header-brand h1 { font-size: 0.8125rem; white-space: nowrap; flex: 1; }
   .header-logo-svg { width: 24px; height: 24px; }
 
-  .page-nav {
-    grid-area: nav;
-    margin-left: 0;
-    margin-top: 6px;
-    gap: 4px;
-  }
+  /* Show mobile toggle, hide desktop one */
+  .header-toggle { display: flex !important; width: 32px; height: 32px; flex-shrink: 0; }
+  .header-toggle-desktop { display: none !important; }
 
-  .nav-btn {
-    padding: 7px 14px;
-    font-size: 0.8125rem;
-    min-height: 34px;
-  }
+  /* Row 2: nav tabs + action buttons in one horizontal row */
+  .header-row2 { display: flex; flex-direction: row; align-items: center; width: 100%; gap: 5px; }
+  .page-nav { margin-left: 0; gap: 4px; flex-shrink: 0; }
+  .nav-btn { padding: 6px 12px; font-size: 0.8125rem; min-height: 32px; }
+  .header-right { flex-direction: row; flex-wrap: nowrap; gap: 5px; margin-left: auto; }
 
-  .header-right {
-    grid-area: right;
-    margin-left: 0;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 6px;
-    padding-left: 10px;
-    align-self: stretch;
-  }
-
-  .btn-theme-toggle {
-    width: 34px;
-    height: 34px;
-    order: -1; /* theme toggle always on top in the right column */
-  }
-
-  .btn-sync {
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    min-height: 30px;
-    white-space: nowrap;
-  }
-
-  .btn-primary {
-    padding: 6px 12px;
-    font-size: 0.8125rem;
-    min-height: 30px;
-  }
+  .btn-sync { padding: 5px 9px; font-size: 0.75rem; min-height: 30px; white-space: nowrap; }
+  .btn-primary { padding: 5px 10px; font-size: 0.8125rem; min-height: 30px; }
 
   /* ── Main content ─────────────────────────────────────────────────────── */
   .app-main { padding: 14px 10px; }
