@@ -216,7 +216,7 @@ body {
 .header-logo-svg { width: 22px; height: 22px; display: block; flex-shrink: 0; }
 /* Logo colors come from the SVG itself — keep the original blue+orange */
 
-.header-toggle { display: none; }
+/* single toggle lives in header-right — always visible */
 
 .header-row2 {
   display: flex;
@@ -238,10 +238,8 @@ body {
   margin-left: auto;
 }
 
-.header-toggle-desktop {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.btn-theme-toggle {
+  flex-shrink: 0;
 }
 
 /* Nav tabs — uppercase editorial */
@@ -365,20 +363,33 @@ body {
   border-color: var(--text-3);
 }
 
-/* Icon buttons — invisible by default */
+/* Icon buttons — always visible, clean bordered style */
 .btn-icon {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 1rem;
   line-height: 1;
-  color: var(--text-3);
-  transition: background 0.15s, color 0.15s;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.btn-icon:hover { background: var(--surface-sunk); color: var(--text); }
-.btn-icon.btn-danger:hover { background: var(--clay-bg); color: var(--clay); }
+.btn-icon:hover {
+  background: var(--surface-sunk);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-icon.btn-danger:hover {
+  background: var(--clay-bg);
+  color: var(--clay);
+  border-color: var(--clay);
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    LOADING / ERROR / EMPTY
@@ -455,20 +466,37 @@ body {
 }
 
 /* ─── EVENT TYPE COLOR MAP ─────────────────────────────────────────────
-   Cards & tags pick up a hue based on data-event-type so the grid has
-   visual rhythm and each event type is instantly recognizable. */
+   Each event type gets a distinct hue from the Nordic palette so the
+   grid has instant visual rhythm. */
 .show-card { --et-color: var(--accent); --et-bg: var(--accent-soft); }
-.show-card[data-event-type="חתונה"]      { --et-color: #3852B4; --et-bg: #E8ECF7; } /* indigo */
-.show-card[data-event-type="בר מצווה"]   { --et-color: #5E7AC4; --et-bg: #ECEFF8; } /* light blue */
-.show-card[data-event-type="אני גיטרה"]  { --et-color: #F08D39; --et-bg: #FCE3CC; } /* orange */
-.show-card[data-event-type="הופעת אולם"] { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber-deep */
-.show-card[data-event-type="אירוע חברה"] { --et-color: #1F2D6E; --et-bg: #DCE1F0; } /* navy */
 
-[data-theme="dark"] .show-card[data-event-type="חתונה"]      { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] .show-card[data-event-type="בר מצווה"]   { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] .show-card[data-event-type="אני גיטרה"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
-[data-theme="dark"] .show-card[data-event-type="הופעת אולם"] { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] .show-card[data-event-type="אירוע חברה"] { --et-color: #A3B4DD; --et-bg: rgba(163,180,221,0.14); }
+/* ── Light mode ── */
+.show-card[data-event-type="חתונה"]        { --et-color: #3852B4; --et-bg: #E8ECF7; } /* indigo */
+.show-card[data-event-type="בר מצווה"]     { --et-color: #5E7AC4; --et-bg: #ECEFF8; } /* periwinkle */
+.show-card[data-event-type="בת מצווה"]     { --et-color: #8B5CF6; --et-bg: #EDE9FE; } /* violet */
+.show-card[data-event-type="אני גיטרה"]    { --et-color: #F08D39; --et-bg: #FCE3CC; } /* orange */
+.show-card[data-event-type="הופעת אולם"]   { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber-deep */
+.show-card[data-event-type="הופעת להקה"]   { --et-color: #1F2D6E; --et-bg: #DCE1F0; } /* navy */
+.show-card[data-event-type="אירוע חברה"]   { --et-color: #0E7490; --et-bg: #CFFAFE; } /* teal */
+.show-card[data-event-type="אירוע פרטי"]   { --et-color: #C26C1F; --et-bg: #FCE3CC; } /* burnt-orange */
+.show-card[data-event-type="סולו אקוסטי"]  { --et-color: #8F4F1A; --et-bg: #F4DDC4; } /* burnt */
+.show-card[data-event-type="חזרה"]         { --et-color: #6B6259; --et-bg: #EBE7E0; } /* warm-gray */
+.show-card[data-event-type="יום הולדת"]    { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber */
+.show-card[data-event-type="מסיבה"]        { --et-color: #D97706; --et-bg: #FEF3C7; } /* yellow-amber */
+
+/* ── Dark mode overrides ── */
+[data-theme="dark"] .show-card[data-event-type="חתונה"]        { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
+[data-theme="dark"] .show-card[data-event-type="בר מצווה"]     { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
+[data-theme="dark"] .show-card[data-event-type="בת מצווה"]     { --et-color: #A78BFA; --et-bg: rgba(167,139,250,0.14); }
+[data-theme="dark"] .show-card[data-event-type="אני גיטרה"]    { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
+[data-theme="dark"] .show-card[data-event-type="הופעת אולם"]   { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] .show-card[data-event-type="הופעת להקה"]   { --et-color: #A3B4DD; --et-bg: rgba(163,180,221,0.14); }
+[data-theme="dark"] .show-card[data-event-type="אירוע חברה"]   { --et-color: #22D3EE; --et-bg: rgba(34,211,238,0.12); }
+[data-theme="dark"] .show-card[data-event-type="אירוע פרטי"]   { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
+[data-theme="dark"] .show-card[data-event-type="סולו אקוסטי"]  { --et-color: #C26C1F; --et-bg: rgba(194,108,31,0.14); }
+[data-theme="dark"] .show-card[data-event-type="חזרה"]         { --et-color: #9A9189; --et-bg: rgba(154,145,137,0.14); }
+[data-theme="dark"] .show-card[data-event-type="יום הולדת"]    { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] .show-card[data-event-type="מסיבה"]        { --et-color: #FCD34D; --et-bg: rgba(252,211,77,0.14); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    PAGE HEADING — editorial display + scrolling marquee
@@ -650,13 +678,12 @@ body {
 
 .show-card-title { flex: 1; min-width: 0; }
 
-/* Event type — small caps label sitting above the title */
+/* Event type — label sitting above the title */
 .show-card-type {
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--et-color);
   margin-bottom: 14px;
   display: inline-flex;
@@ -666,10 +693,11 @@ body {
 .show-card-type::before {
   content: "";
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--et-color);
+  flex-shrink: 0;
 }
 
 /* Show name — display-scale, editorial */
@@ -761,11 +789,7 @@ body {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.2s;
 }
-.show-card:hover .show-actions { opacity: 1; }
-.show-card-header:focus-within .show-actions { opacity: 1; }
 
 /* Detail body — sunk background, hairline above/below */
 .show-details {
@@ -1922,27 +1946,43 @@ body {
     gap: 10px;
   }
   .header-brand { width: 100%; gap: 12px; }
-  .header-brand h1 { font-size: 1.125rem; flex: 1; }
-  /* Mobile: show toggle in row 1 (inside header-brand), hide desktop copy */
-  .header-toggle { display: flex !important; margin-left: auto; flex-shrink: 0; }
-  .header-toggle-desktop { display: none !important; }
+  .header-brand h1 { font-size: 1.125rem; }
   .header-row2 { width: 100%; gap: 10px; }
-  .page-nav { margin-left: 0; gap: 0; }
-  .nav-btn { padding: 6px 0; font-size: 0.8125rem; margin: 0 12px 0 0; }
-  .header-right { gap: 6px; }
+  .page-nav { margin-left: 0; gap: 0; flex-shrink: 0; }
+  /* Prevent nav button text from wrapping on narrow screens */
+  .nav-btn { padding: 6px 0; font-size: 0.8125rem; margin: 0 10px 0 0; white-space: nowrap; }
+  .header-right { gap: 6px; flex-shrink: 0; }
   .btn-sync { padding: 6px 10px; font-size: 0.7rem; }
   .btn-primary { padding: 7px 12px; font-size: 0.75rem; }
 
   .app-main { padding: 24px 16px 60px; }
-  .filter-bar { margin-bottom: 24px; padding-bottom: 12px; }
+
+  /* Filter bar — scroll horizontally instead of wrapping to 2 rows */
+  .filter-bar {
+    margin-bottom: 24px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    width: 100%;
+    scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-btn { flex-shrink: 0; padding: 10px 16px; font-size: 0.75rem; }
+
   .shows-grid { grid-template-columns: 1fr; gap: 12px; }
 
   .show-card-header { padding: 20px 20px 16px; }
   .show-card-title h2 { font-size: 1rem; white-space: normal; }
   .show-details { padding: 18px 20px 20px; }
   .details-grid { grid-template-columns: 1fr; gap: 14px; }
-  .show-card-footer { padding: 12px 16px; gap: 4px; }
+
+  /* Footer: keep all three groups on one row */
+  .show-card-footer { padding: 12px 14px; gap: 6px; }
   .footer-left { gap: 4px; }
+  /* Prevent Invoice/Receipt from stacking */
+  .quick-checks { flex-wrap: nowrap; gap: 4px 12px; }
+  .quick-check { font-size: 0.75rem; gap: 5px; }
 
   .modal-overlay { padding: 0; align-items: flex-end; }
   .modal {
