@@ -866,7 +866,7 @@ body {
 }
 .cal-picker-btn:hover { border-color: var(--accent); color: var(--accent); }
 .cal-picker-dropdown {
-  position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+  /* position:fixed + top/left injected inline by TaskManager so it escapes overflow:hidden cards */
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md); min-width: 220px; max-width: 320px;
   display: flex; flex-direction: column; overflow: hidden;

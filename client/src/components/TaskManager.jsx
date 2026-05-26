@@ -115,7 +115,9 @@ function TaskManager({ show, onUpdate }) {
   // Calendar config (which calendar to search)
   const [calConfig, setCalConfig] = useState(null);   // { calendarId, calendarName, calendars }
   const [showCalPicker, setShowCalPicker] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const calPickerRef = useRef(null);
+  const calBtnRef = useRef(null);
 
   const loadCalConfig = async () => {
     try {
@@ -125,6 +127,26 @@ function TaskManager({ show, onUpdate }) {
   };
 
   useEffect(() => { loadCalConfig(); }, []);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!showCalPicker) return;
+    const handler = (e) => {
+      if (calBtnRef.current && !calBtnRef.current.contains(e.target)) {
+        setShowCalPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showCalPicker]);
+
+  const openCalPicker = () => {
+    if (!showCalPicker && calBtnRef.current) {
+      const rect = calBtnRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setShowCalPicker((p) => !p);
+  };
 
   const saveCalendar = async (id) => {
     await fetch('/api/calendar/config', {
@@ -224,13 +246,16 @@ function TaskManager({ show, onUpdate }) {
         <h4 className="fixed-task-title">Calendar Invite</h4>
 
         {/* Calendar selector */}
-        <div className="cal-picker-row" ref={calPickerRef}>
+        <div className="cal-picker-row">
           <span className="cal-picker-label">📅 Calendar:</span>
-          <button className="cal-picker-btn" onClick={() => setShowCalPicker((p) => !p)}>
+          <button className="cal-picker-btn" ref={calBtnRef} onClick={openCalPicker}>
             {calConfig ? calConfig.calendarName : 'primary'} ▾
           </button>
           {showCalPicker && calConfig && (
-            <div className="cal-picker-dropdown">
+            <div
+              className="cal-picker-dropdown"
+              style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999 }}
+            >
               {calConfig.calendars.length === 0 && (
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', padding: '6px 10px' }}>No calendars found</p>
               )}
