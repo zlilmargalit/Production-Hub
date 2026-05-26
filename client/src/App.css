@@ -568,48 +568,47 @@ body {
 }
 
 /* ─── EVENT TYPE COLOR MAP ─────────────────────────────────────────────
-   data-et-idx is computed by a polynomial hash (etColorIdx() util) so
-   ANY user-defined event type gets a colour — no hardcoded names.
-   Generic selector: applies to show-cards, template-cards, tag chips, etc.
-   16 slots keep collision probability very low. */
+   Palette locked to 4 brand colors (colorhunt.co/palette/3852b45e7ac4f3be7af08d39).
+   Colors apply ONLY to borders, bands and backgrounds — never to text.
+   16 slots cycle through the 4 colors so any event type gets a brand color. */
 
 .show-card { --et-color: var(--accent); --et-bg: var(--accent-soft); }
 
-/* ── Light mode — 16 palette slots ── */
-[data-et-idx="0"]  { --et-color: #3852B4; --et-bg: #E8ECF7; } /* indigo */
-[data-et-idx="1"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; } /* periwinkle */
-[data-et-idx="2"]  { --et-color: #8B5CF6; --et-bg: #EDE9FE; } /* violet */
-[data-et-idx="3"]  { --et-color: #F08D39; --et-bg: #FCE3CC; } /* orange */
-[data-et-idx="4"]  { --et-color: #B07729; --et-bg: #FBEFD9; } /* amber */
-[data-et-idx="5"]  { --et-color: #1F2D6E; --et-bg: #DCE1F0; } /* navy */
-[data-et-idx="6"]  { --et-color: #C26C1F; --et-bg: #F8D9BB; } /* burnt-orange */
-[data-et-idx="7"]  { --et-color: #8F4F1A; --et-bg: #F4DDC4; } /* burnt */
-[data-et-idx="8"]  { --et-color: #6B6259; --et-bg: #EBE7E0; } /* warm-gray */
-[data-et-idx="9"]  { --et-color: #0E7490; --et-bg: #CFFAFE; } /* teal */
-[data-et-idx="10"] { --et-color: #D97706; --et-bg: #FEF3C7; } /* yellow-amber */
-[data-et-idx="11"] { --et-color: #6D28D9; --et-bg: #EDE9FE; } /* deep violet */
-[data-et-idx="12"] { --et-color: #0369A1; --et-bg: #E0F2FE; } /* sky blue */
-[data-et-idx="13"] { --et-color: #92400E; --et-bg: #FEF3C7; } /* amber-brown */
-[data-et-idx="14"] { --et-color: #9D174D; --et-bg: #FCE7F3; } /* raspberry */
-[data-et-idx="15"] { --et-color: #374151; --et-bg: #F3F4F6; } /* cool-gray */
+/* ── Light mode — 16 slots, cycling 4 brand colors ── */
+[data-et-idx="0"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }
+[data-et-idx="1"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
+[data-et-idx="2"]  { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
+[data-et-idx="3"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }
+[data-et-idx="4"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }
+[data-et-idx="5"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
+[data-et-idx="6"]  { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
+[data-et-idx="7"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }
+[data-et-idx="8"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }
+[data-et-idx="9"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
+[data-et-idx="10"] { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
+[data-et-idx="11"] { --et-color: #F08D39; --et-bg: #FCE3CC; }
+[data-et-idx="12"] { --et-color: #3852B4; --et-bg: #E8ECF7; }
+[data-et-idx="13"] { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
+[data-et-idx="14"] { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
+[data-et-idx="15"] { --et-color: #F08D39; --et-bg: #FCE3CC; }
 
-/* ── Dark mode overrides — 16 slots ── */
+/* ── Dark mode — lightened versions of same 4 colors ── */
 [data-theme="dark"] [data-et-idx="0"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
 [data-theme="dark"] [data-et-idx="1"]  { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] [data-et-idx="2"]  { --et-color: #A78BFA; --et-bg: rgba(167,139,250,0.14); }
-[data-theme="dark"] [data-et-idx="3"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14); }
-[data-theme="dark"] [data-et-idx="4"]  { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] [data-et-idx="5"]  { --et-color: #A3B4DD; --et-bg: rgba(163,180,221,0.14); }
-[data-theme="dark"] [data-et-idx="6"]  { --et-color: #F9A05B; --et-bg: rgba(249,160,91,0.14); }
-[data-theme="dark"] [data-et-idx="7"]  { --et-color: #C26C1F; --et-bg: rgba(194,108,31,0.14); }
-[data-theme="dark"] [data-et-idx="8"]  { --et-color: #9A9189; --et-bg: rgba(154,145,137,0.14); }
-[data-theme="dark"] [data-et-idx="9"]  { --et-color: #22D3EE; --et-bg: rgba(34,211,238,0.12); }
-[data-theme="dark"] [data-et-idx="10"] { --et-color: #FCD34D; --et-bg: rgba(252,211,77,0.14); }
-[data-theme="dark"] [data-et-idx="11"] { --et-color: #C4B5FD; --et-bg: rgba(196,181,253,0.14); }
-[data-theme="dark"] [data-et-idx="12"] { --et-color: #38BDF8; --et-bg: rgba(56,189,248,0.12); }
-[data-theme="dark"] [data-et-idx="13"] { --et-color: #FBD38D; --et-bg: rgba(251,211,141,0.14); }
-[data-theme="dark"] [data-et-idx="14"] { --et-color: #F9A8D4; --et-bg: rgba(249,168,212,0.12); }
-[data-theme="dark"] [data-et-idx="15"] { --et-color: #9CA3AF; --et-bg: rgba(156,163,175,0.14); }
+[data-theme="dark"] [data-et-idx="2"]  { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] [data-et-idx="3"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
+[data-theme="dark"] [data-et-idx="4"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
+[data-theme="dark"] [data-et-idx="5"]  { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
+[data-theme="dark"] [data-et-idx="6"]  { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] [data-et-idx="7"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
+[data-theme="dark"] [data-et-idx="8"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
+[data-theme="dark"] [data-et-idx="9"]  { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
+[data-theme="dark"] [data-et-idx="10"] { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] [data-et-idx="11"] { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
+[data-theme="dark"] [data-et-idx="12"] { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
+[data-theme="dark"] [data-et-idx="13"] { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
+[data-theme="dark"] [data-et-idx="14"] { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] [data-et-idx="15"] { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
 
 /* ═══════════════════════════════════════════════════════════════════════
    PAGE HEADING — editorial display + scrolling marquee
@@ -797,7 +796,7 @@ body {
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--et-color);
+  color: var(--text-2);
   margin-bottom: 14px;
   display: inline-flex;
   align-items: center;
@@ -809,7 +808,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--et-color);
+  background: var(--et-color); /* keep the colored dot */
   flex-shrink: 0;
 }
 
@@ -872,14 +871,14 @@ body {
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--et-color, var(--text-2));
+  color: var(--text-2);            /* text always neutral — color lives in bg only */
   background: var(--et-bg, transparent);
   border: 1px solid transparent;
   padding: 3px 10px;
   border-radius: var(--radius-pill);
   margin-right: 10px;
 }
-/* Tags outside show-card: only apply neutral fallback when NOT colored by data-et-idx */
+/* Tags without a color index keep a subtle neutral background */
 .crew-event-types .tag:not([data-et-idx]) {
   color: var(--text-2);
   background: var(--surface-sunk);
@@ -2018,7 +2017,7 @@ body {
   font-size: 0.9375rem;
   font-weight: 500;
   letter-spacing: -0.015em;
-  color: var(--et-color, var(--text));
+  color: var(--text);
   white-space: nowrap;
   flex: 1;
   min-width: 0;
