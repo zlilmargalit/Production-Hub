@@ -148,23 +148,165 @@ async function createBriefDoc(payload, imageUrl) {
 
   await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: replaceRequests } });
 
-  // Insert stage-layout image (sized to stay within one page) with inline layout
+  // Insert stage-layout image:
+  //   1. Delete trailing empty paragraphs (the template's blank placeholder area)
+  //      so the full page height is available for the image.
+  //   2. Measure the space remaining below the last text line (text-only PDF export).
+  //   3. Binary-search for the LARGEST image height that keeps the brief to 1 page.
+  //   4. Center the image: horizontally (alignment=CENTER) and vertically
+  //      (spaceAbove = half of the unused space above/below the image).
   if (imageUrl) {
-    await docs.documents.batchUpdate({
+    const RATIO = 360 / 252; // stage-layout aspect ratio
+    const MAX_H = 400, MIN_H = 40; // raised ceiling now that blank lines are removed
+
+    const countPdfPages = (buf) => {
+      const s = Buffer.from(buf).toString('latin1');
+      return Math.max(1, (s.match(/\/Type\s*\/Page[^s]/g) || []).length);
+    };
+
+    const findLastImageIdx = (docData) => {
+      for (const el of [...(docData.body?.content || [])].reverse()) {
+        if (el.paragraph) {
+          for (const pEl of [...(el.paragraph.elements || [])].reverse()) {
+            if (pEl.inlineObjectElement) return pEl.startIndex;
+          }
+        }
+      }
+      return -1;
+    };
+
+    const doInsert = (h) => docs.documents.batchUpdate({
       documentId: docId,
-      requestBody: {
-        requests: [{
-          insertInlineImage: {
-            uri: imageUrl,
-            endOfSegmentLocation: { segmentId: '' },
-            objectSize: {
-              width:  { magnitude: 360, unit: 'PT' }, // 5 inches (360pt)
-              height: { magnitude: 252, unit: 'PT' }, // 3.5 inches (252pt)
-            },
-          },
-        }],
-      },
+      requestBody: { requests: [{ insertInlineImage: {
+        uri: imageUrl, endOfSegmentLocation: { segmentId: '' },
+        objectSize: {
+          width:  { magnitude: Math.min(Math.round(h * RATIO), 450), unit: 'PT' },
+          height: { magnitude: h, unit: 'PT' },
+        },
+      }}] },
     });
+
+    const doDelete = async () => {
+      const data = (await docs.documents.get({ documentId: docId })).data;
+      const idx = findLastImageIdx(data);
+      if (idx < 0) return;
+      await docs.documents.batchUpdate({
+        documentId: docId,
+        requestBody: { requests: [{ deleteContentRange: { range: { startIndex: idx, endIndex: idx + 1 } } }] },
+      });
+    };
+
+    const exportPages = async () => countPdfPages(
+      (await drive.files.export(
+        { fileId: docId, mimeType: 'application/pdf' },
+        { responseType: 'arraybuffer' }
+      )).data
+    );
+
+    try {
+      // ── 1. Remove trailing empty paragraphs ────────────────────────────────
+      const preDoc = (await docs.documents.get({ documentId: docId })).data;
+      const bodyEls = preDoc.body?.content || [];
+      const trailingEmpties = [];
+      for (let i = bodyEls.length - 1; i >= 0; i--) {
+        const el = bodyEls[i];
+        if (!el.paragraph) break;
+        const hasContent = (el.paragraph.elements || []).some(e =>
+          e.inlineObjectElement || (e.textRun?.content || '').trim()
+        );
+        if (!hasContent) trailingEmpties.push({ startIndex: el.startIndex, endIndex: el.endIndex });
+        else break;
+      }
+      if (trailingEmpties.length > 0) {
+        trailingEmpties.sort((a, b) => b.startIndex - a.startIndex);
+        await docs.documents.batchUpdate({
+          documentId: docId,
+          requestBody: { requests: trailingEmpties.map(r => ({ deleteContentRange: { range: r } })) },
+        });
+        console.log(`[brief] Cleared ${trailingEmpties.length} trailing blank paragraphs`);
+      }
+
+      // ── 2. Measure available vertical space (text-only PDF) ────────────────
+      // Parse Tm operators from the PDF: "a b c d e f Tm" — f is the y-position.
+      // The minimum y among all text lines is the bottom of the last content line.
+      // Available space = lastTextY − bottom_margin (72pt = 1 inch).
+      let availablePt = null;
+      try {
+        const textPdfStr = Buffer.from(
+          (await drive.files.export(
+            { fileId: docId, mimeType: 'application/pdf' },
+            { responseType: 'arraybuffer' }
+          )).data
+        ).toString('latin1');
+        const tmRe = /([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+Tm/g;
+        let minY = Infinity, m;
+        while ((m = tmRe.exec(textPdfStr)) !== null) {
+          const y = parseFloat(m[6]);
+          if (y > 80 && y < minY) minY = y; // ignore footer area (y ≤ 80)
+        }
+        if (minY < Infinity) {
+          availablePt = Math.max(0, minY - 72); // space from last text line to bottom margin
+          console.log(`[brief] Available for image: ~${Math.round(availablePt)}pt (lastTextY≈${Math.round(minY)})`);
+        }
+      } catch (_) { /* non-fatal */ }
+
+      // ── 3. Binary-search for largest image height that keeps doc to 1 page ──
+      let lo = MIN_H, hi = MAX_H, cur = MAX_H;
+      await doInsert(cur);
+      for (let i = 0; i < 5; i++) {
+        const pages = await exportPages();
+        if (pages <= 1) {
+          lo = cur;
+          if (hi - lo <= 15) break;
+          const next = Math.round((lo + hi) / 2);
+          if (next === cur) break;
+          await doDelete(); cur = next; await doInsert(cur);
+        } else {
+          hi = cur - 1;
+          if (hi < lo) { await doDelete(); cur = MIN_H; await doInsert(cur); break; }
+          const next = Math.round((lo + hi) / 2);
+          await doDelete(); cur = next; await doInsert(cur);
+        }
+      }
+      console.log(`[brief] Final image height: ${cur}pt`);
+
+      // ── 4. Center: horizontally (CENTER) + vertically (spaceAbove) ──────────
+      const finalDoc = (await docs.documents.get({ documentId: docId })).data;
+      let imgParaStart = -1, imgParaEnd = -1;
+      for (const el of [...(finalDoc.body?.content || [])].reverse()) {
+        if (el.paragraph && (el.paragraph.elements || []).some(e => e.inlineObjectElement)) {
+          imgParaStart = el.startIndex;
+          imgParaEnd   = el.endIndex;
+          break;
+        }
+      }
+      if (imgParaStart !== -1) {
+        // spaceAbove = half the unused vertical gap so the image sits centred
+        // in the rectangle between the last text line and the page bottom.
+        const spaceAbove = (availablePt !== null && availablePt > cur)
+          ? Math.max(8, Math.round((availablePt - cur) / 2))
+          : 12; // fallback: small fixed gap
+
+        await docs.documents.batchUpdate({
+          documentId: docId,
+          requestBody: {
+            requests: [{
+              updateParagraphStyle: {
+                range: { startIndex: imgParaStart, endIndex: imgParaEnd },
+                paragraphStyle: {
+                  alignment: 'CENTER',
+                  spaceAbove: { magnitude: spaceAbove, unit: 'PT' },
+                },
+                fields: 'alignment,spaceAbove',
+              },
+            }],
+          },
+        });
+        console.log(`[brief] Image centered: spaceAbove=${spaceAbove}pt`);
+      }
+    } catch (e) {
+      console.error('[brief] Image page-fit failed (non-fatal):', e.message);
+    }
   }
 
   // Move document to "הפקות" folder (create it if needed)

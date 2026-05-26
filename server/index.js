@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const chokidar = require('chokidar');
 const showsRouter = require('./routes/shows');
 const documentsRouter = require('./routes/documents');
@@ -67,6 +68,20 @@ if (fs.existsSync(DEFAULT_XLSX)) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  // Find the active network IP so mobile/tablet access is always clear
+  const networkIp = Object.values(os.networkInterfaces())
+    .flat()
+    .find((i) => i.family === 'IPv4' && !i.internal)?.address || 'unknown';
+
+  console.log('');
+  console.log('┌─────────────────────────────────────────────┐');
+  console.log(`│  Production Hub is running                  │`);
+  console.log(`│                                             │`);
+  console.log(`│  Local:   http://localhost:${PORT}           │`);
+  console.log(`│  Network: http://${networkIp}:${PORT}        │`);
+  console.log(`│                                             │`);
+  console.log(`│  ← open this URL on your phone/tablet       │`);
+  console.log('└─────────────────────────────────────────────┘');
+  console.log('');
   startGmailPolling();
 });
