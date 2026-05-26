@@ -812,7 +812,7 @@ body {
   flex-shrink: 0;
 }
 
-/* Show name — display-scale, editorial */
+/* Show name — display-scale, editorial, always right-aligned */
 .show-card-title h2 {
   font-family: 'Bricolage Grotesque', 'Assistant', 'Heebo', sans-serif;
   font-size: 1.75rem;
@@ -823,6 +823,7 @@ body {
   margin-bottom: 16px;
   font-optical-sizing: auto;
   font-variation-settings: "opsz" 48;
+  direction: rtl;
   text-align: right;
   /* allow 2 lines max */
   display: -webkit-box;
