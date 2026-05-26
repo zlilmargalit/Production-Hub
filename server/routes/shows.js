@@ -422,13 +422,25 @@ router.post('/:id/brief', async (req, res) => {
 
     const customDefs = (show.eventType && fieldTemplates[show.eventType]) || [];
 
+    // Check whether Google credentials are available (env vars take priority over files).
+    const hasEnvCreds = !!(process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN);
+    let hasFileCreds = false;
+    if (!hasEnvCreds) {
+      try {
+        await fsp.access(CREDENTIALS_PATH);
+        await fsp.access(TOKEN_PATH);
+        hasFileCreds = true;
+      } catch { /* no file creds */ }
+    }
+    const canUpload = hasEnvCreds || hasFileCreds;
+
+    if (!canUpload) {
+      return res.status(503).json({
+        error: 'Google Drive credentials not configured. Set GMAIL_CREDENTIALS and GMAIL_TOKEN environment variables to enable Brief creation.',
+      });
+    }
+
     const imageUploadUrls = {};
-    // Avoid sync existsSync — try-then-fail instead
-    let canUpload = true;
-    try {
-      await fsp.access(CREDENTIALS_PATH);
-      await fsp.access(TOKEN_PATH);
-    } catch { canUpload = false; }
 
     if (canUpload) {
       for (const def of customDefs) {

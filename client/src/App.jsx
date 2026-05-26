@@ -230,9 +230,18 @@ function App({ demoMode = false }) {
       <header className="app-header">
         {/* Brand (always left) */}
         <div className="header-brand">
-          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg">
-            <path d="M32 20 A 12 12 0 1 0 20 32 A 6 6 0 0 0 20 20" stroke="#5E7AC4" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
-            <path d="M17.5 16 L 24 20 L 17.5 24 Z" fill="#F3BE7A" stroke="#F3BE7A" strokeWidth="1.5" strokeLinejoin="round"/>
+          {/* Spot Pool mark — three semicircular arcs + floor line + orange subject dot */}
+          <svg width="36" height="26" viewBox="0 0 100 68" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg" aria-hidden="true">
+            {/* Floor line */}
+            <line x1="4" y1="60" x2="96" y2="60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
+            {/* Outer arc */}
+            <path d="M 4 60 A 46 46 0 0 0 96 60" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.45"/>
+            {/* Middle arc */}
+            <path d="M 19 60 A 31 31 0 0 0 81 60" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.65"/>
+            {/* Inner arc */}
+            <path d="M 36 60 A 14 14 0 0 0 64 60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.85"/>
+            {/* Subject dot (orange) */}
+            <circle cx="50" cy="60" r="5.5" fill="#F08D39"/>
           </svg>
           <h1>Production Hub</h1>
         </div>

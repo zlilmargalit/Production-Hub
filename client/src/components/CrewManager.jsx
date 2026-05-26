@@ -241,6 +241,9 @@ const FIELD_TYPES = [
 ];
 
 function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onSaveFieldTemplate, onSaveEventTypes }) {
+  // ── Confirmation modal (for delete) ──
+  const [confirmModal, setConfirmModal] = useState(null);
+
   // ── Crew editing state ──
   const [editingCrewType, setEditingCrewType] = useState(null);
   const [localIds, setLocalIds] = useState([]);
@@ -477,6 +480,16 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
         />
         <button className="btn-primary btn-sm" onClick={addEventType}>+ Add</button>
       </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          danger={confirmModal.danger !== false}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
     </div>
   );
 }

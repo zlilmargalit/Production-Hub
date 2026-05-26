@@ -10,11 +10,21 @@
 
 const puppeteer = require('puppeteer-core');
 
-const CHROME_PATH = process.env.CHROME_PATH || (
-  process.platform === 'darwin'
-    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-    : '/usr/bin/google-chrome'
-);
+const CHROME_PATH = process.env.CHROME_PATH || (() => {
+  if (process.platform === 'darwin') {
+    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  }
+  // On Railway / Nix the package is called 'chromium', not 'google-chrome'.
+  // Resolve the actual binary path at start-up via PATH lookup.
+  const { execSync } = require('child_process');
+  for (const bin of ['chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome']) {
+    try {
+      const p = execSync(`which ${bin}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      if (p) return p;
+    } catch { /* try next */ }
+  }
+  return 'chromium'; // fallback: let the OS resolve via PATH
+})();
 
 let browserPromise = null;
 
