@@ -122,8 +122,15 @@ function TaskManager({ show, onUpdate }) {
   const loadCalConfig = async () => {
     try {
       const res = await fetch('/api/calendar/config');
-      if (res.ok) setCalConfig(await res.json());
-    } catch {}
+      if (res.ok) {
+        setCalConfig(await res.json());
+      } else {
+        // Calendar not configured on this server (e.g. Railway without Google auth)
+        setCalConfig({ calendarId: 'primary', calendarName: 'primary', calendars: [] });
+      }
+    } catch {
+      setCalConfig({ calendarId: 'primary', calendarName: 'primary', calendars: [] });
+    }
   };
 
   useEffect(() => { loadCalConfig(); }, []);

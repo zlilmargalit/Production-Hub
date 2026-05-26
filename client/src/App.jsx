@@ -194,15 +194,6 @@ function App() {
             <path d="M17.5 16 L 24 20 L 17.5 24 Z" fill="#F3BE7A" stroke="#F3BE7A" strokeWidth="1.5" strokeLinejoin="round"/>
           </svg>
           <h1>Production Hub</h1>
-          {/* Theme toggle lives here so it stays in row 1 on mobile */}
-          <button
-            className="btn-theme-toggle header-toggle"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? '☀' : '◑'}
-          </button>
         </div>
 
         {/* Row 2: nav tabs + action buttons together */}
@@ -258,9 +249,8 @@ function App() {
                 </button>
               </>
             )}
-            {/* Desktop-only toggle */}
             <button
-              className="btn-theme-toggle header-toggle-desktop"
+              className="btn-theme-toggle header-toggle"
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle theme"
