@@ -253,7 +253,7 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
 
             {/* Technical Coordination Section */}
             <div className="form-section-divider span-2">
-              <span>תיאום טכני</span>
+              <span>Technical Coordination</span>
             </div>
 
             <div className="form-group">
@@ -264,7 +264,7 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
                   checked={form.lightingCoordinated}
                   onChange={set}
                 />
-                תאורה תואמה מול המקום
+                Lighting
               </label>
             </div>
 
@@ -276,12 +276,12 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
                   checked={form.soundCoordinated}
                   onChange={set}
                 />
-                סאונד תואם מול המקום
+                Sound
               </label>
             </div>
 
             <div className="form-group span-2">
-              <label>ציוד להשלמה / השכרה (סאונד)</label>
+              <label>ציוד להשכרה / השלמה (Sound)</label>
               <textarea
                 dir="rtl"
                 name="rentalNeeds"

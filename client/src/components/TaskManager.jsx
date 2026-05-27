@@ -22,6 +22,12 @@ function TaskManager({ show, onUpdate }) {
     phone: show.foodContactPhone || '',
     time: show.foodContactTime || '',
   });
+  const [coord, setCoord] = useState({
+    lighting: show.lightingCoordinated || false,
+    sound: show.soundCoordinated || false,
+    rentalNeeds: show.rentalNeeds || '',
+    rentalSupplier: show.rentalSupplier || '',
+  });
   // ── Tasks — typed ────────────────────────────────────────────────────
   const [newTaskType, setNewTaskType] = useState('checkbox');
   const [newTaskLabel, setNewTaskLabel] = useState('');
@@ -66,6 +72,22 @@ function TaskManager({ show, onUpdate }) {
       foodContactPhone: updated.phone,
       foodContactTime: updated.time,
     });
+  };
+
+  const saveCoord = (updated) => {
+    onUpdate(show.id, {
+      ...show,
+      lightingCoordinated: updated.lighting,
+      soundCoordinated: updated.sound,
+      rentalNeeds: updated.rentalNeeds,
+      rentalSupplier: updated.rentalSupplier,
+    });
+  };
+
+  const toggleCoord = (field) => {
+    const next = { ...coord, [field]: !coord[field] };
+    setCoord(next);
+    saveCoord(next);
   };
 
   const setMode = (mode) => {
@@ -284,6 +306,51 @@ function TaskManager({ show, onUpdate }) {
               onChange={(e) => setFood((p) => ({ ...p, time: e.target.value }))}
               onBlur={() => saveFood(food)}
               placeholder="13:00"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Technical Coordination */}
+      <div className="fixed-task-section">
+        <h4 className="fixed-task-title">Technical Coordination</h4>
+        <div className="tech-coord-rows">
+          <label className="mode-check-label">
+            <input
+              type="checkbox"
+              checked={coord.lighting}
+              onChange={() => toggleCoord('lighting')}
+            />
+            Lighting
+          </label>
+          <div className="tech-coord-sound-row">
+            <label className="mode-check-label">
+              <input
+                type="checkbox"
+                checked={coord.sound}
+                onChange={() => toggleCoord('sound')}
+              />
+              Sound
+            </label>
+            <textarea
+              className="fixed-input tech-coord-rental"
+              dir="rtl"
+              rows={2}
+              value={coord.rentalNeeds}
+              onChange={(e) => setCoord((p) => ({ ...p, rentalNeeds: e.target.value }))}
+              onBlur={() => saveCoord(coord)}
+              placeholder="ציוד להשכרה / השלמה..."
+            />
+          </div>
+          <div className="fixed-input-group" style={{ marginTop: 4 }}>
+            <label>מאיפה משכירים</label>
+            <input
+              className="fixed-input"
+              dir="rtl"
+              value={coord.rentalSupplier}
+              onChange={(e) => setCoord((p) => ({ ...p, rentalSupplier: e.target.value }))}
+              onBlur={() => saveCoord(coord)}
+              placeholder="שם ספק / חברת השכרה"
             />
           </div>
         </div>

@@ -1268,6 +1268,25 @@ body {
   line-height: 1.5;
   white-space: pre-wrap;
 }
+.tech-coord-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tech-coord-sound-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.tech-coord-sound-row .mode-check-label {
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+.tech-coord-rental {
+  flex: 1;
+  resize: vertical;
+  min-height: 52px;
+}
 
 .check-pdf-pair {
   display: inline-flex;
