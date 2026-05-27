@@ -249,13 +249,20 @@ async function createBriefDoc(payload, imageUrl) {
       )).data
     );
 
+    // ── Step 1: trim trailing blank paragraphs (isolated — never blocks image insertion) ──
     try {
       const preDoc = (await docs.documents.get({ documentId: docId })).data;
       const bodyEls = preDoc.body?.content || [];
       const trailingEmpties = [];
+      // The very last body element contains the document's terminal newline which cannot
+      // be deleted. We skip the last paragraph to avoid "range cannot include the newline
+      // at the end of the segment" errors.
+      const lastParaIdx = [...bodyEls].reverse().findIndex(el => el.paragraph);
+      const skipEndIdx  = lastParaIdx >= 0 ? bodyEls.length - 1 - lastParaIdx : -1;
       for (let i = bodyEls.length - 1; i >= 0; i--) {
         const el = bodyEls[i];
         if (!el.paragraph) break;
+        if (i === skipEndIdx) continue; // never delete the terminal paragraph
         const hasContent = (el.paragraph.elements || []).some(e =>
           e.inlineObjectElement || (e.textRun?.content || '').trim()
         );
@@ -270,7 +277,12 @@ async function createBriefDoc(payload, imageUrl) {
         });
         console.log(`[brief] Cleared ${trailingEmpties.length} trailing blank paragraphs`);
       }
+    } catch (e) {
+      console.warn('[brief] Trailing blank removal skipped (non-fatal):', e.message);
+    }
 
+    // ── Step 2: insert & size the image ──────────────────────────────────────────
+    try {
       let availablePt = null;
       try {
         const textPdfStr = Buffer.from(
