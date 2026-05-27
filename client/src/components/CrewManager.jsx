@@ -24,7 +24,7 @@ function buildCrewText(crewIds, crew) {
     .join(' | ');
 }
 
-function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, demoMode = false }) {
+function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, demoMode = false, artistId }) {
   const [tab, setTab] = useState('members');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +33,8 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   const openAdd = () => { setEditing(null); setShowForm(true); };
   const openEdit = (m) => { setEditing(m); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditing(null); };
+
+  const qs = artistId ? `?artistId=${encodeURIComponent(artistId)}` : '';
 
   const saveMember = async (data) => {
     if (demoMode) {
@@ -45,7 +47,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       return;
     }
     if (editing) {
-      const res = await fetch(`/api/crew/${editing.id}`, {
+      const res = await fetch(`/api/crew/${editing.id}${qs}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -53,7 +55,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       const updated = await res.json();
       setCrew((prev) => prev.map((m) => (m.id === editing.id ? updated : m)));
     } else {
-      const res = await fetch('/api/crew', {
+      const res = await fetch(`/api/crew${qs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -71,7 +73,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       message: member ? `Remove "${member.name}" from all shows and templates? This cannot be undone.` : 'Delete this crew member?',
       onConfirm: async () => {
         setConfirmModal(null);
-        if (!demoMode) await fetch(`/api/crew/${id}`, { method: 'DELETE' });
+        if (!demoMode) await fetch(`/api/crew/${id}${qs}`, { method: 'DELETE' });
         setCrew((prev) => prev.filter((m) => m.id !== id));
         setTemplates((prev) => {
           const next = { ...prev };
@@ -86,7 +88,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
 
   const saveTemplate = async (eventType, crewIds) => {
     if (!demoMode) {
-      await fetch(`/api/templates/${encodeURIComponent(eventType)}`, {
+      await fetch(`/api/templates/${encodeURIComponent(eventType)}${qs}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ crewIds }),

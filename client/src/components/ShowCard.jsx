@@ -2,7 +2,7 @@ import { useState } from 'react';
 import TaskManager from './TaskManager';
 import { etColorIdx } from '../utils/etColor';
 
-function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }) {
+function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [briefStatus, setBriefStatus] = useState(null);
@@ -51,11 +51,13 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     });
   };
 
+  const qs = artistId ? `?artistId=${encodeURIComponent(artistId)}` : '';
+
   const createBrief = async () => {
     setBriefStatus('loading');
     setBriefError(null);
     try {
-      const res = await fetch(`/api/shows/${show.id}/brief`, { method: 'POST' });
+      const res = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setBriefStatus('sent');
@@ -76,7 +78,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     setPdfStatus('loading');
     setPdfError(null);
     try {
-      const res = await fetch(`/api/shows/${show.id}/pdf`, { method: 'POST' });
+      const res = await fetch(`/api/shows/${show.id}/pdf${qs}`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setPdfStatus('error');

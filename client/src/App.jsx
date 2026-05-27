@@ -136,7 +136,7 @@ function App({ demoMode = false }) {
       setFieldTemplates((prev) => ({ ...prev, [eventType]: fields }));
       return;
     }
-    await fetch(`/api/field-templates/${encodeURIComponent(eventType)}`, {
+    await fetch(`/api/field-templates/${encodeURIComponent(eventType)}${artistQS()}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fields),
@@ -146,7 +146,7 @@ function App({ demoMode = false }) {
 
   const saveEventTypes = useCallback(async (types) => {
     if (demoMode) { setEventTypes(types); return; }
-    await fetch('/api/event-types', {
+    await fetch(`/api/event-types${artistQS()}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(types),
@@ -160,7 +160,7 @@ function App({ demoMode = false }) {
       setShows((prev) => [...prev, fakeShow]);
       return fakeShow;
     }
-    const res = await fetch('/api/shows', {
+    const res = await fetch(`/api/shows${artistQS()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -175,7 +175,7 @@ function App({ demoMode = false }) {
       setShows((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
       return;
     }
-    const res = await fetch(`/api/shows/${id}`, {
+    const res = await fetch(`/api/shows/${id}${artistQS()}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -192,7 +192,7 @@ function App({ demoMode = false }) {
       danger: true,
       onConfirm: async () => {
         setConfirmModal(null);
-        if (!demoMode) await fetch(`/api/shows/${id}`, { method: 'DELETE' });
+        if (!demoMode) await fetch(`/api/shows/${id}${artistQS()}`, { method: 'DELETE' });
         setShows((prev) => prev.filter((s) => s.id !== id));
       },
     });
@@ -215,7 +215,7 @@ function App({ demoMode = false }) {
     if (demoMode) return; // no-op in demo
     setApplyStatus('loading');
     try {
-      const res = await fetch('/api/shows/apply-crew-templates', { method: 'POST' });
+      const res = await fetch(`/api/shows/apply-crew-templates${artistQS()}`, { method: 'POST' });
       const data = await res.json();
       setApplyStatus(data);
       if (data.updated > 0) await fetchShows();
@@ -406,6 +406,7 @@ function App({ demoMode = false }) {
             onEdit={openEdit}
             onDelete={deleteShow}
             onUpdateShow={updateShow}
+            artistId={currentArtist?.id || null}
           />
         ) : (
           <CrewManager
@@ -420,6 +421,7 @@ function App({ demoMode = false }) {
             eventTypes={eventTypes}
             onSaveEventTypes={saveEventTypes}
             demoMode={demoMode}
+            artistId={currentArtist?.id || null}
           />
         )}
       </main>
