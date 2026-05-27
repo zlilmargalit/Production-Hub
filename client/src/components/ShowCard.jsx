@@ -259,6 +259,41 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             </div>
           </div>
 
+          {/* Technical Coordination — always visible when expanded */}
+          <div className="detail-full tech-coord-section">
+            <strong>תיאום טכני</strong>
+            <div className="tech-coord-grid">
+              <label className="quick-check">
+                <input
+                  type="checkbox"
+                  checked={show.lightingCoordinated || false}
+                  onChange={() => toggleField('lightingCoordinated')}
+                />
+                תאורה תואמה מול המקום
+              </label>
+              <label className="quick-check">
+                <input
+                  type="checkbox"
+                  checked={show.soundCoordinated || false}
+                  onChange={() => toggleField('soundCoordinated')}
+                />
+                סאונד תואם מול המקום
+              </label>
+              {show.rentalNeeds && (
+                <div className="tech-coord-text">
+                  <span className="field-label">ציוד להשלמה / השכרה (סאונד)</span>
+                  <p dir="rtl">{show.rentalNeeds}</p>
+                </div>
+              )}
+              {show.rentalSupplier && (
+                <div className="tech-coord-text">
+                  <span className="field-label">מאיפה משכירים</span>
+                  <p dir="rtl">{show.rentalSupplier}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {customDefs.length > 0 && (
             <div className="detail-full">
               <strong>Custom Fields</strong>

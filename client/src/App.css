@@ -1211,6 +1211,64 @@ body {
   border-top: 1px solid var(--border-light);
 }
 
+/* ── Technical Coordination section ─────────────────────────────────────── */
+.form-section-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.form-section-divider::before,
+.form-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.tech-coord-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-sunk);
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+.tech-coord-section strong {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+.tech-coord-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tech-coord-text {
+  margin-top: 4px;
+}
+.tech-coord-text .field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 2px;
+}
+.tech-coord-text p {
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .check-pdf-pair {
   display: inline-flex;
   align-items: center;

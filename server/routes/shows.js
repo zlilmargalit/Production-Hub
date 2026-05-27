@@ -856,6 +856,14 @@ ${inPdf('schedule') && show.schedule ? `<h2>לוז</h2><div class="schedule">${n
 ${additionalSection}
 
 ${inPdf('notes') && show.notes ? `<h2>הערות</h2><p style="line-height:1.6">${nl2br(show.notes)}</p>` : ''}
+
+${(show.lightingCoordinated || show.soundCoordinated || show.rentalNeeds || show.rentalSupplier) ? `
+<h2>תיאום טכני</h2>
+${show.lightingCoordinated !== undefined ? `<div class="row"><span class="label">תאורה תואמה מול המקום:</span><span class="value">${show.lightingCoordinated ? '✓ כן' : '✕ לא'}</span></div>` : ''}
+${show.soundCoordinated !== undefined ? `<div class="row"><span class="label">סאונד תואם מול המקום:</span><span class="value">${show.soundCoordinated ? '✓ כן' : '✕ לא'}</span></div>` : ''}
+${show.rentalNeeds ? `<div class="row"><span class="label">ציוד להשלמה / השכרה:</span><span class="value">${nl2br(show.rentalNeeds)}</span></div>` : ''}
+${show.rentalSupplier ? `<div class="row"><span class="label">מאיפה משכירים:</span><span class="value">${esc(show.rentalSupplier)}</span></div>` : ''}
+` : ''}
 </div>
 ${imageSectionHtml}
 </body>
