@@ -7,6 +7,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
   const [showTasks, setShowTasks] = useState(false);
   const [briefStatus, setBriefStatus] = useState(null);
   const [pdfStatus, setPdfStatus] = useState(null);
+  const [briefError, setBriefError] = useState(null);
+  const [pdfError, setPdfError] = useState(null);
 
   const assignedCrew = (crew || []).filter((m) => (show.crewIds || []).includes(m.id));
   const musicians = assignedCrew
@@ -51,6 +53,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
 
   const createBrief = async () => {
     setBriefStatus('loading');
+    setBriefError(null);
     try {
       const res = await fetch(`/api/shows/${show.id}/brief`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
@@ -58,28 +61,28 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
         setBriefStatus('sent');
         if (data.docUrl) window.open(data.docUrl, '_blank');
       } else {
-        const msg = data.error || 'Brief creation failed';
         setBriefStatus('error');
-        // Show the actual server error so user knows what to fix
-        alert(`Brief error: ${msg}`);
+        setBriefError(data.error || 'Brief creation failed');
       }
-      setTimeout(() => setBriefStatus(null), 4000);
+      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
     } catch (e) {
       setBriefStatus('error');
-      alert(`Brief error: ${e.message || 'Network error'}`);
-      setTimeout(() => setBriefStatus(null), 4000);
+      setBriefError(e.message || 'Network error');
+      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
     }
   };
 
   const savePdf = async () => {
     setPdfStatus('loading');
+    setPdfError(null);
     try {
       const res = await fetch(`/api/shows/${show.id}/pdf`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        const msg = data.details || data.error || 'PDF generation failed';
-        alert(`PDF error: ${msg}`);
-        setPdfStatus('error'); setTimeout(() => setPdfStatus(null), 4000); return;
+        setPdfStatus('error');
+        setPdfError(data.details || data.error || 'PDF generation failed');
+        setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 5000);
+        return;
       }
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/pdf')) {
@@ -92,10 +95,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
       setPdfStatus('saved');
-      setTimeout(() => setPdfStatus(null), 4000);
-    } catch {
+      setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 5000);
+    } catch (e) {
       setPdfStatus('error');
-      setTimeout(() => setPdfStatus(null), 4000);
+      setPdfError(e.message || 'Network error');
+      setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 5000);
     }
   };
 
@@ -306,26 +310,32 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
 
       <div className="show-card-footer">
         <div className="footer-left">
-          <button
-            className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
-            onClick={createBrief}
-            disabled={briefStatus === 'loading'}
-          >
-            {briefStatus === 'loading' ? 'Sending...' :
-             briefStatus === 'sent' ? 'Sent ✓' :
-             briefStatus === 'error' ? 'Error' :
-             'Brief'}
-          </button>
-          <button
-            className={`btn-pdf ${pdfStatus === 'saved' ? 'saved' : pdfStatus === 'error' ? 'error' : ''}`}
-            onClick={savePdf}
-            disabled={pdfStatus === 'loading'}
-          >
-            {pdfStatus === 'loading' ? 'Saving...' :
-             pdfStatus === 'saved' ? 'Saved ✓' :
-             pdfStatus === 'error' ? 'Error' :
-             'PDF'}
-          </button>
+          <div className="btn-action-wrap">
+            <button
+              className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
+              onClick={createBrief}
+              disabled={briefStatus === 'loading'}
+            >
+              {briefStatus === 'loading' ? 'Sending...' :
+               briefStatus === 'sent' ? 'Sent ✓' :
+               briefStatus === 'error' ? 'Error ✕' :
+               'Brief'}
+            </button>
+            {briefError && <span className="btn-error-msg" title={briefError}>{briefError}</span>}
+          </div>
+          <div className="btn-action-wrap">
+            <button
+              className={`btn-pdf ${pdfStatus === 'saved' ? 'saved' : pdfStatus === 'error' ? 'error' : ''}`}
+              onClick={savePdf}
+              disabled={pdfStatus === 'loading'}
+            >
+              {pdfStatus === 'loading' ? 'Saving...' :
+               pdfStatus === 'saved' ? 'Saved ✓' :
+               pdfStatus === 'error' ? 'Error ✕' :
+               'PDF'}
+            </button>
+            {pdfError && <span className="btn-error-msg" title={pdfError}>{pdfError}</span>}
+          </div>
         </div>
 
         <div className="quick-checks">

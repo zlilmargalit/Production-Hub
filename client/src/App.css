@@ -568,47 +568,47 @@ body {
 }
 
 /* ─── EVENT TYPE COLOR MAP ─────────────────────────────────────────────
-   Palette locked to 4 brand colors (colorhunt.co/palette/3852b45e7ac4f3be7af08d39).
-   Colors apply ONLY to borders, bands and backgrounds — never to text.
-   16 slots cycle through the 4 colors so any event type gets a brand color. */
+   16 distinct colors — each event type gets a unique shade.
+   User-specified: idx1=אירוח, idx2=תקלוט, idx11=חזרה, idx14=סולו פסנתר, idx15=החלונות הגבוהים.
+   Colors apply ONLY to borders, bands and backgrounds — never to text. */
 
 .show-card { --et-color: var(--accent); --et-bg: var(--accent-soft); }
 
-/* ── Light mode — 16 slots, cycling 4 brand colors ── */
-[data-et-idx="0"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }
-[data-et-idx="1"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
-[data-et-idx="2"]  { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
-[data-et-idx="3"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }
-[data-et-idx="4"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }
-[data-et-idx="5"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
-[data-et-idx="6"]  { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
-[data-et-idx="7"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }
-[data-et-idx="8"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }
-[data-et-idx="9"]  { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
-[data-et-idx="10"] { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
-[data-et-idx="11"] { --et-color: #F08D39; --et-bg: #FCE3CC; }
-[data-et-idx="12"] { --et-color: #3852B4; --et-bg: #E8ECF7; }
-[data-et-idx="13"] { --et-color: #5E7AC4; --et-bg: #ECEFF8; }
-[data-et-idx="14"] { --et-color: #F3BE7A; --et-bg: #FBEFD9; }
-[data-et-idx="15"] { --et-color: #F08D39; --et-bg: #FCE3CC; }
+/* ── Light mode — 16 distinct colors ── */
+[data-et-idx="0"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }  /* brand deep blue */
+[data-et-idx="1"]  { --et-color: #C38B86; --et-bg: #F5EEEC; }  /* אירוח — antique pink */
+[data-et-idx="2"]  { --et-color: #43586C; --et-bg: #E5EAEE; }  /* תקלוט — nocturnal slate */
+[data-et-idx="3"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }  /* brand orange */
+[data-et-idx="4"]  { --et-color: #6B7F56; --et-bg: #EAEDE7; }  /* muted sage */
+[data-et-idx="5"]  { --et-color: #8B7355; --et-bg: #EDE7DF; }  /* להקה — warm sandy brown */
+[data-et-idx="6"]  { --et-color: #A06878; --et-bg: #F2E8EC; }  /* אני גיטרה — dusty mauve */
+[data-et-idx="7"]  { --et-color: #4E7B8C; --et-bg: #E6EDF0; }  /* סולו אקוסטי — muted teal-blue */
+[data-et-idx="8"]  { --et-color: #B89050; --et-bg: #F3EBDA; }  /* golden amber */
+[data-et-idx="9"]  { --et-color: #4E7265; --et-bg: #E6EDEA; }  /* בקליין/סאונד — forest teal */
+[data-et-idx="10"] { --et-color: #8C5E50; --et-bg: #F0E8E5; }  /* terracotta */
+[data-et-idx="11"] { --et-color: #4A4A4A; --et-bg: #EAEAEA; }  /* חזרה/תאורה — dark graphite */
+[data-et-idx="12"] { --et-color: #3E6B8C; --et-bg: #E6ECF0; }  /* deep steel blue */
+[data-et-idx="13"] { --et-color: #7A6020; --et-bg: #EEE8D5; }  /* הפקה — warm gold */
+[data-et-idx="14"] { --et-color: #5E7AC4; --et-bg: #ECEFF8; }  /* סולו פסנתר — brand light blue */
+[data-et-idx="15"] { --et-color: #D4A359; --et-bg: #F6EDDA; }  /* החלונות הגבוהים — smoky mustard */
 
-/* ── Dark mode — lightened versions of same 4 colors ── */
+/* ── Dark mode — lightened for readability on dark backgrounds ── */
 [data-theme="dark"] [data-et-idx="0"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] [data-et-idx="1"]  { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] [data-et-idx="2"]  { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
+[data-theme="dark"] [data-et-idx="1"]  { --et-color: #D4A39F; --et-bg: rgba(212,163,159,0.14); }
+[data-theme="dark"] [data-et-idx="2"]  { --et-color: #7A9BAE; --et-bg: rgba(122,155,174,0.14); }
 [data-theme="dark"] [data-et-idx="3"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
-[data-theme="dark"] [data-et-idx="4"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] [data-et-idx="5"]  { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] [data-et-idx="6"]  { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] [data-et-idx="7"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
-[data-theme="dark"] [data-et-idx="8"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] [data-et-idx="9"]  { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] [data-et-idx="10"] { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] [data-et-idx="11"] { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
-[data-theme="dark"] [data-et-idx="12"] { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] [data-et-idx="13"] { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] [data-et-idx="14"] { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
-[data-theme="dark"] [data-et-idx="15"] { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
+[data-theme="dark"] [data-et-idx="4"]  { --et-color: #8FAE7A; --et-bg: rgba(143,174,122,0.14); }
+[data-theme="dark"] [data-et-idx="5"]  { --et-color: #AE997A; --et-bg: rgba(174,153,122,0.14); }
+[data-theme="dark"] [data-et-idx="6"]  { --et-color: #C4909A; --et-bg: rgba(196,144,154,0.14); }
+[data-theme="dark"] [data-et-idx="7"]  { --et-color: #7AAEC4; --et-bg: rgba(122,174,196,0.14); }
+[data-theme="dark"] [data-et-idx="8"]  { --et-color: #D4B878; --et-bg: rgba(212,184,120,0.14); }
+[data-theme="dark"] [data-et-idx="9"]  { --et-color: #7A9E8E; --et-bg: rgba(122,158,142,0.14); }
+[data-theme="dark"] [data-et-idx="10"] { --et-color: #AE8078; --et-bg: rgba(174,128,120,0.14); }
+[data-theme="dark"] [data-et-idx="11"] { --et-color: #909090; --et-bg: rgba(144,144,144,0.14); }
+[data-theme="dark"] [data-et-idx="12"] { --et-color: #5E9EB8; --et-bg: rgba(94,158,184,0.14);  }
+[data-theme="dark"] [data-et-idx="13"] { --et-color: #A88834; --et-bg: rgba(168,136,52,0.14);  }
+[data-theme="dark"] [data-et-idx="14"] { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
+[data-theme="dark"] [data-et-idx="15"] { --et-color: #E8C07A; --et-bg: rgba(232,192,122,0.14); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    PAGE HEADING — editorial display + scrolling marquee
@@ -1007,9 +1007,27 @@ body {
 
 .footer-left {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   flex-shrink: 0;
+}
+
+/* Wrapper for a button + its inline error message */
+.btn-action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.btn-error-msg {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--clay);
+  max-width: 140px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Document action buttons — chunky, editorial */
@@ -1845,9 +1863,9 @@ body {
   border: none;
   padding: 6px 2px;
   font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: -0.005em;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text-3);
   cursor: pointer;
   display: inline-flex;
@@ -1856,15 +1874,16 @@ body {
   transition: color 0.15s;
   position: relative;
 }
-.crew-tab:hover { color: var(--text); }
+.crew-tab:hover { color: var(--text-2); }
 .crew-tab.active { color: var(--text); }
 .crew-tab.active::after {
   content: "";
   position: absolute;
   left: 0; right: 0;
   bottom: -17px;
-  height: 1px;
-  background: var(--text);
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
 }
 
 .crew-count {
@@ -1897,20 +1916,40 @@ body {
   padding-left: 0 !important;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
-.crew-group-title::before {
-  content: "";
-  display: inline-block;
-  width: 18px;
-  height: 2px;
-  background: var(--accent);
-  border-radius: 1px;
+
+/* Clickable +/− toggle that replaces the old CSS dash */
+.crew-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: 1.5px solid var(--role-color, var(--accent));
+  border-radius: 4px;
+  color: var(--role-color, var(--accent));
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
 }
-.crew-group:nth-child(2n) .crew-group-title::before { background: #F08D39; }
-.crew-group:nth-child(3n) .crew-group-title::before { background: #5E7AC4; }
-.crew-group:nth-child(4n) .crew-group-title::before { background: #B07729; }
-.crew-group:nth-child(5n) .crew-group-title::before { background: #1F2D6E; }
+.crew-group-toggle:hover {
+  background: var(--role-color, var(--accent));
+  color: #fff;
+}
+
+.crew-group-count {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  margin-left: 2px;
+}
 
 .crew-list {
   display: grid;
@@ -1936,13 +1975,9 @@ body {
   position: absolute;
   top: 0; left: 0; bottom: 0;
   width: 3px;
-  background: var(--accent);
-  opacity: 0.7;
+  background: var(--role-color, var(--accent));
+  opacity: 0.75;
 }
-.crew-group:nth-child(2n) .crew-card::before { background: #F08D39; }
-.crew-group:nth-child(3n) .crew-card::before { background: #5E7AC4; }
-.crew-group:nth-child(4n) .crew-card::before { background: #B07729; }
-.crew-group:nth-child(5n) .crew-card::before { background: #1F2D6E; }
 .crew-card:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--border-strong);

@@ -100,6 +100,13 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
     setTemplates((prev) => ({ ...prev, [eventType]: crewIds }));
   };
 
+  const [collapsedRoles, setCollapsedRoles] = useState(new Set());
+  const toggleRole = (role) => setCollapsedRoles((prev) => {
+    const next = new Set(prev);
+    if (next.has(role)) next.delete(role); else next.add(role);
+    return next;
+  });
+
   const byRole = crew.reduce((acc, m) => {
     const role = m.role || 'Other';
     if (!acc[role]) acc[role] = [];
@@ -172,33 +179,45 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
         ) : (
           <div className="crew-groups">
             {Object.entries(byRole).sort(([a], [b]) => a.localeCompare(b, 'he')).map(([role, members]) => (
-              <div key={role} className="crew-group">
-                <h3 className="crew-group-title" style={{ borderLeft: `3px solid ${roleColor(role)}`, paddingLeft: 8 }}>{role}</h3>
-                <div className="crew-list">
-                  {members.map((m) => (
-                    <div key={m.id} className="crew-card" style={{ borderLeft: `3px solid ${roleColor(role)}` }}>
-                      <div className="crew-card-info">
-                        <div className="crew-card-name">{m.name}</div>
-                        <div className="crew-card-details">
-                          {m.phone && <a href={`tel:${m.phone}`} className="crew-detail-link">{m.phone}</a>}
-                          {m.email && <a href={`mailto:${m.email}`} className="crew-detail-link">{m.email}</a>}
-                        </div>
-                        {(m.eventTypes || []).length > 0 && (
-                          <div className="crew-event-types">
-                            {m.eventTypes.map((t) => (
-                              <span key={t} className="tag" dir="auto" data-et-idx={etColorIdx(t)}>{t}</span>
-                            ))}
+              <div key={role} className="crew-group" style={{ '--role-color': roleColor(role) }}>
+                <h3 className="crew-group-title">
+                  <button
+                    className="crew-group-toggle"
+                    onClick={() => toggleRole(role)}
+                    title={collapsedRoles.has(role) ? 'Expand' : 'Collapse'}
+                  >
+                    {collapsedRoles.has(role) ? '+' : '−'}
+                  </button>
+                  {role}
+                  <span className="crew-group-count">{members.length}</span>
+                </h3>
+                {!collapsedRoles.has(role) && (
+                  <div className="crew-list">
+                    {members.map((m) => (
+                      <div key={m.id} className="crew-card">
+                        <div className="crew-card-info">
+                          <div className="crew-card-name">{m.name}</div>
+                          <div className="crew-card-details">
+                            {m.phone && <a href={`tel:${m.phone}`} className="crew-detail-link">{m.phone}</a>}
+                            {m.email && <a href={`mailto:${m.email}`} className="crew-detail-link">{m.email}</a>}
                           </div>
-                        )}
-                        {m.notes && <p className="crew-card-notes" dir="auto">{m.notes}</p>}
+                          {(m.eventTypes || []).length > 0 && (
+                            <div className="crew-event-types">
+                              {m.eventTypes.map((t) => (
+                                <span key={t} className="tag" dir="auto" data-et-idx={etColorIdx(t)}>{t}</span>
+                              ))}
+                            </div>
+                          )}
+                          {m.notes && <p className="crew-card-notes" dir="auto">{m.notes}</p>}
+                        </div>
+                        <div className="crew-card-actions">
+                          <button className="btn-icon" onClick={() => openEdit(m)} title="Edit">✎</button>
+                          <button className="btn-icon btn-danger" onClick={() => deleteMember(m.id)} title="Delete">✕</button>
+                        </div>
                       </div>
-                      <div className="crew-card-actions">
-                        <button className="btn-icon" onClick={() => openEdit(m)} title="Edit">✎</button>
-                        <button className="btn-icon btn-danger" onClick={() => deleteMember(m.id)} title="Delete">✕</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
