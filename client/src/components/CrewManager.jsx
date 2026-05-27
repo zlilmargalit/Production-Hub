@@ -3,13 +3,8 @@ import ConfirmModal from './ConfirmModal';
 import { etColorIdx } from '../utils/etColor';
 const uuidv4 = () => crypto.randomUUID();
 
-// Consistent palette color per role (cycles through 6 palette-derived colors)
-const ROLE_PALETTE = ['#3852B4', '#5E7AC4', '#F08D39', '#C97420', '#3D7A51', '#B05448'];
-const roleColor = (role) => {
-  let h = 0;
-  for (let i = 0; i < role.length; i++) h = (h * 31 + role.charCodeAt(i)) % ROLE_PALETTE.length;
-  return ROLE_PALETTE[h];
-};
+// All crew role accents use the same brand orange for visual consistency
+const roleColor = () => '#F08D39';
 
 
 const BLANK_MEMBER = {

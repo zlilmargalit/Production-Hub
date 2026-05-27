@@ -575,14 +575,15 @@ body {
 .show-card { --et-color: var(--accent); --et-bg: var(--accent-soft); }
 
 /* ── Light mode — 16 distinct colors ── */
+/* Indices are computed by etColorIdx (polynomial hash mod 16) */
 [data-et-idx="0"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }  /* brand deep blue */
-[data-et-idx="1"]  { --et-color: #C38B86; --et-bg: #F5EEEC; }  /* אירוח — antique pink */
+[data-et-idx="1"]  { --et-color: #D4A359; --et-bg: #F6EDDA; }  /* אירוח — smoky mustard/ochre */
 [data-et-idx="2"]  { --et-color: #43586C; --et-bg: #E5EAEE; }  /* תקלוט — nocturnal slate */
 [data-et-idx="3"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }  /* brand orange */
 [data-et-idx="4"]  { --et-color: #6B7F56; --et-bg: #EAEDE7; }  /* muted sage */
-[data-et-idx="5"]  { --et-color: #8B7355; --et-bg: #EDE7DF; }  /* להקה — warm sandy brown */
-[data-et-idx="6"]  { --et-color: #A06878; --et-bg: #F2E8EC; }  /* אני גיטרה — dusty mauve */
-[data-et-idx="7"]  { --et-color: #4E7B8C; --et-bg: #E6EDF0; }  /* סולו אקוסטי — muted teal-blue */
+[data-et-idx="5"]  { --et-color: #3852B4; --et-bg: #E8ECF7; }  /* להקה — royal deep blue */
+[data-et-idx="6"]  { --et-color: #F08D39; --et-bg: #FCE3CC; }  /* אני גיטרה — warm terracotta */
+[data-et-idx="7"]  { --et-color: #F3BE7A; --et-bg: #FBEFD9; }  /* סולו אקוסטי — elegant sand */
 [data-et-idx="8"]  { --et-color: #B89050; --et-bg: #F3EBDA; }  /* golden amber */
 [data-et-idx="9"]  { --et-color: #4E7265; --et-bg: #E6EDEA; }  /* בקליין/סאונד — forest teal */
 [data-et-idx="10"] { --et-color: #8C5E50; --et-bg: #F0E8E5; }  /* terracotta */
@@ -590,17 +591,17 @@ body {
 [data-et-idx="12"] { --et-color: #3E6B8C; --et-bg: #E6ECF0; }  /* deep steel blue */
 [data-et-idx="13"] { --et-color: #7A6020; --et-bg: #EEE8D5; }  /* הפקה — warm gold */
 [data-et-idx="14"] { --et-color: #5E7AC4; --et-bg: #ECEFF8; }  /* סולו פסנתר — brand light blue */
-[data-et-idx="15"] { --et-color: #D4A359; --et-bg: #F6EDDA; }  /* החלונות הגבוהים — smoky mustard */
+[data-et-idx="15"] { --et-color: #C38B86; --et-bg: #F5EEEC; }  /* החלונות הגבוהים — antique pink */
 
 /* ── Dark mode — lightened for readability on dark backgrounds ── */
 [data-theme="dark"] [data-et-idx="0"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
-[data-theme="dark"] [data-et-idx="1"]  { --et-color: #D4A39F; --et-bg: rgba(212,163,159,0.14); }
+[data-theme="dark"] [data-et-idx="1"]  { --et-color: #E8C07A; --et-bg: rgba(232,192,122,0.14); }
 [data-theme="dark"] [data-et-idx="2"]  { --et-color: #7A9BAE; --et-bg: rgba(122,155,174,0.14); }
 [data-theme="dark"] [data-et-idx="3"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
 [data-theme="dark"] [data-et-idx="4"]  { --et-color: #8FAE7A; --et-bg: rgba(143,174,122,0.14); }
-[data-theme="dark"] [data-et-idx="5"]  { --et-color: #AE997A; --et-bg: rgba(174,153,122,0.14); }
-[data-theme="dark"] [data-et-idx="6"]  { --et-color: #C4909A; --et-bg: rgba(196,144,154,0.14); }
-[data-theme="dark"] [data-et-idx="7"]  { --et-color: #7AAEC4; --et-bg: rgba(122,174,196,0.14); }
+[data-theme="dark"] [data-et-idx="5"]  { --et-color: #7A8FE0; --et-bg: rgba(122,143,224,0.14); }
+[data-theme="dark"] [data-et-idx="6"]  { --et-color: #F08D39; --et-bg: rgba(240,141,57,0.14);  }
+[data-theme="dark"] [data-et-idx="7"]  { --et-color: #F3BE7A; --et-bg: rgba(243,190,122,0.14); }
 [data-theme="dark"] [data-et-idx="8"]  { --et-color: #D4B878; --et-bg: rgba(212,184,120,0.14); }
 [data-theme="dark"] [data-et-idx="9"]  { --et-color: #7A9E8E; --et-bg: rgba(122,158,142,0.14); }
 [data-theme="dark"] [data-et-idx="10"] { --et-color: #AE8078; --et-bg: rgba(174,128,120,0.14); }
@@ -608,7 +609,7 @@ body {
 [data-theme="dark"] [data-et-idx="12"] { --et-color: #5E9EB8; --et-bg: rgba(94,158,184,0.14);  }
 [data-theme="dark"] [data-et-idx="13"] { --et-color: #A88834; --et-bg: rgba(168,136,52,0.14);  }
 [data-theme="dark"] [data-et-idx="14"] { --et-color: #8FA3D6; --et-bg: rgba(143,163,214,0.14); }
-[data-theme="dark"] [data-et-idx="15"] { --et-color: #E8C07A; --et-bg: rgba(232,192,122,0.14); }
+[data-theme="dark"] [data-et-idx="15"] { --et-color: #D4A39F; --et-bg: rgba(212,163,159,0.14); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    PAGE HEADING — editorial display + scrolling marquee
@@ -793,9 +794,9 @@ body {
 /* Event type — label sitting above the title */
 .show-card-type {
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
-  font-size: 0.875rem;
+  font-size: 1.0625rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   color: var(--text-2);
   margin-bottom: 14px;
   display: inline-flex;

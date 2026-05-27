@@ -558,8 +558,11 @@ router.post('/:id/pdf', async (req, res) => {
     const isPdfData = (v) => typeof v === 'string' && v.startsWith('data:application/pdf');
     const getImageSrc = (v) => (v && typeof v === 'object' ? v.data : v);
 
-    // Build custom-field HTML (await-able now because pdfDataUrlToPng is async).
-    const customFieldsHtmlParts = [];
+    // Build custom-field HTML. Images are separated so they can fill the
+    // remaining page space at the bottom rather than being squeezed inline.
+    const customFieldsTextParts = [];
+    const customFieldsImgSrcs   = [];   // collect resolved image src strings
+
     for (const def of customDefs) {
       const isImage = def.type === 'image';
       const showIt  = isImage
@@ -574,34 +577,35 @@ router.post('/:id/pdf', async (req, res) => {
           const pngSrc = await pdfDataUrlToPng(typeof src === 'string' ? src : '');
           const fname  = typeof val === 'object' ? (val.name || 'קובץ PDF') : 'קובץ PDF';
           if (pngSrc) {
-            customFieldsHtmlParts.push(
-              `<div class="row" style="flex-direction:column"><span class="label">${esc(def.label)}:</span><img src="${pngSrc}" style="max-width:100%;max-height:350px;border:1px solid #ddd;border-radius:4px;margin-top:6px;object-fit:contain"><span style="font-size:0.8em;color:#888;margin-top:3px">📎 ${esc(fname)}</span></div>`
-            );
+            customFieldsImgSrcs.push(pngSrc);
           } else {
-            customFieldsHtmlParts.push(
+            customFieldsTextParts.push(
               `<div class="row"><span class="label">${esc(def.label)}:</span><span class="value">📎 ${esc(fname)}</span></div>`
             );
           }
         } else {
-          customFieldsHtmlParts.push(
-            `<div class="row" style="flex-direction:column"><span class="label">${esc(def.label)}:</span><img src="${src}" style="max-width:100%;max-height:280px;border:1px solid #ddd;border-radius:4px;margin-top:6px;object-fit:contain"></div>`
-          );
+          customFieldsImgSrcs.push(src);
         }
       } else if (def.type === 'checkbox') {
-        customFieldsHtmlParts.push(
+        customFieldsTextParts.push(
           `<div class="row"><span class="label">${esc(def.label)}:</span><span class="value">${val ? '✓ כן' : '✕ לא'}</span></div>`
         );
       } else if (def.type === 'file' && val) {
-        customFieldsHtmlParts.push(
+        customFieldsTextParts.push(
           `<div class="row"><span class="label">${esc(def.label)}:</span><span class="value">📎 ${esc(val.name || 'קובץ מצורף')}</span></div>`
         );
       } else if (val) {
-        customFieldsHtmlParts.push(
+        customFieldsTextParts.push(
           `<div class="row"><span class="label">${esc(def.label)}:</span><span class="value">${nl2br(String(val))}</span></div>`
         );
       }
     }
-    const customFieldsHtml = customFieldsHtmlParts.join('\n');
+    const customFieldsHtml = customFieldsTextParts.join('\n');
+    // Image section: fills all remaining vertical space after text content,
+    // image is centered and scales to fit without cropping.
+    const imageSectionHtml = customFieldsImgSrcs.length > 0
+      ? `<div class="img-fill">${customFieldsImgSrcs.map((s) => `<img src="${s}">`).join('')}</div>`
+      : '';
 
     const checkItems = [
       { key: 'check_piano',        label: 'פסנתר',       value: show.piano,        condition: show.eventType === 'אני גיטרה' },
@@ -630,7 +634,30 @@ router.post('/:id/pdf', async (req, res) => {
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #1a1a1a; direction: rtl; padding: 2cm 2.5cm; }
+  /* Flex column so .img-fill can claim remaining space after all text */
+  html, body { height: 297mm; }
+  body {
+    font-family: Arial, Helvetica, sans-serif; font-size: 11pt;
+    color: #1a1a1a; direction: rtl;
+    padding: 2cm 2.5cm;
+    display: flex; flex-direction: column;
+  }
+  .page-content { flex: 0 0 auto; }
+  /* Image fills whatever vertical space is left, centered on the page */
+  .img-fill {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-top: 14px;
+  }
+  .img-fill img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
   h1 { font-size: 17pt; text-align: center; border-bottom: 2px solid #3E6B8E; padding-bottom: 10px; margin-bottom: 20px; color: #2D3142; }
   h2 { font-size: 13pt; color: #3E6B8E; border-bottom: 1px solid #d0d4dc; padding-bottom: 4px; margin: 20px 0 10px; }
   .row { display: flex; gap: 8px; margin-bottom: 6px; }
@@ -641,6 +668,7 @@ router.post('/:id/pdf', async (req, res) => {
 </style>
 </head>
 <body>
+<div class="page-content">
 <h1>דף תיאום — ${esc(show.name)}</h1>
 
 <h2>פרטי האירוע</h2>
@@ -661,6 +689,8 @@ ${inPdf('schedule') && show.schedule ? `<h2>לוז</h2><div class="schedule">${n
 ${additionalSection}
 
 ${inPdf('notes') && show.notes ? `<h2>הערות</h2><p style="line-height:1.6">${nl2br(show.notes)}</p>` : ''}
+</div>
+${imageSectionHtml}
 </body>
 </html>`;
 

@@ -68,10 +68,10 @@ async function htmlToPdfBuffer(html, options = {}) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
-    // `domcontentloaded` is the fastest option that still waits for parsing.
-    // We avoid `networkidle0` because data: URLs and CSS sometimes prevent
-    // the network from going idle inside Puppeteer's accounting.
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Use 'load' so the browser fully decodes base64 image data-URLs before
+    // we take the PDF snapshot. 'domcontentloaded' fires too early — images
+    // haven't been painted yet, so they appear blank in the output.
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
     const buffer = await page.pdf({
       format: options.format || 'A4',
       printBackground: true,
