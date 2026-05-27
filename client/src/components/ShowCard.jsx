@@ -20,11 +20,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
   const assignedCrew = (crew || []).filter((m) => (show.crewIds || []).includes(m.id));
   const musicians = assignedCrew
-    .filter((m) => m.role === 'נגן')
+    .filter((m) => m.role === 'Musicians')
     .map((m) => m.name)
     .join(' | ');
   const techCrewDisplay = assignedCrew.length > 0
-    ? assignedCrew.filter((m) => m.role !== 'נגן').map((m) => `${m.role} – ${m.name}`).join(' | ')
+    ? assignedCrew.filter((m) => m.role !== 'Musicians').map((m) => `${m.role} – ${m.name}`).join(' | ')
     : show.technicalCrew;
 
   const customDefs = (show.eventType && fieldTemplates?.[show.eventType]) || [];
@@ -147,10 +147,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         setCalMsg(data.error || 'Calendar export failed');
       } else {
         setCalStatus('done');
-        setCalMsg(
-          `${data.action === 'created' ? 'Event created' : 'Event updated'}`
-          + (data.attendeeCount > 0 ? ` · ${data.attendeeCount} invite${data.attendeeCount > 1 ? 's' : ''} sent` : '')
-        );
+        setCalMsg(data.action === 'created' ? 'Event created ✓' : 'Schedule updated ✓');
         if (data.eventLink) window.open(data.eventLink, '_blank');
       }
     } catch (e) {
@@ -203,11 +200,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
           </div>
 
-          {assignedCrew.filter((m) => m.role !== 'נגן').length > 0 && (
+          {assignedCrew.filter((m) => m.role !== 'Musicians').length > 0 && (
             <div className="detail-full">
               <strong>Crew</strong>
               <div className="crew-chips">
-                {assignedCrew.filter((m) => m.role !== 'נגן').map((m) => (
+                {assignedCrew.filter((m) => m.role !== 'Musicians').map((m) => (
                   <div key={m.id} className="crew-chip">
                     <span className="crew-chip-avatar" style={{ background: colorFor(m.id) }}>{initialsFor(m.name)}</span>
                     <span className="crew-chip-name">{m.name}</span>

@@ -5,6 +5,7 @@ import CrewManager from './components/CrewManager';
 import ConfirmModal from './components/ConfirmModal';
 import DemoBanner from './components/DemoBanner';
 import GlobalTaskPanel from './components/GlobalTaskPanel';
+import TeamPanel       from './components/TeamPanel';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -113,14 +114,21 @@ function App({ demoMode = false }) {
     // 3. Fetch all scoped data with the correct artistId already in the ref
     const init = async () => {
       try {
+        let meData = null;
         const [, artistData] = await Promise.all([
           fetch('/api/me').then((r) => r.ok ? r.json() : null)
-            .then((d) => { if (d) { setUserRole(d.role); setUsername(d.username); } }),
-          fetch('/api/artists').then((r) => r.ok ? r.json() : []).catch(() => []),
+            .then((d) => { if (d) { meData = d; setUserRole(d.role); setUsername(d.username); } }),
+          Promise.resolve(), // placeholder; artists fetched below after meData is set
         ]);
 
-        setArtists(artistData);
-        const first = artistData[0] || null;
+        // Admin → own artists list; guest → permitted artists from admin's workspace
+        const artistsEndpoint = meData?.role === 'admin' ? '/api/artists' : '/api/team/artists';
+        const artistDataResult = await fetch(artistsEndpoint)
+          .then((r) => r.ok ? r.json() : [])
+          .catch(() => []);
+
+        setArtists(artistDataResult);
+        const first = artistDataResult[0] || null;
         if (first) {
           currentArtistRef.current = first.id;   // sync — must precede fetches below
           setCurrentArtist(first);
@@ -336,6 +344,18 @@ function App({ demoMode = false }) {
     }
   }, []);
 
+  const updateTask = useCallback(async (id, data) => {
+    const res = await fetch(`/api/tasks/${id}${artistQS()}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    }
+  }, []);
+
   const deleteTask = useCallback(async (id) => {
     await fetch(`/api/tasks/${id}${artistQS()}`, { method: 'DELETE' });
     setTasks((prev) => prev.filter((t) => t.id !== id));
@@ -410,6 +430,14 @@ function App({ demoMode = false }) {
               )}
             </button>
           )}
+          {!demoMode && userRole === 'admin' && (
+            <button
+              className={`nav-btn ${page === 'team' ? 'active' : ''}`}
+              onClick={() => setPage('team')}
+            >
+              Team
+            </button>
+          )}
           {!demoMode && (
             <>
               <span className="artist-nav-sep" aria-hidden="true" />
@@ -453,9 +481,11 @@ function App({ demoMode = false }) {
                   : applyStatus?.updated != null ? `${applyStatus.updated} updated`
                   : 'Apply Crew'}
               </button>
-              <button className="btn-primary" onClick={() => setShowForm(true)}>
-                + New
-              </button>
+              {userRole === 'admin' && (
+                <button className="btn-primary" onClick={() => setShowForm(true)}>
+                  + New
+                </button>
+              )}
             </>
           )}
           <button
@@ -490,11 +520,14 @@ function App({ demoMode = false }) {
             shows={shows}
             crew={crew}
             fieldTemplates={fieldTemplates}
-            onEdit={openEdit}
-            onDelete={deleteShow}
+            onEdit={userRole === 'admin' ? openEdit : null}
+            onDelete={userRole === 'admin' ? deleteShow : null}
             onUpdateShow={updateShow}
             artistId={currentArtist?.id || null}
+            readOnly={userRole !== 'admin'}
           />
+        ) : page === 'team' && userRole === 'admin' ? (
+          <TeamPanel artists={artists} />
         ) : page === 'tasks' ? (
           <GlobalTaskPanel
             tasks={tasks}
@@ -503,6 +536,7 @@ function App({ demoMode = false }) {
             onAdd={createTask}
             onToggle={toggleTask}
             onDelete={deleteTask}
+            onUpdate={updateTask}
           />
         ) : (
           <CrewManager
@@ -523,7 +557,7 @@ function App({ demoMode = false }) {
         )}
       </main>
 
-      {showForm && (
+      {showForm && userRole === 'admin' && (
         <ShowForm
           show={editingShow}
           crew={crew}

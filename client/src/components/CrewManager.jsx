@@ -175,7 +175,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
           </div>
         ) : (
           <div className="crew-groups">
-            {Object.entries(byRole).sort(([a], [b]) => a.localeCompare(b, 'he')).map(([role, members]) => (
+            {Object.entries(byRole).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([role, members]) => (
               <div key={role} className="crew-group" style={{ '--role-color': roleColor(role) }}>
                 <h3 className="crew-group-title">
                   <button
@@ -359,7 +359,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
           const fieldDefs = fieldTemplates[et] || [];
           const musicians = ids
             .map((id) => crew.find((m) => m.id === id))
-            .filter((m) => m && m.role === 'נגן')
+            .filter((m) => m && m.role === 'Musicians')
             .map((m) => m.name)
             .join(', ');
 
@@ -632,7 +632,7 @@ function CrewForm({ member, eventTypes, onSubmit, onClose }) {
             </div>
             <div className="form-group">
               <label>Role</label>
-              <input dir="auto" name="role" value={form.role} onChange={set} placeholder="הפקה, סאונד, בקליין, תאורה..." />
+              <input dir="auto" name="role" value={form.role} onChange={set} placeholder="Production, Sound, Backliners, Lighting, Musicians…" />
             </div>
             <div className="form-group">
               <label>Phone</label>

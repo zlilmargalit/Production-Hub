@@ -466,10 +466,37 @@ function slimShow(show) {
   return { ...show, customFields: slim };
 }
 
+// ── Team-member field filter ─────────────────────────────────────────────────
+// Strip sections that the admin has hidden from the team (visibleRubrics).
+// 'core' fields (id, name, date, venue, eventType, crewIds) are always returned.
+const RUBRIC_FIELDS = {
+  schedule:  ['schedule'],
+  logistics: ['transportation', 'parking', 'food', 'contacts'],
+  technical: ['lightingCoordinated', 'soundCoordinated', 'rentalNeeds', 'rentalSupplier'],
+  notes:     ['notes'],
+  budget:    ['budget'],
+};
+
+function filterShowForTeamMember(show, visibleRubrics) {
+  const allowed = new Set(['id', 'name', 'date', 'venue', 'eventType', 'type', 'crewIds', 'createdAt']);
+  for (const rubric of visibleRubrics) {
+    for (const field of RUBRIC_FIELDS[rubric] || []) allowed.add(field);
+  }
+  const result = {};
+  for (const [k, v] of Object.entries(show)) {
+    if (allowed.has(k)) result[k] = v;
+  }
+  return result;
+}
+
 // ─── CRUD routes ───────────────────────────────────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
-    res.json((await readShows(req.userId)).map(slimShow));
+    let shows = (await readShows(req.userId)).map(slimShow);
+    if (req.teamMemberView) {
+      shows = shows.map((s) => filterShowForTeamMember(s, req.visibleRubrics || []));
+    }
+    res.json(shows);
   } catch (err) { next(err); }
 });
 
@@ -479,11 +506,16 @@ router.get('/:id', async (req, res, next) => {
     const shows = await readShows(req.userId);
     const show = shows.find((s) => s.id === req.params.id);
     if (!show) return res.status(404).json({ error: 'Show not found' });
+    // Team members get filtered view
+    if (req.teamMemberView) {
+      return res.json(filterShowForTeamMember(show, req.visibleRubrics || []));
+    }
     res.json(show);
   } catch (err) { next(err); }
 });
 
 router.post('/', async (req, res, next) => {
+  if (req.teamMemberView) return res.status(403).json({ error: 'Read-only access' });
   try {
     const shows = await readShows(req.userId);
     const newShow = {
@@ -499,6 +531,7 @@ router.post('/', async (req, res, next) => {
 });
 
 router.put('/:id', async (req, res, next) => {
+  if (req.teamMemberView) return res.status(403).json({ error: 'Read-only access' });
   try {
     const shows = await readShows(req.userId);
     const idx = shows.findIndex((s) => s.id === req.params.id);
@@ -510,6 +543,7 @@ router.put('/:id', async (req, res, next) => {
 });
 
 router.delete('/:id', async (req, res, next) => {
+  if (req.teamMemberView) return res.status(403).json({ error: 'Read-only access' });
   try {
     const shows = await readShows(req.userId);
     await writeShows(req.userId, shows.filter((s) => s.id !== req.params.id));

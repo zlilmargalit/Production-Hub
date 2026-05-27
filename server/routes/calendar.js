@@ -234,7 +234,8 @@ router.post('/invite/:showId', async (req, res) => {
 
 // POST /api/calendar/insert-show-event
 // Creates (or updates) a Google Calendar event for a show, including the
-// schedule as description and assigned crew with emails as attendees.
+// schedule into the description of the existing (or new) calendar event.
+// Does NOT send invites, does NOT set location.
 router.post('/insert-show-event', async (req, res) => {
   if (!isConfigured()) {
     return res.status(503).json({ error: 'Google Calendar not configured. Run gmail-auth.js first.' });
@@ -249,50 +250,13 @@ router.post('/insert-show-event', async (req, res) => {
   if (!show) return res.status(404).json({ error: 'Show not found' });
   if (!show.date) return res.status(400).json({ error: 'Show has no date set' });
 
-  const crew = await readJsonCached(cacheKey(userId, 'crew'), dataPath(userId, 'crew.json'), []);
+  // Only the schedule goes into the event description — nothing else
+  const description = show.schedule || '';
 
-  // Build attendees from crew members that have email addresses
-  const attendees = (show.crewIds || [])
-    .map((id) => crew.find((m) => m.id === id))
-    .filter((m) => m && m.email)
-    .map((m) => ({ email: m.email, displayName: m.name }));
+  // Patch body — only update description, nothing else
+  const eventBody = { description };
 
-  // Try to parse first time from schedule text ("16:00", "08:30", etc.)
-  const timeMatch = (show.schedule || '').match(/\b(\d{1,2}):(\d{2})\b/);
-  let startDateTime, endDateTime;
-  const dateBase = show.date; // YYYY-MM-DD
-  if (timeMatch) {
-    const hh = timeMatch[1].padStart(2, '0');
-    const mm = timeMatch[2];
-    startDateTime = `${dateBase}T${hh}:${mm}:00+03:00`;
-    // Default duration: 3 hours
-    const endH = String((parseInt(hh, 10) + 3) % 24).padStart(2, '0');
-    endDateTime = `${dateBase}T${endH}:${mm}:00+03:00`;
-  }
-
-  // Build a structured description from all relevant show fields
-  const description = [
-    show.schedule    && `לו"ז:\n${show.schedule}`,
-    show.technicalCrew && `\nצוות טכני: ${show.technicalCrew}`,
-    show.transportation && `הסעה: ${show.transportation}`,
-    show.parking     && `חניה: ${show.parking}`,
-    show.food        && `אוכל: ${show.food}`,
-    show.contacts    && `אנשי קשר: ${show.contacts}`,
-    show.notes       && `\nהערות: ${show.notes}`,
-  ].filter(Boolean).join('\n');
-
-  const location = [show.venue, show.address].filter(Boolean).join(', ');
-
-  const eventBody = startDateTime
-    ? { summary: show.name, location, description,
-        start: { dateTime: startDateTime, timeZone: 'Asia/Jerusalem' },
-        end:   { dateTime: endDateTime,   timeZone: 'Asia/Jerusalem' },
-        attendees }
-    : { summary: show.name, location, description,
-        start: { date: dateBase },
-        end:   { date: dateBase },
-        attendees };
-
+  const dateBase   = show.date;
   const calendarId = getCalendarId();
 
   try {
@@ -306,25 +270,30 @@ router.post('/insert-show-event', async (req, res) => {
       result = await calendar.events.patch({
         calendarId,
         eventId:     existing.id,
-        sendUpdates: attendees.length > 0 ? 'all' : 'none',
+        sendUpdates: 'none',          // no invites
         requestBody: eventBody,
       });
       action = 'updated';
     } else {
+      // No matching event found — create a minimal all-day event with the schedule
       result = await calendar.events.insert({
         calendarId,
-        sendUpdates: attendees.length > 0 ? 'all' : 'none',
-        requestBody: eventBody,
+        sendUpdates: 'none',          // no invites
+        requestBody: {
+          summary:     show.name,
+          description,
+          start: { date: dateBase },
+          end:   { date: dateBase },
+        },
       });
       action = 'created';
     }
 
     res.json({
-      ok:            true,
+      ok:        true,
       action,
-      eventId:       result.data.id,
-      eventLink:     result.data.htmlLink,
-      attendeeCount: attendees.length,
+      eventId:   result.data.id,
+      eventLink: result.data.htmlLink,
     });
   } catch (err) {
     console.error('[calendar/insert-show-event]', err.message);

@@ -8,13 +8,15 @@ const path     = require('path');
 const os       = require('os');
 const chokidar = require('chokidar');
 const { v4: uuidv4 } = require('uuid');
+const { google } = require('googleapis');
 
 const {
   COOKIE_NAME, signToken, getAuthUser, checkAuthed,
   cookieOptions, verifyCredentials, hashPassword,
   loadUsers, saveUsers,
 } = require('./auth');
-const loginPage = require('./login-page');
+const loginPage  = require('./login-page');
+const invitePage = require('./invite-page');
 
 const artistsRouter       = require('./routes/artists');
 const showsRouter         = require('./routes/shows');
@@ -30,6 +32,82 @@ const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
 const { ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey } = require('./utils/userData');
+
+// ── Gmail credentials (for team notify) ─────────────────────────────────────
+const GMAIL_CREDENTIALS_PATH = path.join(__dirname, 'data/gmail-credentials.json');
+const GMAIL_TOKEN_PATH       = path.join(__dirname, 'data/gmail-token.json');
+
+function gmailConfigured() {
+  if (process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN) return true;
+  return fs.existsSync(GMAIL_CREDENTIALS_PATH) && fs.existsSync(GMAIL_TOKEN_PATH);
+}
+
+function getGmailOAuth() {
+  const creds = process.env.GMAIL_CREDENTIALS
+    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
+    : JSON.parse(fs.readFileSync(GMAIL_CREDENTIALS_PATH, 'utf8'));
+  const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
+  const auth = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+  const tokens = process.env.GMAIL_TOKEN
+    ? JSON.parse(process.env.GMAIL_TOKEN)
+    : JSON.parse(fs.readFileSync(GMAIL_TOKEN_PATH, 'utf8'));
+  auth.setCredentials(tokens);
+  return auth;
+}
+
+// Send email via Gmail API (already-authed OAuth client)
+async function sendGmail(to, subject, textBody) {
+  const auth  = getGmailOAuth();
+  const gmail = google.gmail({ version: 'v1', auth });
+  const raw   = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    textBody,
+  ].join('\r\n');
+  await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw: Buffer.from(raw).toString('base64url') },
+  });
+}
+
+// ── Team activity log ────────────────────────────────────────────────────────
+const ACTIVITY_FILE = path.join(__dirname, 'data/team-activity.json');
+
+function loadActivity() {
+  try { return JSON.parse(fs.readFileSync(ACTIVITY_FILE, 'utf8')); } catch { return []; }
+}
+function logActivity(userId, username, action, detail = '') {
+  if (!userId || userId === 'admin') return;
+  try {
+    const log = loadActivity();
+    log.unshift({ userId, username, action, detail, timestamp: new Date().toISOString() });
+    if (log.length > 500) log.length = 500;
+    fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(log, null, 2), 'utf8');
+  } catch { /* non-fatal */ }
+}
+
+// ── Invitation / team-settings paths ────────────────────────────────────────
+const INVITATIONS_FILE   = path.join(__dirname, 'data/invitations.json');
+const TEAM_SETTINGS_FILE = path.join(__dirname, 'data/team-settings.json');
+
+function loadInvitations() {
+  try { return JSON.parse(fs.readFileSync(INVITATIONS_FILE, 'utf8')); } catch { return []; }
+}
+function saveInvitations(list) {
+  fs.writeFileSync(INVITATIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+function loadTeamSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(TEAM_SETTINGS_FILE, 'utf8'));
+  } catch {
+    return { visibleRubrics: ['schedule', 'logistics', 'technical', 'notes'], userArtistAccess: {} };
+  }
+}
+function saveTeamSettings(settings) {
+  fs.writeFileSync(TEAM_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+}
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -69,6 +147,7 @@ app.post('/login', (req, res) => {
   const authUser = verifyCredentials(username, password);
   if (authUser) {
     res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
+    logActivity(authUser.userId, authUser.username, 'login', 'Signed in');
     return res.redirect('/');
   }
   res.status(401).type('html').send(loginPage({ error: true, username }));
@@ -143,6 +222,107 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// ── Invite-registration pages (public, before auth gate) ─────────────────────
+
+// GET /register?token=<uuid> — show invite registration form
+app.get('/register', (req, res) => {
+  if (checkAuthed(req)) return res.redirect('/');
+  const { token } = req.query;
+  if (!token) {
+    return res.type('html').send(invitePage({ error: 'No invitation token provided. Ask your admin for a fresh link.' }));
+  }
+  const invitations = loadInvitations();
+  const inv = invitations.find((i) => i.token === token);
+  if (!inv) {
+    return res.type('html').send(invitePage({ error: 'This invitation link is invalid or has already been used.' }));
+  }
+  if (new Date(inv.expiresAt) < new Date()) {
+    return res.type('html').send(invitePage({ error: 'This invitation link has expired. Ask your admin for a new one.' }));
+  }
+  res.type('html').send(invitePage({ token }));
+});
+
+// GET /api/invitations/validate?token=<uuid> — lightweight JSON check
+app.get('/api/invitations/validate', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ valid: false, error: 'token required' });
+  const inv = loadInvitations().find((i) => i.token === token);
+  if (!inv || inv.usedBy) return res.json({ valid: false });
+  if (new Date(inv.expiresAt) < new Date()) return res.json({ valid: false, error: 'expired' });
+  res.json({ valid: true });
+});
+
+// POST /api/auth/register-invite — complete registration via invite token
+app.post('/api/auth/register-invite', async (req, res) => {
+  try {
+    const { token, username, password, password2, email } = req.body || {};
+
+    if (!token) {
+      return res.status(400).type('html').send(invitePage({ error: 'Missing invitation token.' }));
+    }
+
+    const invitations = loadInvitations();
+    const inv = invitations.find((i) => i.token === token);
+    if (!inv) {
+      return res.status(400).type('html').send(invitePage({ error: 'Invalid or already-used invitation link.' }));
+    }
+    if (new Date(inv.expiresAt) < new Date()) {
+      return res.status(400).type('html').send(invitePage({ token, error: 'Invitation has expired.' }));
+    }
+    if (inv.usedBy) {
+      return res.status(400).type('html').send(invitePage({ error: 'This invitation has already been used.' }));
+    }
+
+    if (!username || !password) {
+      return res.status(400).type('html').send(invitePage({ token, username, error: 'Username and password are required.' }));
+    }
+    if (password !== password2) {
+      return res.status(400).type('html').send(invitePage({ token, username, error: 'Passwords do not match.' }));
+    }
+    if (password.length < 6) {
+      return res.status(400).type('html').send(invitePage({ token, username, error: 'Password must be at least 6 characters.' }));
+    }
+    if (!/^[a-zA-Z0-9_\-]+$/.test(username)) {
+      return res.status(400).type('html').send(invitePage({ token, username, error: 'Username may only contain letters, numbers, _ and -' }));
+    }
+    if (username === AUTH_USER) {
+      return res.status(409).type('html').send(invitePage({ token, username, error: 'Username already taken.' }));
+    }
+
+    const users = loadUsers();
+    if (users.find((u) => u.username === username)) {
+      return res.status(409).type('html').send(invitePage({ token, username, error: 'Username already taken.' }));
+    }
+
+    // Create guest user (lowest privilege)
+    const newUser = {
+      id:           uuidv4(),
+      username,
+      email:        email?.trim() || null,
+      passwordHash: hashPassword(password),
+      role:         'guest',
+      createdAt:    new Date().toISOString(),
+    };
+    users.push(newUser);
+    saveUsers(users);
+    await ensureUserDir(newUser.id);
+
+    // Mark token as used
+    inv.usedBy = newUser.id;
+    inv.usedAt = new Date().toISOString();
+    saveInvitations(invitations);
+
+    // Auto-login + log
+    const authUser = { userId: newUser.id, username, role: 'guest' };
+    res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
+    logActivity(newUser.id, username, 'register', 'Joined via invite link');
+    return res.redirect('/');
+  } catch (err) {
+    console.error('[register-invite]', err.message);
+    res.status(500).type('html').send(invitePage({ error: 'Registration failed — please try again.' }));
+  }
+});
+
 // Demo mode — serve the React app with window.__DEMO__ injected (no auth)
 app.get('/demo', (req, res) => {
   try {
@@ -199,7 +379,7 @@ app.get('/api/me', (req, res) => {
 // ── Admin-only: user management ───────────────────────────────────────────────
 app.get('/api/users', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const users = loadUsers().map(({ id, username, role, createdAt }) => ({ id, username, role, createdAt }));
+  const users = loadUsers().map(({ id, username, email, role, createdAt }) => ({ id, username, email: email || null, role, createdAt }));
   res.json(users);
 });
 
@@ -211,6 +391,76 @@ app.delete('/api/users/:id', async (req, res) => {
   users.splice(idx, 1);
   saveUsers(users);
   res.status(204).send();
+});
+
+// ── Admin: team settings (RBAC) ───────────────────────────────────────────────
+app.get('/api/admin/settings', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  res.json(loadTeamSettings());
+});
+
+app.post('/api/admin/settings', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { visibleRubrics, userArtistAccess } = req.body || {};
+  const current = loadTeamSettings();
+  const updated = {
+    visibleRubrics:   Array.isArray(visibleRubrics)   ? visibleRubrics   : current.visibleRubrics,
+    userArtistAccess: userArtistAccess && typeof userArtistAccess === 'object'
+      ? userArtistAccess : current.userArtistAccess,
+  };
+  saveTeamSettings(updated);
+  res.json({ ok: true, settings: updated });
+});
+
+// ── Admin: invitation management ─────────────────────────────────────────────
+app.get('/api/invitations', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  // Return all invitations, enriching usedBy with username for display
+  const invitations = loadInvitations();
+  const users       = loadUsers();
+  const result = invitations.map((inv) => {
+    const usedByUser = inv.usedBy ? users.find((u) => u.id === inv.usedBy) : null;
+    return { ...inv, usedByUsername: usedByUser?.username || null };
+  });
+  res.json(result);
+});
+
+app.post('/api/invitations/generate', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const token      = uuidv4();
+  const expiresAt  = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
+  const invitation = { token, createdAt: new Date().toISOString(), expiresAt, usedBy: null };
+  const invitations = loadInvitations();
+  invitations.push(invitation);
+  saveInvitations(invitations);
+  const link = `${req.protocol}://${req.get('host')}/register?token=${token}`;
+  res.json({ ok: true, token, link, expiresAt });
+});
+
+app.delete('/api/invitations/:token', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const invitations = loadInvitations();
+  const filtered = invitations.filter((i) => i.token !== req.params.token);
+  if (filtered.length === invitations.length) return res.status(404).json({ error: 'Not found' });
+  saveInvitations(filtered);
+  res.status(204).send();
+});
+
+// ── Team member: accessible artists ──────────────────────────────────────────
+// Non-admin users call this to discover which admin artists they can view.
+app.get('/api/team/artists', async (req, res) => {
+  if (req.userRole === 'admin') return res.json([]);
+  const settings      = loadTeamSettings();
+  const permittedIds  = (settings.userArtistAccess || {})[req.userId] || [];
+  if (!permittedIds.length) return res.json([]);
+  // Load admin's artists list
+  const adminArtists = await readJsonCached(
+    udCacheKey('admin', 'artists'),
+    udDataPath('admin', 'artists.json'),
+    []
+  );
+  const permitted = adminArtists.filter((a) => permittedIds.includes(a.id));
+  res.json(permitted);
 });
 
 // ── Artist management (uses real req.userId — must be before scope middleware) ─
@@ -235,6 +485,75 @@ app.use('/api', async (req, res, next) => {
       req.userId = `${req.userId}__art__${artistId}`;
     }
   } catch { /* leave req.userId unchanged on any read error */ }
+  next();
+});
+
+// ── Team: activity log ───────────────────────────────────────────────────────
+app.get('/api/team/activity', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  res.json(loadActivity());
+});
+
+// ── Team: notify (broadcast email to team members with email on file) ─────────
+app.post('/api/team/notify', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { subject, message } = req.body || {};
+  if (!message?.trim()) return res.status(400).json({ error: 'Message required' });
+
+  const users      = loadUsers();
+  const recipients = users.filter((u) => u.email && u.email.includes('@'));
+  if (!recipients.length) {
+    return res.status(400).json({ error: 'No team members have an email address on file.' });
+  }
+  if (!gmailConfigured()) {
+    return res.status(503).json({ error: 'Gmail not configured on this server.' });
+  }
+
+  const emailSubject = subject?.trim() || 'Message from Production Hub';
+  const results = [];
+  for (const u of recipients) {
+    try {
+      await sendGmail(u.email, emailSubject, message.trim());
+      results.push({ username: u.username, email: u.email, ok: true });
+    } catch (e) {
+      results.push({ username: u.username, email: u.email, ok: false, error: e.message });
+    }
+  }
+  const sent   = results.filter((r) => r.ok).length;
+  const failed = results.filter((r) => !r.ok).length;
+  logActivity('admin', 'admin', 'notify', `Sent "${emailSubject}" to ${sent} member(s)`);
+  res.json({ ok: true, sent, failed, results });
+});
+
+// ── Admin: patch user email / role ───────────────────────────────────────────
+app.patch('/api/users/:id', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { email, role } = req.body || {};
+  const users = loadUsers();
+  const user  = users.find((u) => u.id === req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (email !== undefined) user.email = email?.trim() || null;
+  if (role  !== undefined && ['guest', 'user'].includes(role)) user.role = role;
+  saveUsers(users);
+  res.json({ ok: true, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+});
+
+// ── Team-access middleware ────────────────────────────────────────────────────
+// For non-admin users that carry ?artistId: if the admin has granted this user
+// access to that artist, rewrite req.userId to admin__art__<artistId> so they
+// read from the admin's data.  Sets req.teamMemberView = true so downstream
+// routes can strip fields that the team-settings hide.
+app.use('/api', (req, res, next) => {
+  if (req.userRole === 'admin') return next();
+  const artistId = req.query.artistId;
+  if (!artistId) return next();
+  const settings     = loadTeamSettings();
+  const permittedIds = (settings.userArtistAccess || {})[req.userId] || [];
+  if (permittedIds.includes(artistId)) {
+    req.userId         = `admin__art__${artistId}`;
+    req.teamMemberView = true;
+    req.visibleRubrics = settings.visibleRubrics || [];
+  }
   next();
 });
 

@@ -274,7 +274,7 @@
     "venue": "זאפה חיפה",
     "address": "",
     "parking": "",
-    "technicalCrew": "הפקה – צליל מרגלית | סאונד – יובל חרמוני | נגן – אורי קוטנר | נגן – סטלה גוטשטיין | נגן – טויאש | נגן – שלומי מאיה | תאורה – שטרקר | בקליין – נעם מויאל",
+    "technicalCrew": "הפקה – צליל מרגלית | נגן – אורי קוטנר | נגן – סטלה גוטשטיין | נגן – טויאש | נגן – שלומי מאיה | תאורה – שטרקר | בקליין – נעם מויאל | סאונד – אדיר דדיה",
     "transportation": "",
     "schedule": "",
     "contacts": "",
@@ -301,14 +301,16 @@
     "createdAt": "2026-02-22T13:22:58.000Z",
     "crewIds": [
       "f1ca3651-b918-4b64-8ec7-0c4a75175cdc",
-      "d1733923-7d83-44bf-b42d-77a1f93e3edf",
       "97c766d9-75d4-40b0-8ebb-169b1cad7d54",
       "2532d85e-8ae2-4717-ab42-e47083aaa0ba",
       "374d9426-c312-42ae-ad6a-f6a5010d6a60",
       "aeec7ad2-f767-46d4-a7f2-a1d0647c7d40",
       "9fedd3e2-6455-4ce0-8f71-574818306482",
-      "8813d8b4-aefe-4e66-a55c-46a6d0c26fd2"
-    ]
+      "8813d8b4-aefe-4e66-a55c-46a6d0c26fd2",
+      "ab86539e-e968-4a6c-8abb-3c8c316494e7"
+    ],
+    "customFields": {},
+    "pdfFields": {}
   },
   {
     "id": "recnBj2JtObPBJhsw",
@@ -530,7 +532,11 @@
       "8813d8b4-aefe-4e66-a55c-46a6d0c26fd2"
     ],
     "customFields": {},
-    "pdfFields": {}
+    "pdfFields": {},
+    "lightingCoordinated": false,
+    "soundCoordinated": false,
+    "rentalNeeds": "",
+    "rentalSupplier": ""
   },
   {
     "id": "recbEEE9tJZQeXtex",
