@@ -124,7 +124,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
       <div className="show-card-header">
         <div className="show-card-title">
           {show.eventType && <div className="show-card-type" dir="auto">{show.eventType}</div>}
-          <h2 lang={isHebrew}>{show.name}</h2>
+          <h2 lang={isHebrew} dir={isHebrew === 'he' ? 'rtl' : 'ltr'}>{show.name}</h2>
           <div className="show-meta">
             {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
             {show.venue && <span className="meta-item" dir="auto">{show.venue}</span>}
