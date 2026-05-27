@@ -64,11 +64,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
         setBriefStatus('error');
         setBriefError(data.error || 'Brief creation failed');
       }
-      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
+      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 2000);
     } catch (e) {
       setBriefStatus('error');
       setBriefError(e.message || 'Network error');
-      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
+      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 2000);
     }
   };
 
@@ -81,7 +81,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
         const data = await res.json().catch(() => ({}));
         setPdfStatus('error');
         setPdfError(data.details || data.error || 'PDF generation failed');
-        setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 5000);
+        setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 2000);
         return;
       }
       const ct = res.headers.get('content-type') || '';
@@ -95,11 +95,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
       setPdfStatus('saved');
-      setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 5000);
+      setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 2000);
     } catch (e) {
       setPdfStatus('error');
       setPdfError(e.message || 'Network error');
-      setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 5000);
+      setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 2000);
     }
   };
 

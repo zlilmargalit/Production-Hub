@@ -816,9 +816,9 @@ body {
 /* Show name — display-scale, editorial, always right-aligned */
 .show-card-title h2 {
   font-family: 'Bricolage Grotesque', 'Assistant', 'Heebo', sans-serif;
-  font-size: 2.4rem;
+  font-size: clamp(1.2rem, 4vw, 1.75rem);
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: var(--text);
   line-height: 1.02;
   margin-bottom: 16px;
@@ -2329,7 +2329,7 @@ body {
   .shows-grid { grid-template-columns: 1fr; gap: 12px; }
 
   .show-card-header { padding: 18px 16px 14px; }
-  .show-card-title h2 { font-size: 1rem; white-space: normal; }
+  .show-card-title h2 { white-space: normal; }
   .show-details { padding: 16px 16px 18px; }
   .details-grid { grid-template-columns: 1fr; gap: 14px; }
 
