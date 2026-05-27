@@ -202,71 +202,17 @@ async function createBriefDoc(payload, imageUrl) {
   await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: replaceRequests } });
 
   if (imageUrl) {
-    const RATIO = 360 / 252;
-    const MAX_H = 400, MIN_H = 40;
-
-    const countPdfPages = (buf) => {
-      const s = Buffer.from(buf).toString('latin1');
-      return Math.max(1, (s.match(/\/Type\s*\/Page[^s]/g) || []).length);
-    };
-
-let insertedObjId = null;
-
-    const doInsert = async (h) => {
-      const resp = await docs.documents.batchUpdate({
-        documentId: docId,
-        requestBody: { requests: [{ insertInlineImage: {
-          uri: imageUrl, endOfSegmentLocation: { segmentId: '' },
-          objectSize: {
-            width:  { magnitude: Math.min(Math.round(h * RATIO), 450), unit: 'PT' },
-            height: { magnitude: h, unit: 'PT' },
-          },
-        }}] },
-      });
-      insertedObjId = resp.data.replies?.[0]?.insertInlineImage?.objectId || null;
-    };
-
-    // Resize in-place — avoids deleteContentRange touching the terminal newline.
-    const doResize = async (h) => {
-      if (!insertedObjId) return;
-      await docs.documents.batchUpdate({
-        documentId: docId,
-        requestBody: { requests: [{ updateInlineObjectProperties: {
-          objectId: insertedObjId,
-          inlineObjectProperties: {
-            embeddedObject: {
-              size: {
-                width:  { magnitude: Math.min(Math.round(h * RATIO), 450), unit: 'PT' },
-                height: { magnitude: h, unit: 'PT' },
-              },
-            },
-          },
-          fields: 'embeddedObject.size',
-        }}] },
-      });
-    };
-
-    const exportPages = async () => countPdfPages(
-      (await drive.files.export(
-        { fileId: docId, mimeType: 'application/pdf' },
-        { responseType: 'arraybuffer' }
-      )).data
-    );
-
-    // ── Step 1: trim trailing blank paragraphs (isolated — never blocks image insertion) ──
+    // ── Step 1: trim trailing blank paragraphs ────────────────────────────────
     try {
       const preDoc = (await docs.documents.get({ documentId: docId })).data;
       const bodyEls = preDoc.body?.content || [];
       const trailingEmpties = [];
-      // The very last body element contains the document's terminal newline which cannot
-      // be deleted. We skip the last paragraph to avoid "range cannot include the newline
-      // at the end of the segment" errors.
       const lastParaIdx = [...bodyEls].reverse().findIndex(el => el.paragraph);
       const skipEndIdx  = lastParaIdx >= 0 ? bodyEls.length - 1 - lastParaIdx : -1;
       for (let i = bodyEls.length - 1; i >= 0; i--) {
         const el = bodyEls[i];
         if (!el.paragraph) break;
-        if (i === skipEndIdx) continue; // never delete the terminal paragraph
+        if (i === skipEndIdx) continue;
         const hasContent = (el.paragraph.elements || []).some(e =>
           e.inlineObjectElement || (e.textRun?.content || '').trim()
         );
@@ -285,47 +231,110 @@ let insertedObjId = null;
       console.warn('[brief] Trailing blank removal skipped (non-fatal):', e.message);
     }
 
-    // ── Step 2: insert & size the image ──────────────────────────────────────────
+    // ── Step 2: measure page + find last text Y, then insert at computed size ──
     try {
-      let availablePt = null;
-      try {
-        const textPdfStr = Buffer.from(
-          (await drive.files.export(
+      // Helpers
+      const toPT = (dim) => {
+        if (!dim) return null;
+        const { magnitude: v, unit } = dim;
+        if (unit === 'MM')   return v * 2.8346;
+        if (unit === 'INCH') return v * 72;
+        return v; // PT or unspecified
+      };
+      const countPdfPages = (buf) => {
+        const s = Buffer.from(buf).toString('latin1');
+        return Math.max(1, (s.match(/\/Type\s*\/Page[^s]/g) || []).length);
+      };
+
+      // Read document style for page geometry
+      const docMeta = (await docs.documents.get({ documentId: docId })).data;
+      const ds = docMeta.documentStyle || {};
+      const pageW  = toPT(ds.pageSize?.width)  || 595.28;
+      const marginB = toPT(ds.marginBottom)     || 72;
+      const marginL = toPT(ds.marginLeft)       || 72;
+      const marginR = toPT(ds.marginRight)      || 72;
+      const usableW = pageW - marginL - marginR;
+
+      // Export text-only PDF to find lowest text baseline (= last line of content)
+      const pdfBuf = Buffer.from(
+        (await drive.files.export(
+          { fileId: docId, mimeType: 'application/pdf' },
+          { responseType: 'arraybuffer' }
+        )).data
+      );
+      const pdfStr = pdfBuf.toString('latin1');
+
+      // PDF Tm: tx ty are columns 5-6 (0-indexed) of the text matrix
+      const tmRe = /([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+Tm/g;
+      let lastTextY = Infinity; // lowest Y (= last line; PDF Y-axis grows upward)
+      let mp;
+      while ((mp = tmRe.exec(pdfStr)) !== null) {
+        const y = parseFloat(mp[6]);
+        if (y > marginB && y < lastTextY) lastTextY = y;
+      }
+
+      // Space from last text baseline to bottom margin (this is what the image must fit into)
+      const SPACE_ABOVE = 16; // pt gap between last-text and image top
+      const SPACE_BELOW = 10; // pt gap between image bottom and bottom margin
+      const SAFETY      = 8;  // extra cushion so rounding never overflows
+
+      const RATIO = 360 / 252; // image width/height ratio
+
+      let targetH;
+      if (lastTextY < Infinity) {
+        const available = lastTextY - marginB - SPACE_ABOVE - SPACE_BELOW - SAFETY;
+        const maxHFromWidth = usableW / RATIO;
+        targetH = Math.min(Math.max(Math.round(available), 40), Math.round(maxHFromWidth));
+        console.log(`[brief] lastTextY=${Math.round(lastTextY)}pt marginB=${marginB}pt available=${Math.round(available)}pt → targetH=${targetH}pt`);
+      } else {
+        targetH = 160; // fallback
+        console.log('[brief] No text Y found; fallback targetH=160pt');
+      }
+
+      const targetW = Math.min(Math.round(targetH * RATIO), Math.round(usableW));
+
+      // Insert at the pre-calculated size (single API call — no loop)
+      const insertResp = await docs.documents.batchUpdate({
+        documentId: docId,
+        requestBody: { requests: [{ insertInlineImage: {
+          uri: imageUrl,
+          endOfSegmentLocation: { segmentId: '' },
+          objectSize: {
+            width:  { magnitude: targetW,  unit: 'PT' },
+            height: { magnitude: targetH, unit: 'PT' },
+          },
+        }}] },
+      });
+      const insertedObjId = insertResp.data.replies?.[0]?.insertInlineImage?.objectId || null;
+      console.log(`[brief] Inserted image ${targetW}×${targetH}pt objId=${insertedObjId}`);
+
+      // Verification: if still > 1 page, shrink 25% via updateInlineObjectProperties
+      if (insertedObjId) {
+        const pages = await (async () => countPdfPages(
+          Buffer.from((await drive.files.export(
             { fileId: docId, mimeType: 'application/pdf' },
             { responseType: 'arraybuffer' }
-          )).data
-        ).toString('latin1');
-        const tmRe = /([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+Tm/g;
-        let minY = Infinity, m;
-        while ((m = tmRe.exec(textPdfStr)) !== null) {
-          const y = parseFloat(m[6]);
-          if (y > 80 && y < minY) minY = y;
-        }
-        if (minY < Infinity) {
-          availablePt = Math.max(0, minY - 72);
-          console.log(`[brief] Available for image: ~${Math.round(availablePt)}pt (lastTextY≈${Math.round(minY)})`);
-        }
-      } catch (_) { /* non-fatal */ }
-
-      let lo = MIN_H, hi = MAX_H, cur = MAX_H;
-      await doInsert(cur);
-      for (let i = 0; i < 5; i++) {
-        const pages = await exportPages();
-        if (pages <= 1) {
-          lo = cur;
-          if (hi - lo <= 15) break;
-          const next = Math.round((lo + hi) / 2);
-          if (next === cur) break;
-          cur = next; await doResize(cur);
-        } else {
-          hi = cur - 1;
-          if (hi < lo) { cur = MIN_H; await doResize(cur); break; }
-          const next = Math.round((lo + hi) / 2);
-          cur = next; await doResize(cur);
+          )).data)
+        ))();
+        if (pages > 1) {
+          const shrunkH = Math.max(40, Math.round(targetH * 0.72));
+          const shrunkW = Math.min(Math.round(shrunkH * RATIO), Math.round(usableW));
+          await docs.documents.batchUpdate({
+            documentId: docId,
+            requestBody: { requests: [{ updateInlineObjectProperties: {
+              objectId: insertedObjId,
+              inlineObjectProperties: { embeddedObject: { size: {
+                width:  { magnitude: shrunkW, unit: 'PT' },
+                height: { magnitude: shrunkH, unit: 'PT' },
+              }}},
+              fields: 'embeddedObject.size',
+            }}] },
+          });
+          console.log(`[brief] Verification shrink ${targetH}→${shrunkH}pt`);
         }
       }
-      console.log(`[brief] Final image height: ${cur}pt`);
 
+      // Center-align the image paragraph; space above = SPACE_ABOVE
       const finalDoc = (await docs.documents.get({ documentId: docId })).data;
       let imgParaStart = -1, imgParaEnd = -1;
       for (const el of [...(finalDoc.body?.content || [])].reverse()) {
@@ -336,29 +345,24 @@ let insertedObjId = null;
         }
       }
       if (imgParaStart !== -1) {
-        const spaceAbove = (availablePt !== null && availablePt > cur)
-          ? Math.max(8, Math.round((availablePt - cur) / 2))
-          : 12;
-
         await docs.documents.batchUpdate({
           documentId: docId,
-          requestBody: {
-            requests: [{
-              updateParagraphStyle: {
-                range: { startIndex: imgParaStart, endIndex: imgParaEnd },
-                paragraphStyle: {
-                  alignment: 'CENTER',
-                  spaceAbove: { magnitude: spaceAbove, unit: 'PT' },
-                },
-                fields: 'alignment,spaceAbove',
+          requestBody: { requests: [{
+            updateParagraphStyle: {
+              range: { startIndex: imgParaStart, endIndex: imgParaEnd },
+              paragraphStyle: {
+                alignment: 'CENTER',
+                spaceAbove: { magnitude: SPACE_ABOVE, unit: 'PT' },
+                spaceBelow: { magnitude: 0, unit: 'PT' },
               },
-            }],
-          },
+              fields: 'alignment,spaceAbove,spaceBelow',
+            },
+          }] },
         });
-        console.log(`[brief] Image centered: spaceAbove=${spaceAbove}pt`);
+        console.log(`[brief] Image paragraph centered, spaceAbove=${SPACE_ABOVE}pt`);
       }
     } catch (e) {
-      console.error('[brief] Image page-fit failed (non-fatal):', e.message);
+      console.error('[brief] Image insertion failed (non-fatal):', e.message);
     }
   }
 
