@@ -294,10 +294,10 @@ async function createBriefDoc(payload, imageUrl) {
       console.log(`[brief] lastTextY=${Math.round(lastTextY)}pt  usableW=${Math.round(usableW)}pt`);
 
       // ── Available space below last body-text line ──
-      // We'll fill ~92% of it so there's a small cushion at top & bottom.
+      // Reserve OVERHEAD pt for the terminal newline paragraph + rounding safety.
       const available = lastTextY - marginB;
-      const fillRatio = 0.92;
-      const maxH = Math.max(40, Math.round(available * fillRatio));
+      const OVERHEAD = 30; // terminal newline paragraph height (~15pt) + safety buffer
+      const maxH = Math.max(40, available - OVERHEAD);
 
       // ── Fetch actual image AR from Drive so sizing is exact ──
       let imgAR = null;
@@ -333,8 +333,8 @@ async function createBriefDoc(payload, imageUrl) {
       displayH = Math.max(displayH, 40);
       displayW = Math.max(displayW, 40);
 
-      // ── Vertical centering: distribute empty space equally above & below ──
-      const spaceAbove = Math.max(8, Math.round((available - displayH) / 2));
+      // ── Vertical centering: distribute remaining space equally above & below ──
+      const spaceAbove = Math.max(8, Math.round((available - OVERHEAD - displayH) / 2));
       console.log(`[brief] available=${Math.round(available)}pt displayH=${displayH}pt spaceAbove=${spaceAbove}pt`);
 
       // ── Insert at computed size (single call — no loop) ──
@@ -352,8 +352,20 @@ async function createBriefDoc(payload, imageUrl) {
       const insertedObjId = insertResp.data.replies?.[0]?.insertInlineImage?.objectId || null;
       console.log(`[brief] Inserted image ${displayW}×${displayH}pt objId=${insertedObjId}`);
 
-      // ── Safety check: if still > 1 page, shrink 25% ──
-      if (insertedObjId) {
+      // ── Find image paragraph position ──
+      const postInsertDoc = (await docs.documents.get({ documentId: docId })).data;
+      let imgParaStart = -1, imgParaEnd = -1;
+      for (const el of [...(postInsertDoc.body?.content || [])].reverse()) {
+        if (el.paragraph && (el.paragraph.elements || []).some(e => e.inlineObjectElement)) {
+          imgParaStart = el.startIndex;
+          imgParaEnd   = el.endIndex;
+          break;
+        }
+      }
+
+      // ── Safety check: if still > 1 page, delete & reinsert at 75% size ──
+      // (updateInlineObjectProperties is rejected by the API, so we do delete+reinsert)
+      if (imgParaStart !== -1) {
         const pageCount = countPdfPages(Buffer.from(
           (await drive.files.export(
             { fileId: docId, mimeType: 'application/pdf' },
@@ -361,31 +373,30 @@ async function createBriefDoc(payload, imageUrl) {
           )).data
         ));
         if (pageCount > 1) {
-          const sh = Math.max(40, Math.round(displayH * 0.72));
-          const sw = Math.max(40, Math.round(displayW * 0.72));
+          const sh = Math.max(40, Math.round(displayH * 0.75));
+          const sw = Math.max(40, Math.round(displayW * 0.75));
+          // Delete just the image character (not the paragraph mark — safe)
           await docs.documents.batchUpdate({
             documentId: docId,
-            requestBody: { requests: [{ updateInlineObjectProperties: {
-              objectId: insertedObjId,
-              inlineObjectProperties: { embeddedObject: { size: {
-                width:  { magnitude: sw, unit: 'PT' },
-                height: { magnitude: sh, unit: 'PT' },
-              }}},
-              fields: 'embeddedObject.size',
+            requestBody: { requests: [{ deleteContentRange: {
+              range: { startIndex: imgParaStart, endIndex: imgParaStart + 1 },
             }}] },
           });
-          console.log(`[brief] Safety shrink ${displayH}→${sh}pt`);
-        }
-      }
-
-      // ── Center-align image paragraph; set spaceAbove for vertical centering ──
-      const finalDoc = (await docs.documents.get({ documentId: docId })).data;
-      let imgParaStart = -1, imgParaEnd = -1;
-      for (const el of [...(finalDoc.body?.content || [])].reverse()) {
-        if (el.paragraph && (el.paragraph.elements || []).some(e => e.inlineObjectElement)) {
-          imgParaStart = el.startIndex;
-          imgParaEnd   = el.endIndex;
-          break;
+          // Re-insert into the now-empty paragraph at the same position
+          await docs.documents.batchUpdate({
+            documentId: docId,
+            requestBody: { requests: [{ insertInlineImage: {
+              uri: imageUrl,
+              location: { index: imgParaStart },
+              objectSize: {
+                width:  { magnitude: sw, unit: 'PT' },
+                height: { magnitude: sh, unit: 'PT' },
+              },
+            }}] },
+          });
+          displayH = sh;
+          displayW = sw;
+          console.log(`[brief] Safety shrink → ${sw}×${sh}pt`);
         }
       }
       if (imgParaStart !== -1) {
