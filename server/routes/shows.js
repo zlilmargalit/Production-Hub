@@ -67,33 +67,77 @@ async function uploadDataUrlToDrive(dataUrl, filename) {
 }
 
 // Convert a PDF data-URL to a PNG data-URL (first page only).
-// macOS: sips  |  Linux: pdftoppm (poppler-utils)
+// Tries three methods in order:
+//   1. pdftoppm (poppler) — cross-platform; on Railway always available
+//   2. sips — macOS built-in, works for most PDFs
+//   3. Puppeteer screenshot — guaranteed fallback on any platform
 async function pdfDataUrlToPng(pdfDataUrl) {
-  try {
-    const base64 = pdfDataUrl.split(',')[1];
-    if (!base64) return null;
-    const stamp      = Date.now();
-    const tmpPdf     = path.join(os.tmpdir(), `hub-pdf-${stamp}.pdf`);
-    const tmpPngBase = path.join(os.tmpdir(), `hub-pdf-${stamp}`);
-    await fsp.writeFile(tmpPdf, Buffer.from(base64, 'base64'));
+  const base64 = pdfDataUrl.split(',')[1];
+  if (!base64) return null;
 
-    let pngB64;
-    if (process.platform === 'darwin') {
-      const tmpPng = tmpPngBase + '.png';
-      await execFileP('sips', ['-s', 'format', 'png', tmpPdf, '--out', tmpPng], { timeout: 15000 });
-      pngB64 = (await fsp.readFile(tmpPng)).toString('base64');
-      await fsp.unlink(tmpPng).catch(() => {});
-    } else {
-      await execFileP('pdftoppm', ['-png', '-singlefile', '-r', '150', tmpPdf, tmpPngBase], { timeout: 15000 });
-      const tmpPng = tmpPngBase + '.png';
+  const stamp      = Date.now();
+  const tmpPdf     = path.join(os.tmpdir(), `hub-pdf-${stamp}.pdf`);
+  const tmpPngBase = path.join(os.tmpdir(), `hub-pdf-${stamp}-out`);
+  await fsp.writeFile(tmpPdf, Buffer.from(base64, 'base64'));
+
+  let pngB64 = null;
+
+  // ── 1. pdftoppm (poppler) ────────────────────────────────────────────
+  try {
+    await execFileP(
+      'pdftoppm',
+      ['-png', '-r', '150', '-f', '1', '-l', '1', tmpPdf, tmpPngBase],
+      { timeout: 15000 },
+    );
+    // pdftoppm names outputs: base-1.png / base-01.png / base-001.png etc.
+    const dir  = path.dirname(tmpPngBase);
+    const base = path.basename(tmpPngBase);
+    const hits = (await fsp.readdir(dir)).filter(f => f.startsWith(base) && f.endsWith('.png'));
+    if (hits.length > 0) {
+      const tmpPng = path.join(dir, hits[0]);
       pngB64 = (await fsp.readFile(tmpPng)).toString('base64');
       await fsp.unlink(tmpPng).catch(() => {});
     }
-    await fsp.unlink(tmpPdf).catch(() => {});
-    return `data:image/png;base64,${pngB64}`;
-  } catch {
+  } catch { /* pdftoppm not installed or failed */ }
+
+  // ── 2. sips (macOS built-in) ─────────────────────────────────────────
+  if (!pngB64 && process.platform === 'darwin') {
+    try {
+      const tmpPng = tmpPngBase + '-sips.png';
+      await execFileP('sips', ['-s', 'format', 'png', tmpPdf, '--out', tmpPng], { timeout: 15000 });
+      pngB64 = (await fsp.readFile(tmpPng)).toString('base64');
+      await fsp.unlink(tmpPng).catch(() => {});
+    } catch { /* sips failed */ }
+  }
+
+  // ── 3. Puppeteer screenshot ──────────────────────────────────────────
+  // Chrome's built-in PDF viewer renders the PDF; we screenshot page 1.
+  if (!pngB64) {
+    try {
+      const { getBrowser } = require('../pdf');
+      const browser = await getBrowser();
+      const page    = await browser.newPage();
+      try {
+        await page.setViewport({ width: 1240, height: 1754 }); // A4 at ~150 dpi
+        await page.goto(pdfDataUrl, { waitUntil: 'load', timeout: 30000 });
+        await new Promise(r => setTimeout(r, 800)); // wait for PDF viewer to paint
+        const shot = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 1240, height: 1754 } });
+        pngB64 = Buffer.from(shot).toString('base64');
+      } finally {
+        await page.close().catch(() => {});
+      }
+    } catch (e) {
+      console.error('[pdfDataUrlToPng] Puppeteer fallback failed:', e.message);
+    }
+  }
+
+  await fsp.unlink(tmpPdf).catch(() => {});
+
+  if (!pngB64) {
+    console.warn('[pdfDataUrlToPng] all conversion methods failed — image will be omitted');
     return null;
   }
+  return `data:image/png;base64,${pngB64}`;
 }
 
 // Find-or-create the "הפקות" folder in Drive; returns its ID.
