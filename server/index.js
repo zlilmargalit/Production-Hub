@@ -16,6 +16,7 @@ const {
 } = require('./auth');
 const loginPage = require('./login-page');
 
+const artistsRouter       = require('./routes/artists');
 const showsRouter         = require('./routes/shows');
 const documentsRouter     = require('./routes/documents');
 const crewRouter          = require('./routes/crew');
@@ -27,7 +28,7 @@ const calendarRouter      = require('./routes/calendar');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
-const { ensureUserDir } = require('./utils/userData');
+const { ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey } = require('./utils/userData');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -209,6 +210,31 @@ app.delete('/api/users/:id', async (req, res) => {
   users.splice(idx, 1);
   saveUsers(users);
   res.status(204).send();
+});
+
+// ── Artist management (uses real req.userId — must be before scope middleware) ─
+app.use('/api/artists', artistsRouter);
+
+// ── Artist-scope middleware ───────────────────────────────────────────────────
+// If a request carries ?artistId=<id>, verify it belongs to the current user
+// and rewrite req.userId to the compound scoped key so every downstream route
+// automatically reads/writes artist-isolated data without any route changes.
+app.use('/api', async (req, res, next) => {
+  const artistId = req.query.artistId;
+  if (!artistId) return next();
+  // Never scope the artists-management routes themselves
+  if (req.originalUrl.startsWith('/api/artists')) return next();
+  try {
+    const artists = await readJsonCached(
+      udCacheKey(req.userId, 'artists'),
+      udDataPath(req.userId, 'artists.json'),
+      []
+    );
+    if (artists.some((a) => a.id === artistId)) {
+      req.userId = `${req.userId}__art__${artistId}`;
+    }
+  } catch { /* leave req.userId unchanged on any read error */ }
+  next();
 });
 
 // ── API routers ──────────────────────────────────────────────────────────────

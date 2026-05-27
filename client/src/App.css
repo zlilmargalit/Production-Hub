@@ -494,6 +494,167 @@ body {
 .user-menu-logout:hover { background: var(--clay-bg); }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   ARTIST SWITCHER
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Thin vertical rule separating nav tabs from artist picker */
+.artist-nav-sep {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  align-self: center;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.artist-switcher {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Trigger — same typographic feel as .nav-btn */
+.artist-switcher-btn {
+  background: none;
+  border: none;
+  padding: 8px 2px;
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.15s;
+  margin: 0 10px;
+  white-space: nowrap;
+}
+.artist-switcher-btn:hover,
+.artist-switcher-btn[aria-expanded="true"] { color: var(--text); }
+
+.artist-switcher-label { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+
+.artist-switcher-caret {
+  font-size: 0.6rem;
+  opacity: 0.55;
+  transition: transform 0.15s;
+}
+.artist-switcher-btn[aria-expanded="true"] .artist-switcher-caret { transform: rotate(180deg); }
+
+/* Dropdown panel */
+.artist-switcher-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 180px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 9999;
+  animation: menuIn 0.12s ease;
+}
+
+.artist-option {
+  display: block;
+  width: 100%;
+  padding: 9px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.artist-option:hover { background: var(--surface-sunk); }
+.artist-option.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-soft);
+}
+
+.artist-option-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 2px 0;
+}
+
+.artist-option--new {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+.artist-option--new:hover { background: var(--accent-soft); }
+
+/* ── New-artist modal (compact variant on top of .modal) ── */
+.artist-modal {
+  max-width: 380px !important;
+  padding: 36px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-radius: var(--radius-lg);
+}
+.artist-modal-title {
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text);
+}
+.artist-modal-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface-sunk);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+.artist-modal-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.artist-modal-error {
+  font-size: 0.8125rem;
+  color: var(--clay);
+  margin: -8px 0 0;
+}
+.artist-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+.btn-ghost {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--text-2);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.btn-ghost:hover { background: var(--surface-sunk); color: var(--text); border-color: var(--border-strong); }
+.btn-ghost:disabled { opacity: 0.45; cursor: default; }
+
+/* ═══════════════════════════════════════════════════════════════════════
    LOADING / ERROR / EMPTY
    ═══════════════════════════════════════════════════════════════════════ */
 .loading-screen {
@@ -2306,6 +2467,10 @@ body {
     margin: 0 12px 0 0;
     white-space: nowrap;
   }
+  .artist-nav-sep { margin: 0 2px; }
+  .artist-switcher-btn { margin: 0 6px 0 0; font-size: 0.8125rem; }
+  .artist-switcher-label { max-width: 100px; }
+  .artist-switcher-panel { left: 0; transform: none; }
 
   /* right-side buttons go right of brand on row 1 */
   .header-right {

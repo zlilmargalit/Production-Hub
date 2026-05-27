@@ -23,6 +23,14 @@ function App({ demoMode = false }) {
   const [userRole, setUserRole] = useState(null); // 'admin' | 'user' | null
   const [username, setUsername] = useState(null);
 
+  // ── Multi-artist state ────────────────────────────────────────────────────
+  const [artists, setArtists] = useState([]);
+  const [currentArtist, setCurrentArtist] = useState(null);
+  const [newArtistModal, setNewArtistModal] = useState(false);
+  // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
+  // without being re-created whenever the artist changes.
+  const currentArtistRef = useRef(null);
+
   // Sync theme attribute to <html> and persist
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -34,32 +42,40 @@ function App({ demoMode = false }) {
   }, []);
 
   // ── Data fetchers (stable references via useCallback) ─────────────────────
+  // Each fetcher reads currentArtistRef to append ?artistId when an artist is
+  // active. The ref is updated synchronously before any fetch is triggered, so
+  // there is no race between artist selection and the data request.
+  const artistQS = () => {
+    const id = currentArtistRef.current;
+    return id ? `?artistId=${encodeURIComponent(id)}` : '';
+  };
+
   const fetchShows = useCallback(async () => {
-    const res = await fetch('/api/shows');
+    const res = await fetch(`/api/shows${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load shows');
     setShows(await res.json());
   }, []);
 
   const fetchCrew = useCallback(async () => {
-    const res = await fetch('/api/crew');
+    const res = await fetch(`/api/crew${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load crew');
     setCrew(await res.json());
   }, []);
 
   const fetchTemplates = useCallback(async () => {
-    const res = await fetch('/api/templates');
+    const res = await fetch(`/api/templates${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load templates');
     setTemplates(await res.json());
   }, []);
 
   const fetchFieldTemplates = useCallback(async () => {
-    const res = await fetch('/api/field-templates');
+    const res = await fetch(`/api/field-templates${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load field templates');
     setFieldTemplates(await res.json());
   }, []);
 
   const fetchEventTypes = useCallback(async () => {
-    const res = await fetch('/api/event-types');
+    const res = await fetch(`/api/event-types${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load event types');
     setEventTypes(await res.json());
   }, []);
@@ -69,7 +85,6 @@ function App({ demoMode = false }) {
     setError(null);
 
     if (demoMode) {
-      // Demo: load everything from the single demo data endpoint
       fetch('/api/demo/data')
         .then((r) => r.json())
         .then((d) => {
@@ -84,17 +99,35 @@ function App({ demoMode = false }) {
       return;
     }
 
-    // Normal mode: fetch user role + all data
-    Promise.all([
-      fetch('/api/me').then((r) => r.ok ? r.json() : null).then((d) => { if (d) { setUserRole(d.role); setUsername(d.username); } }),
-      fetchShows(),
-      fetchCrew(),
-      fetchTemplates(),
-      fetchFieldTemplates(),
-      fetchEventTypes(),
-    ])
-      .catch((err) => setError(err.message || 'Could not connect to server'))
-      .finally(() => setLoading(false));
+    // Normal mode — three-step init:
+    // 1. Fetch /api/me + /api/artists in parallel
+    // 2. Set currentArtist (ref first, then state)
+    // 3. Fetch all scoped data with the correct artistId already in the ref
+    const init = async () => {
+      try {
+        const [, artistData] = await Promise.all([
+          fetch('/api/me').then((r) => r.ok ? r.json() : null)
+            .then((d) => { if (d) { setUserRole(d.role); setUsername(d.username); } }),
+          fetch('/api/artists').then((r) => r.ok ? r.json() : []).catch(() => []),
+        ]);
+
+        setArtists(artistData);
+        const first = artistData[0] || null;
+        if (first) {
+          currentArtistRef.current = first.id;   // sync — must precede fetches below
+          setCurrentArtist(first);
+        }
+
+        await Promise.all([
+          fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
+        ]);
+      } catch (err) {
+        setError(err.message || 'Could not connect to server');
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes]);
 
   // ── Mutations — real (normal mode) ────────────────────────────────────────
@@ -212,6 +245,34 @@ function App({ demoMode = false }) {
     }
   }, [fetchShows, demoMode]);
 
+  // ── Artist switching ──────────────────────────────────────────────────────
+  const switchToArtist = useCallback(async (artist) => {
+    currentArtistRef.current = artist?.id || null;
+    setCurrentArtist(artist);
+    // Clear stale data so the UI doesn't briefly show the previous artist's content
+    setShows([]); setCrew([]);
+    try {
+      await Promise.all([
+        fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
+      ]);
+    } catch (err) {
+      console.error('[artist-switch]', err.message);
+    }
+  }, [fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes]);
+
+  const createArtist = useCallback(async (name) => {
+    const res = await fetch('/api/artists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('Failed to create artist');
+    const artist = await res.json();
+    setArtists((prev) => [...prev, artist]);
+    await switchToArtist(artist);
+    return artist;
+  }, [switchToArtist]);
+
   const openEdit = useCallback((show) => {
     setEditingShow(show);
     setShowForm(true);
@@ -261,6 +322,17 @@ function App({ demoMode = false }) {
           >
             Crew & Types
           </button>
+          {!demoMode && (
+            <>
+              <span className="artist-nav-sep" aria-hidden="true" />
+              <ArtistSwitcher
+                artists={artists}
+                currentArtist={currentArtist}
+                onSwitch={switchToArtist}
+                onAddNew={() => setNewArtistModal(true)}
+              />
+            </>
+          )}
         </nav>
 
         {/* Action buttons (right — admin tools hidden on mobile) */}
@@ -373,6 +445,111 @@ function App({ demoMode = false }) {
           onCancel={() => setConfirmModal(null)}
         />
       )}
+
+      {newArtistModal && (
+        <NewArtistModal
+          onClose={() => setNewArtistModal(false)}
+          onCreate={createArtist}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Artist switcher dropdown ──────────────────────────────────────────────────
+function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const label = currentArtist?.name || (artists.length === 0 ? 'No artists' : 'Select');
+
+  return (
+    <div className="artist-switcher" ref={ref}>
+      <button
+        className="artist-switcher-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        title="Switch artist"
+      >
+        <span className="artist-switcher-label">{label}</span>
+        <span className="artist-switcher-caret">▾</span>
+      </button>
+
+      {open && (
+        <div className="artist-switcher-panel">
+          {artists.map((a) => (
+            <button
+              key={a.id}
+              className={`artist-option${a.id === currentArtist?.id ? ' active' : ''}`}
+              onClick={() => { onSwitch(a); setOpen(false); }}
+            >
+              {a.name}
+            </button>
+          ))}
+          {artists.length > 0 && <div className="artist-option-divider" />}
+          <button
+            className="artist-option artist-option--new"
+            onClick={() => { setOpen(false); onAddNew(); }}
+          >
+            + New Artist
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── New Artist modal ───────────────────────────────────────────────────────────
+function NewArtistModal({ onClose, onCreate }) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const handleCreate = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) { setErr('Please enter a name'); return; }
+    setBusy(true);
+    try {
+      await onCreate(trimmed);
+      onClose();
+    } catch {
+      setErr('Could not create artist — please try again');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay confirm-overlay" onClick={onClose}>
+      <div className="modal artist-modal" onClick={(e) => e.stopPropagation()}>
+        <h3 className="artist-modal-title">New Artist</h3>
+        <input
+          className="artist-modal-input"
+          type="text"
+          value={name}
+          onChange={(e) => { setName(e.target.value); setErr(''); }}
+          placeholder="Artist name"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleCreate();
+            if (e.key === 'Escape') onClose();
+          }}
+        />
+        {err && <p className="artist-modal-error">{err}</p>}
+        <div className="artist-modal-actions">
+          <button className="btn-ghost" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn-primary" onClick={handleCreate} disabled={busy || !name.trim()}>
+            {busy ? 'Creating…' : 'Create'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
