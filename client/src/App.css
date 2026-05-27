@@ -783,22 +783,25 @@ body {
 
 .show-card-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 24px 28px 0;
+  flex-direction: column;
+  padding: 20px 28px 0;
 }
 
-.show-card-title { flex: 1; min-width: 0; }
+/* Top row: event-type label (left) + action buttons (right) */
+.show-card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
 
-/* Event type — label sitting above the title */
+/* Event type — label on the left of the top row */
 .show-card-type {
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text-2);
-  margin-bottom: 14px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -813,8 +816,8 @@ body {
   flex-shrink: 0;
 }
 
-/* Show name — display-scale, editorial, always right-aligned */
-.show-card-title h2 {
+/* Show name — full-width, right-aligned so right edge lines up with Delete button */
+.show-card-header h2 {
   font-family: 'Bricolage Grotesque', 'Assistant', 'Heebo', sans-serif;
   font-size: clamp(1.2rem, 4vw, 1.75rem);
   font-weight: 700;
@@ -836,7 +839,7 @@ body {
 [dir="auto"]:lang(he), [dir="rtl"] {
   /* Hebrew sits a touch differently */
 }
-.show-card-title h2:lang(he) {
+.show-card-header h2:lang(he) {
   font-family: 'Assistant', 'Heebo', sans-serif;
   font-weight: 700;
   letter-spacing: -0.015em;
@@ -2330,7 +2333,7 @@ body {
   .shows-grid { grid-template-columns: 1fr; gap: 12px; }
 
   .show-card-header { padding: 18px 16px 14px; }
-  .show-card-title h2 { white-space: nowrap; }
+  .show-card-header h2 { white-space: nowrap; }
   .show-details { padding: 16px 16px 18px; }
   .details-grid { grid-template-columns: 1fr; gap: 14px; }
 

@@ -122,23 +122,23 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
       <div className="show-card-band" />
       <div className="show-card-header">
-        <div className="show-card-title">
+        <div className="show-card-top-row">
           {show.eventType && <div className="show-card-type" dir="auto">{show.eventType}</div>}
-          <h2 lang={isHebrew} dir={isHebrew === 'he' ? 'rtl' : 'ltr'}>{show.name}</h2>
-          <div className="show-meta">
-            {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
-            {show.venue && <span className="meta-item" dir="auto">{show.venue}</span>}
-            {show.invoice && <span className="badge badge-invoice">Invoice</span>}
-            {show.receipt && <span className="badge badge-receipt">Receipt</span>}
-            {(show.archived && !show.invoice) && <span className="badge badge-archive">Archive</span>}
+          <div className="show-actions">
+            <button className="btn-action" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
+              {expanded ? '−' : '+'}
+            </button>
+            <button className="btn-action" onClick={() => onEdit(show)}>Edit</button>
+            <button className="btn-action btn-action--danger" onClick={() => onDelete(show.id)}>Delete</button>
           </div>
         </div>
-        <div className="show-actions">
-          <button className="btn-action" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
-            {expanded ? '−' : '+'}
-          </button>
-          <button className="btn-action" onClick={() => onEdit(show)}>Edit</button>
-          <button className="btn-action btn-action--danger" onClick={() => onDelete(show.id)}>Delete</button>
+        <h2 lang={isHebrew} dir={isHebrew === 'he' ? 'rtl' : 'ltr'}>{show.name}</h2>
+        <div className="show-meta">
+          {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
+          {show.venue && <span className="meta-item" dir="auto">{show.venue}</span>}
+          {show.invoice && <span className="badge badge-invoice">Invoice</span>}
+          {show.receipt && <span className="badge badge-receipt">Receipt</span>}
+          {(show.archived && !show.invoice) && <span className="badge badge-archive">Archive</span>}
         </div>
       </div>
 
