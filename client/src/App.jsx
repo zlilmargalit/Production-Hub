@@ -4,6 +4,7 @@ import ShowForm from './components/ShowForm';
 import CrewManager from './components/CrewManager';
 import ConfirmModal from './components/ConfirmModal';
 import DemoBanner from './components/DemoBanner';
+import GlobalTaskPanel from './components/GlobalTaskPanel';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -22,6 +23,7 @@ function App({ demoMode = false }) {
   const [confirmModal, setConfirmModal] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'admin' | 'user' | null
   const [username, setUsername] = useState(null);
+  const [tasks,    setTasks]    = useState([]);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
@@ -80,6 +82,12 @@ function App({ demoMode = false }) {
     setEventTypes(await res.json());
   }, []);
 
+  const fetchTasks = useCallback(async () => {
+    if (demoMode) return;
+    const res = await fetch(`/api/tasks${artistQS()}`);
+    if (res.ok) setTasks(await res.json());
+  }, [demoMode]);
+
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     setError(null);
@@ -120,6 +128,7 @@ function App({ demoMode = false }) {
 
         await Promise.all([
           fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
+          fetchTasks(),
         ]);
       } catch (err) {
         setError(err.message || 'Could not connect to server');
@@ -128,7 +137,7 @@ function App({ demoMode = false }) {
       }
     };
     init();
-  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
 
   // ── Mutations — real (normal mode) ────────────────────────────────────────
   const saveFieldTemplate = useCallback(async (eventType, fields) => {
@@ -250,15 +259,16 @@ function App({ demoMode = false }) {
     currentArtistRef.current = artist?.id || null;
     setCurrentArtist(artist);
     // Clear stale data so the UI doesn't briefly show the previous artist's content
-    setShows([]); setCrew([]);
+    setShows([]); setCrew([]); setTasks([]);
     try {
       await Promise.all([
         fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
+        fetchTasks(),
       ]);
     } catch (err) {
       console.error('[artist-switch]', err.message);
     }
-  }, [fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes]);
+  }, [fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
 
   const createArtist = useCallback(async (name) => {
     const res = await fetch('/api/artists', {
@@ -300,6 +310,36 @@ function App({ demoMode = false }) {
       },
     });
   }, [switchToArtist]);
+
+  // ── Task CRUD ─────────────────────────────────────────────────────────────
+  const createTask = useCallback(async (data) => {
+    const res = await fetch(`/api/tasks${artistQS()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const task = await res.json();
+      setTasks((prev) => [...prev, task]);
+    }
+  }, []);
+
+  const toggleTask = useCallback(async (id, completed) => {
+    const res = await fetch(`/api/tasks/${id}${artistQS()}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+    }
+  }, []);
+
+  const deleteTask = useCallback(async (id) => {
+    await fetch(`/api/tasks/${id}${artistQS()}`, { method: 'DELETE' });
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   const openEdit = useCallback(async (show) => {
     const qs = currentArtistRef.current
@@ -358,6 +398,19 @@ function App({ demoMode = false }) {
             Crew & Types
           </button>
           {!demoMode && (
+            <button
+              className={`nav-btn ${page === 'tasks' ? 'active' : ''}`}
+              onClick={() => setPage('tasks')}
+            >
+              Tasks
+              {tasks.filter((t) => !t.completed).length > 0 && (
+                <span className="nav-tasks-badge">
+                  {tasks.filter((t) => !t.completed).length}
+                </span>
+              )}
+            </button>
+          )}
+          {!demoMode && (
             <>
               <span className="artist-nav-sep" aria-hidden="true" />
               <ArtistSwitcher
@@ -373,10 +426,10 @@ function App({ demoMode = false }) {
 
         {/* Action buttons (right — admin tools hidden on mobile) */}
         <div className="header-right">
-          {page === 'shows' && (
+          {page === 'shows' && !demoMode && (
             <>
               {/* Sync — admin-only, hidden in demo mode and on mobile */}
-              {!demoMode && userRole === 'admin' && (
+              {userRole === 'admin' && (
                 <button
                   className="btn-sync header-desktop-only"
                   onClick={syncShows}
@@ -389,19 +442,17 @@ function App({ demoMode = false }) {
                     : 'Sync'}
                 </button>
               )}
-              {!demoMode && (
-                <button
-                  className="btn-sync header-desktop-only"
-                  onClick={applyCrewTemplates}
-                  disabled={applyStatus === 'loading'}
-                  title="Auto-assign crew to active shows based on event type templates"
-                >
-                  {applyStatus === 'loading' ? 'Applying…'
-                    : applyStatus?.error ? 'Error'
-                    : applyStatus?.updated != null ? `${applyStatus.updated} updated`
-                    : 'Apply Crew'}
-                </button>
-              )}
+              <button
+                className="btn-sync header-desktop-only"
+                onClick={applyCrewTemplates}
+                disabled={applyStatus === 'loading'}
+                title="Auto-assign crew to active shows based on event type templates"
+              >
+                {applyStatus === 'loading' ? 'Applying…'
+                  : applyStatus?.error ? 'Error'
+                  : applyStatus?.updated != null ? `${applyStatus.updated} updated`
+                  : 'Apply Crew'}
+              </button>
               <button className="btn-primary" onClick={() => setShowForm(true)}>
                 + New
               </button>
@@ -444,6 +495,15 @@ function App({ demoMode = false }) {
             onUpdateShow={updateShow}
             artistId={currentArtist?.id || null}
           />
+        ) : page === 'tasks' ? (
+          <GlobalTaskPanel
+            tasks={tasks}
+            crew={crew}
+            shows={shows}
+            onAdd={createTask}
+            onToggle={toggleTask}
+            onDelete={deleteTask}
+          />
         ) : (
           <CrewManager
             crew={crew}
@@ -456,6 +516,7 @@ function App({ demoMode = false }) {
             onSaveFieldTemplate={saveFieldTemplate}
             eventTypes={eventTypes}
             onSaveEventTypes={saveEventTypes}
+            tasks={tasks}
             demoMode={demoMode}
             artistId={currentArtist?.id || null}
           />

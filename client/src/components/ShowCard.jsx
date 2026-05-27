@@ -15,6 +15,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const [pdfStatus, setPdfStatus] = useState(null);
   const [briefError, setBriefError] = useState(null);
   const [pdfError, setPdfError] = useState(null);
+  const [calStatus, setCalStatus] = useState(null); // null | 'loading' | 'done' | 'error'
+  const [calMsg, setCalMsg] = useState(null);
 
   const assignedCrew = (crew || []).filter((m) => (show.crewIds || []).includes(m.id));
   const musicians = assignedCrew
@@ -131,6 +133,33 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     }
   };
 
+  const exportToCalendar = async () => {
+    setCalStatus('loading'); setCalMsg(null);
+    try {
+      const res  = await fetch('/api/calendar/insert-show-event', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ showId: show.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCalStatus('error');
+        setCalMsg(data.error || 'Calendar export failed');
+      } else {
+        setCalStatus('done');
+        setCalMsg(
+          `${data.action === 'created' ? 'Event created' : 'Event updated'}`
+          + (data.attendeeCount > 0 ? ` · ${data.attendeeCount} invite${data.attendeeCount > 1 ? 's' : ''} sent` : '')
+        );
+        if (data.eventLink) window.open(data.eventLink, '_blank');
+      }
+    } catch (e) {
+      setCalStatus('error');
+      setCalMsg(e.message || 'Network error');
+    }
+    setTimeout(() => { setCalStatus(null); setCalMsg(null); }, 5000);
+  };
+
   // Detect Hebrew so the heading can pick the right font stack via :lang(he)
   const isHebrew = (show.name && /[\u0590-\u05FF]/.test(show.name)) ? 'he' : 'en';
 
@@ -193,11 +222,22 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <div className="detail-full">
               <div className="field-label-row">
                 <strong>Schedule</strong>
-                <label className="pdf-toggle" title="Show in coordination sheet">
-                  <input type="checkbox" checked={isPdfOn('schedule')} onChange={() => togglePdf('schedule')} />
-                  <span className="pdf-toggle-text">PDF</span>
-                </label>
+                <div className="field-label-row-actions">
+                  <label className="pdf-toggle" title="Show in coordination sheet">
+                    <input type="checkbox" checked={isPdfOn('schedule')} onChange={() => togglePdf('schedule')} />
+                    <span className="pdf-toggle-text">PDF</span>
+                  </label>
+                  <button
+                    className={`btn-cal-export ${calStatus === 'done' ? 'done' : calStatus === 'error' ? 'error' : ''}`}
+                    onClick={exportToCalendar}
+                    disabled={calStatus === 'loading'}
+                    title="Create / update Google Calendar event with this schedule and crew invites"
+                  >
+                    {calStatus === 'loading' ? '⏳' : calStatus === 'done' ? '✓ Cal' : calStatus === 'error' ? '✕ Cal' : '📅 Export to Cal'}
+                  </button>
+                </div>
               </div>
+              {calMsg && <p className={`cal-export-msg ${calStatus}`}>{calMsg}</p>}
               <pre dir="auto">{show.schedule}</pre>
             </div>
           )}

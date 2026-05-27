@@ -25,6 +25,7 @@ const eventTypesRouter    = require('./routes/event-types');
 const fieldTemplatesRouter= require('./routes/field-templates');
 const { router: importRouter, findNewShows, DEFAULT_XLSX } = require('./routes/import');
 const calendarRouter      = require('./routes/calendar');
+const tasksRouter         = require('./routes/tasks');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
@@ -246,6 +247,7 @@ app.use('/api/event-types',    eventTypesRouter);
 app.use('/api/field-templates',fieldTemplatesRouter);
 app.use('/api/import',         importRouter);
 app.use('/api/calendar',       calendarRouter);
+app.use('/api/tasks',          tasksRouter);
 
 // ── Error handler ────────────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars

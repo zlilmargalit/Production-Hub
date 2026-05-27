@@ -24,7 +24,7 @@ function buildCrewText(crewIds, crew) {
     .join(' | ');
 }
 
-function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, demoMode = false, artistId }) {
+function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, tasks = [], demoMode = false, artistId }) {
   const [tab, setTab] = useState('members');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -193,7 +193,15 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                     {members.map((m) => (
                       <div key={m.id} className="crew-card">
                         <div className="crew-card-info">
-                          <div className="crew-card-name">{m.name}</div>
+                          <div className="crew-card-name">
+                            {m.name}
+                            {(() => {
+                              const active = tasks.filter((t) => !t.completed && t.assignedTo === m.id).length;
+                              return active > 0
+                                ? <span className="crew-task-badge" title={`${active} active task${active > 1 ? 's' : ''}`}>{active}</span>
+                                : null;
+                            })()}
+                          </div>
                           <div className="crew-card-details">
                             {m.phone && <a href={`tel:${m.phone}`} className="crew-detail-link">{m.phone}</a>}
                             {m.email && <a href={`mailto:${m.email}`} className="crew-detail-link">{m.email}</a>}
