@@ -116,7 +116,14 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
     onSubmit(form);
   };
 
-  const allCrew = (crew || []).slice().sort((a, b) => (a.role || '').localeCompare(b.role || '', 'he'));
+  // Group crew by role, roles sorted alphabetically
+  const crewByRole = (crew || []).reduce((acc, m) => {
+    const r = m.role || '';
+    if (!acc[r]) acc[r] = [];
+    acc[r].push(m);
+    return acc;
+  }, {});
+  const sortedRoles = Object.keys(crewByRole).sort((a, b) => a.localeCompare(b, 'he'));
   const customDefs = (form.eventType && fieldTemplates?.[form.eventType]) || [];
 
   const setCustomField = (id, value) => {
@@ -178,21 +185,25 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
               <input dir="auto" name="food" value={form.food} onChange={set} placeholder="Catering / rider" />
             </div>
 
-            {/* Crew Section */}
-            {allCrew.length > 0 && (
+            {/* Crew Section — grouped by role, two-column top-to-bottom */}
+            {sortedRoles.length > 0 && (
               <div className="form-group span-2">
                 <label>Crew</label>
                 <div className="crew-pick-grid">
-                  {allCrew.map((m) => (
-                    <label key={m.id} className="crew-pick-row">
-                      <input
-                        type="checkbox"
-                        checked={form.crewIds.includes(m.id)}
-                        onChange={() => toggleCrew(m.id)}
-                      />
-                      <span className="crew-pick-name">{m.name}</span>
-                      <span className="crew-pick-role">{m.role}</span>
-                    </label>
+                  {sortedRoles.map((role) => (
+                    <div key={role}>
+                      <div className="crew-pick-role-header">{role}</div>
+                      {crewByRole[role].map((m) => (
+                        <label key={m.id} className="crew-pick-row">
+                          <input
+                            type="checkbox"
+                            checked={form.crewIds.includes(m.id)}
+                            onChange={() => toggleCrew(m.id)}
+                          />
+                          <span className="crew-pick-name">{m.name}</span>
+                        </label>
+                      ))}
+                    </div>
                   ))}
                 </div>
               </div>

@@ -2104,16 +2104,31 @@ body {
   border-top: 1px solid var(--border-light);
 }
 
-/* Crew picker grid inside form */
+/* Crew picker grid inside form — two columns, top-to-bottom flow */
 .crew-pick-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2px;
+  column-count: 2;
+  column-gap: 0;
   background: var(--surface-sunk);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 8px;
 }
+/* Role-group header inside the picker */
+.crew-pick-role-header {
+  break-inside: avoid;
+  column-span: none;
+  padding: 6px 10px 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  border-top: 1px solid var(--border-light);
+  margin-top: 4px;
+}
+.crew-pick-role-header:first-child { border-top: none; margin-top: 0; }
+/* Each crew row stays whole — never split across columns */
+.crew-pick-row { break-inside: avoid; }
 .crew-pick-row {
   display: flex;
   align-items: center;
