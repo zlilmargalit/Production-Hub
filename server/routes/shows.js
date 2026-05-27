@@ -63,7 +63,7 @@ async function uploadDataUrlToDrive(dataUrl, filename) {
     fileId,
     requestBody: { role: 'reader', type: 'anyone' },
   });
-  return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
 }
 
 // Convert a PDF data-URL to a PNG data-URL (first page only).
@@ -210,35 +210,39 @@ async function createBriefDoc(payload, imageUrl) {
       return Math.max(1, (s.match(/\/Type\s*\/Page[^s]/g) || []).length);
     };
 
-    const findLastImageIdx = (docData) => {
-      for (const el of [...(docData.body?.content || [])].reverse()) {
-        if (el.paragraph) {
-          for (const pEl of [...(el.paragraph.elements || [])].reverse()) {
-            if (pEl.inlineObjectElement) return pEl.startIndex;
-          }
-        }
-      }
-      return -1;
+let insertedObjId = null;
+
+    const doInsert = async (h) => {
+      const resp = await docs.documents.batchUpdate({
+        documentId: docId,
+        requestBody: { requests: [{ insertInlineImage: {
+          uri: imageUrl, endOfSegmentLocation: { segmentId: '' },
+          objectSize: {
+            width:  { magnitude: Math.min(Math.round(h * RATIO), 450), unit: 'PT' },
+            height: { magnitude: h, unit: 'PT' },
+          },
+        }}] },
+      });
+      insertedObjId = resp.data.replies?.[0]?.insertInlineImage?.objectId || null;
     };
 
-    const doInsert = (h) => docs.documents.batchUpdate({
-      documentId: docId,
-      requestBody: { requests: [{ insertInlineImage: {
-        uri: imageUrl, endOfSegmentLocation: { segmentId: '' },
-        objectSize: {
-          width:  { magnitude: Math.min(Math.round(h * RATIO), 450), unit: 'PT' },
-          height: { magnitude: h, unit: 'PT' },
-        },
-      }}] },
-    });
-
-    const doDelete = async () => {
-      const data = (await docs.documents.get({ documentId: docId })).data;
-      const idx = findLastImageIdx(data);
-      if (idx < 0) return;
+    // Resize in-place — avoids deleteContentRange touching the terminal newline.
+    const doResize = async (h) => {
+      if (!insertedObjId) return;
       await docs.documents.batchUpdate({
         documentId: docId,
-        requestBody: { requests: [{ deleteContentRange: { range: { startIndex: idx, endIndex: idx + 1 } } }] },
+        requestBody: { requests: [{ updateInlineObjectProperties: {
+          objectId: insertedObjId,
+          inlineObjectProperties: {
+            embeddedObject: {
+              size: {
+                width:  { magnitude: Math.min(Math.round(h * RATIO), 450), unit: 'PT' },
+                height: { magnitude: h, unit: 'PT' },
+              },
+            },
+          },
+          fields: 'embeddedObject.size',
+        }}] },
       });
     };
 
@@ -312,12 +316,12 @@ async function createBriefDoc(payload, imageUrl) {
           if (hi - lo <= 15) break;
           const next = Math.round((lo + hi) / 2);
           if (next === cur) break;
-          await doDelete(); cur = next; await doInsert(cur);
+          cur = next; await doResize(cur);
         } else {
           hi = cur - 1;
-          if (hi < lo) { await doDelete(); cur = MIN_H; await doInsert(cur); break; }
+          if (hi < lo) { cur = MIN_H; await doResize(cur); break; }
           const next = Math.round((lo + hi) / 2);
-          await doDelete(); cur = next; await doInsert(cur);
+          cur = next; await doResize(cur);
         }
       }
       console.log(`[brief] Final image height: ${cur}pt`);
