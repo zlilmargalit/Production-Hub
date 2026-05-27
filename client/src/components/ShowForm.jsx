@@ -110,7 +110,7 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
     onSubmit(form);
   };
 
-  const allCrew = crew || [];
+  const allCrew = (crew || []).slice().sort((a, b) => (a.role || '').localeCompare(b.role || '', 'he'));
   const customDefs = (form.eventType && fieldTemplates?.[form.eventType]) || [];
 
   const setCustomField = (id, value) => {

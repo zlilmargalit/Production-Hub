@@ -171,7 +171,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <Field label="Transportation" value={show.transportation} inPdf={isPdfOn('transportation')} onTogglePdf={() => togglePdf('transportation')} />
             <Field label="Contacts" value={show.contacts} inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
             {show.food && <Field label="Food" value={show.food} inPdf={isPdfOn('food')} onTogglePdf={() => togglePdf('food')} />}
-            <Field label="Venue Contact" value={show.venueContact} inPdf={isPdfOn('venueContact')} onTogglePdf={() => togglePdf('venueContact')} />
+
           </div>
 
           {assignedCrew.filter((m) => m.role !== 'נגן').length > 0 && (

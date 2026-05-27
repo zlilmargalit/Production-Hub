@@ -2030,7 +2030,7 @@ body {
 /* Crew picker grid inside form */
 .crew-pick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
   gap: 2px;
   background: var(--surface-sunk);
   border: 1px solid var(--border);

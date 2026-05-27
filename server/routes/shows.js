@@ -184,7 +184,7 @@ async function createBriefDoc(payload, imageUrl) {
     '{{checkItems}}':         payload.checkItems       || '',
     '{{customFields}}':       payload.customFields     || '',
     '{{musicians}}':          payload.musicians        || '',
-    '{{venueContact}}':       payload.venueContact     || '',
+
     '{{food}}':               payload.food             || '',
     '{{notes}}':              payload.notes            || '',
     '{{transportation}}':     payload.transportation   || '',
@@ -624,7 +624,7 @@ router.post('/:id/brief', async (req, res) => {
       transportation:    inPdf('transportation')    ? (show.transportation    || '') : '',
       schedule:          inPdf('schedule')          ? (show.schedule          || '') : '',
       contacts:          inPdf('contacts')          ? (show.contacts          || '') : '',
-      venueContact:      inPdf('venueContact')      ? (show.venueContact      || '') : '',
+
       additionalDetails: inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
       food:              inPdf('food')              ? (show.food              || '') : '',
       notes:             inPdf('notes')             ? (show.notes             || '') : '',
@@ -844,7 +844,7 @@ ${show.eventType ? `<div class="row"><span class="label">סוג אירוע:</spa
 ${inPdf('venue') && show.venue ? `<div class="row"><span class="label">מקום:</span><span class="value">${esc(show.venue)}</span></div>` : ''}
 ${inPdf('address') && show.address ? `<div class="row"><span class="label">כתובת:</span><span class="value">${esc(show.address)}</span></div>` : ''}
 ${inPdf('parking') && show.parking ? `<div class="row"><span class="label">חניה:</span><span class="value">${esc(show.parking)}</span></div>` : ''}
-${inPdf('venueContact') && show.venueContact ? `<div class="row"><span class="label">איש קשר מקום:</span><span class="value">${esc(show.venueContact)}</span></div>` : ''}
+
 ${inPdf('technicalCrew') && (techCrewText || show.technicalCrew) ? `<div class="row"><span class="label">צוות טכני:</span><span class="value">${esc(techCrewText || show.technicalCrew)}</span></div>` : ''}
 ${inPdf('transportation') && show.transportation ? `<div class="row"><span class="label">הסעה:</span><span class="value">${esc(show.transportation)}</span></div>` : ''}
 ${inPdf('food') && show.food ? `<div class="row"><span class="label">אוכל:</span><span class="value">${esc(show.food)}</span></div>` : ''}
