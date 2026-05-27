@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#181A2E"/>
+  <!-- Spot Pool mark (scaled from 0 0 100 70 → fits in 32×32 with padding) -->
+  <!-- scale=0.265, translate so arcs are centered and floor ~66% down -->
+  <g transform="translate(2.8, 1.8) scale(0.265)">
+    <!-- Outer arc -->
+    <path d="M 6 62 A 44 44 0 0 1 94 62"
+          stroke="rgba(255,255,255,0.38)" stroke-width="2.2"
+          stroke-linecap="round" fill="none"/>
+    <!-- Middle arc -->
+    <path d="M 21 62 A 29 29 0 0 1 79 62"
+          stroke="rgba(255,255,255,0.65)" stroke-width="2.5"
+          stroke-linecap="round" fill="none"/>
+    <!-- Inner arc -->
+    <path d="M 35 62 A 15 15 0 0 1 65 62"
+          stroke="rgba(255,255,255,0.92)" stroke-width="3"
+          stroke-linecap="round" fill="none"/>
+    <!-- Stage floor -->
+    <line x1="2" y1="62" x2="98" y2="62"
+          stroke="rgba(255,255,255,0.30)" stroke-width="2"
+          stroke-linecap="round"/>
+    <!-- Performer dot -->
+    <circle cx="50" cy="62" r="6" fill="#F08D39"/>
+  </g>
+</svg>
