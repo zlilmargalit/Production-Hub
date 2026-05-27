@@ -314,16 +314,9 @@ function TaskManager({ show, onUpdate }) {
       {/* Technical Coordination */}
       <div className="fixed-task-section">
         <h4 className="fixed-task-title">Technical Coordination</h4>
-        <div className="tech-coord-rows">
-          <label className="mode-check-label">
-            <input
-              type="checkbox"
-              checked={coord.lighting}
-              onChange={() => toggleCoord('lighting')}
-            />
-            Lighting
-          </label>
-          <div className="tech-coord-sound-row">
+        <div className="tech-coord-cols">
+          {/* Left: Sound + rental needs */}
+          <div className="tech-coord-col">
             <label className="mode-check-label">
               <input
                 type="checkbox"
@@ -339,20 +332,31 @@ function TaskManager({ show, onUpdate }) {
               value={coord.rentalNeeds}
               onChange={(e) => setCoord((p) => ({ ...p, rentalNeeds: e.target.value }))}
               onBlur={() => saveCoord(coord)}
-              placeholder="ציוד להשכרה / השלמה..."
+              placeholder="ציוד להשכרה..."
             />
           </div>
-          <div className="fixed-input-group" style={{ marginTop: 4 }}>
-            <label>מאיפה משכירים</label>
-            <input
-              className="fixed-input"
-              dir="rtl"
-              value={coord.rentalSupplier}
-              onChange={(e) => setCoord((p) => ({ ...p, rentalSupplier: e.target.value }))}
-              onBlur={() => saveCoord(coord)}
-              placeholder="שם ספק / חברת השכרה"
-            />
+          {/* Right: Lighting */}
+          <div className="tech-coord-col">
+            <label className="mode-check-label">
+              <input
+                type="checkbox"
+                checked={coord.lighting}
+                onChange={() => toggleCoord('lighting')}
+              />
+              Lighting
+            </label>
           </div>
+        </div>
+        <div className="fixed-input-group" style={{ marginTop: 10 }}>
+          <label>מאיפה משכירים</label>
+          <input
+            className="fixed-input"
+            dir="rtl"
+            value={coord.rentalSupplier}
+            onChange={(e) => setCoord((p) => ({ ...p, rentalSupplier: e.target.value }))}
+            onBlur={() => saveCoord(coord)}
+            placeholder="שם ספק / חברת השכרה"
+          />
         </div>
       </div>
 

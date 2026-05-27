@@ -31,10 +31,6 @@ const BLANK = {
   additionalDetails: '',
   food: '',
   notes: '',
-  lightingCoordinated: false,
-  soundCoordinated: false,
-  rentalNeeds: '',
-  rentalSupplier: '',
   invoice: false,
   receipt: false,
   archived: false,
@@ -67,10 +63,6 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
           additionalDetails: show.additionalDetails || '',
           food: show.food || '',
           notes: show.notes || '',
-          lightingCoordinated: show.lightingCoordinated || false,
-          soundCoordinated: show.soundCoordinated || false,
-          rentalNeeds: show.rentalNeeds || '',
-          rentalSupplier: show.rentalSupplier || '',
           invoice: show.invoice || false,
           receipt: show.receipt || false,
           archived: show.archived || false,
@@ -259,58 +251,6 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
                 onChange={set}
                 rows={2}
                 placeholder="Internal notes..."
-              />
-            </div>
-
-            {/* Technical Coordination Section */}
-            <div className="form-section-divider span-2">
-              <span>Technical Coordination</span>
-            </div>
-
-            <div className="form-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="lightingCoordinated"
-                  checked={form.lightingCoordinated}
-                  onChange={set}
-                />
-                Lighting
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="soundCoordinated"
-                  checked={form.soundCoordinated}
-                  onChange={set}
-                />
-                Sound
-              </label>
-            </div>
-
-            <div className="form-group span-2">
-              <label>ציוד להשכרה / השלמה (Sound)</label>
-              <textarea
-                dir="rtl"
-                name="rentalNeeds"
-                value={form.rentalNeeds}
-                onChange={set}
-                rows={3}
-                placeholder="פרט ציוד חסר / שיש להשכיר..."
-              />
-            </div>
-
-            <div className="form-group span-2">
-              <label>מאיפה משכירים</label>
-              <input
-                dir="rtl"
-                name="rentalSupplier"
-                value={form.rentalSupplier}
-                onChange={set}
-                placeholder="שם ספק / חברת השכרה"
               />
             </div>
 

@@ -1268,24 +1268,23 @@ body {
   line-height: 1.5;
   white-space: pre-wrap;
 }
-.tech-coord-rows {
+.tech-coord-cols {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  align-items: flex-start;
+}
+.tech-coord-col {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.tech-coord-sound-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.tech-coord-sound-row .mode-check-label {
-  flex-shrink: 0;
-  padding-top: 4px;
+  min-width: 0;
 }
 .tech-coord-rental {
-  flex: 1;
-  resize: vertical;
-  min-height: 52px;
+  resize: none;
+  min-height: 46px;
+  font-size: 0.8125rem;
 }
 
 .check-pdf-pair {
