@@ -82,52 +82,53 @@ async function pdfDataUrlToPng(pdfDataUrl) {
 
   let pngB64 = null;
 
-  // ── 1. pdftoppm (poppler) ────────────────────────────────────────────
-  try {
-    await execFileP(
-      'pdftoppm',
-      ['-png', '-r', '150', '-f', '1', '-l', '1', tmpPdf, tmpPngBase],
-      { timeout: 15000 },
-    );
-    // pdftoppm names outputs: base-1.png / base-01.png / base-001.png etc.
-    const dir  = path.dirname(tmpPngBase);
-    const base = path.basename(tmpPngBase);
-    const hits = (await fsp.readdir(dir)).filter(f => f.startsWith(base) && f.endsWith('.png'));
-    if (hits.length > 0) {
-      const tmpPng = path.join(dir, hits[0]);
-      pngB64 = (await fsp.readFile(tmpPng)).toString('base64');
-      await fsp.unlink(tmpPng).catch(() => {});
-    }
-  } catch { /* pdftoppm not installed or failed */ }
-
-  // ── 2. sips (macOS built-in) ─────────────────────────────────────────
-  if (!pngB64 && process.platform === 'darwin') {
+  // ── 1. sips (macOS built-in) — fast, no extra deps ──────────────────
+  if (process.platform === 'darwin') {
     try {
       const tmpPng = tmpPngBase + '-sips.png';
       await execFileP('sips', ['-s', 'format', 'png', tmpPdf, '--out', tmpPng], { timeout: 15000 });
-      pngB64 = (await fsp.readFile(tmpPng)).toString('base64');
+      const stat = await fsp.stat(tmpPng).catch(() => null);
+      if (stat && stat.size > 0) {
+        pngB64 = (await fsp.readFile(tmpPng)).toString('base64');
+      }
       await fsp.unlink(tmpPng).catch(() => {});
-    } catch { /* sips failed */ }
+    } catch { /* sips failed or not macOS */ }
   }
 
-  // ── 3. Puppeteer screenshot ──────────────────────────────────────────
-  // Chrome's built-in PDF viewer renders the PDF; we screenshot page 1.
+  // ── 2. pdftoppm (poppler — available on Railway / if brew-installed) ──
   if (!pngB64) {
+    try {
+      const outBase = tmpPngBase + '-pp';
+      await execFileP('pdftoppm', ['-png', '-r', '150', '-f', '1', '-l', '1', tmpPdf, outBase], { timeout: 15000 });
+      const dir  = path.dirname(outBase);
+      const base = path.basename(outBase);
+      const hits = (await fsp.readdir(dir)).filter(f => f.startsWith(base) && f.endsWith('.png'));
+      if (hits.length > 0) {
+        pngB64 = (await fsp.readFile(path.join(dir, hits[0]))).toString('base64');
+        await fsp.unlink(path.join(dir, hits[0])).catch(() => {});
+      }
+    } catch { /* pdftoppm not installed */ }
+  }
+
+  // ── 3. Puppeteer via file:// URL (reliable: Chrome renders PDF natively) ──
+  // We navigate Chrome to the temp PDF file on disk rather than a data URL.
+  // Chrome's built-in PDF viewer handles file:// reliably in headless mode.
+  if (!pngB64) {
+    let puppeteerPage = null;
     try {
       const { getBrowser } = require('../pdf');
       const browser = await getBrowser();
-      const page    = await browser.newPage();
-      try {
-        await page.setViewport({ width: 1240, height: 1754 }); // A4 at ~150 dpi
-        await page.goto(pdfDataUrl, { waitUntil: 'load', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 800)); // wait for PDF viewer to paint
-        const shot = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 1240, height: 1754 } });
-        pngB64 = Buffer.from(shot).toString('base64');
-      } finally {
-        await page.close().catch(() => {});
-      }
+      puppeteerPage = await browser.newPage();
+      await puppeteerPage.setViewport({ width: 1240, height: 1754 }); // A4 @ ~150 dpi
+      await puppeteerPage.goto(`file://${tmpPdf}`, { waitUntil: 'networkidle2', timeout: 15000 });
+      await new Promise(r => setTimeout(r, 1500)); // let PDF viewer finish painting
+      const shot = await puppeteerPage.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 1240, height: 1754 } });
+      pngB64 = Buffer.from(shot).toString('base64');
+      console.log('[pdfDataUrlToPng] Puppeteer file:// succeeded');
     } catch (e) {
       console.error('[pdfDataUrlToPng] Puppeteer fallback failed:', e.message);
+    } finally {
+      if (puppeteerPage) await puppeteerPage.close().catch(() => {});
     }
   }
 
@@ -190,6 +191,8 @@ async function createBriefDoc(payload, imageUrl) {
     '{{sound}}':              payload.sound            || '',
     '{{lighting}}':           payload.lighting         || '',
     '{{backline}}':           payload.backline         || '',
+    // Strip the colon from the "פרטים נוספים:" heading if the template has one
+    'פרטים נוספים:':          'פרטים נוספים',
   };
 
   const replaceRequests = Object.entries(replacements).map(([find, replace]) => ({
@@ -532,8 +535,9 @@ router.post('/:id/brief', async (req, res) => {
       ...(show.eventType === 'אני גיטרה' ? [{ key: 'check_piano', label: 'פסנתר', value: show.piano }] : []),
     ]
       .filter((item) => inPdf(item.key))
-      .map((item) => `${item.label}: ${item.value ? '✓' : '✕'}`)
-      .join(' | ');
+      // Label first, then ✓/✕ — in RTL Google Docs the tick ends up on the LEFT of the label
+      .map((item) => `${item.label} ${item.value ? '✓' : '✕'}`)
+      .join('\n');
 
     const payload = {
       eventName:        show.name,
@@ -618,13 +622,18 @@ router.post('/:id/pdf', async (req, res) => {
       if (isImage && val) {
         const src = getImageSrc(val);
         if (isPdfData(src) || val?.isPdf) {
-          const pngSrc = await pdfDataUrlToPng(typeof src === 'string' ? src : '');
-          const fname  = typeof val === 'object' ? (val.name || 'קובץ PDF') : 'קובץ PDF';
+          const fname = typeof val === 'object' ? (val.name || 'קובץ PDF') : 'קובץ PDF';
+          let pngSrc  = null;
+          try {
+            pngSrc = await pdfDataUrlToPng(typeof src === 'string' ? src : '');
+          } catch (e) {
+            console.error('[pdf] pdfDataUrlToPng threw:', e.message);
+          }
           if (pngSrc) {
             customFieldsImgSrcs.push(pngSrc);
           } else {
             customFieldsTextParts.push(
-              `<div class="row"><span class="label">${esc(def.label)}:</span><span class="value">📎 ${esc(fname)}</span></div>`
+              `<div class="row"><span class="label">${esc(def.label)}</span><span class="value">📎 ${esc(fname)}</span></div>`
             );
           }
         } else {
@@ -658,8 +667,14 @@ router.post('/:id/pdf', async (req, res) => {
       { key: 'check_waterBottles', label: 'בקבוקי מים',  value: show.waterBottles, condition: true },
     ]
       .filter((item) => item.condition && show.pdfFields?.[item.key] === true)
-      .map((item) => `<div class="row"><span class="label">${esc(item.label)}:</span><span class="value">${item.value ? '✓ כן' : '✕ לא'}</span></div>`)
-      .join('\n');
+      .map((item) => {
+        const tick = item.value ? '✓' : '✕';
+        const color = item.value ? '#2e7d32' : '#c62828';
+        // RTL flex: first child → right side, second child → left side
+        // So label first (right) then tick (left) → tick visually to the LEFT of the label
+        return `<div class="check-row"><span class="check-lbl">${esc(item.label)}</span><span class="check-tick" style="color:${color}">${tick}</span></div>`;
+      })
+      .join('<div class="check-sep"></div>');
 
     const additionalContent = [
       (inPdf('additionalDetails') && show.additionalDetails) ? `<p style="line-height:1.6;margin-bottom:8px">${nl2br(show.additionalDetails)}</p>` : '',
@@ -709,6 +724,11 @@ router.post('/:id/pdf', async (req, res) => {
   .value { color: #333; }
   .schedule { white-space: pre-wrap; background: #f7f8fa; border: 1px solid #e2e4e9; border-radius: 4px; padding: 10px; line-height: 1.6; }
   .musicians { background: #eef3f8; border-right: 3px solid #3E6B8E; padding: 8px 12px; border-radius: 0 4px 4px 0; margin-top: 8px; }
+  /* Check items: RTL flex → first child on right (label), second child on left (✓/✕) */
+  .check-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+  .check-lbl  { font-weight: 600; color: #222; }
+  .check-tick { font-size: 13pt; font-weight: bold; }
+  .check-sep  { height: 1px; background: #dde0e8; margin: 2px 0; }
 </style>
 </head>
 <body>
