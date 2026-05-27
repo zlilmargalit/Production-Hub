@@ -4,8 +4,14 @@ import ShowCard from './ShowCard';
 function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }) {
   const [filter, setFilter] = useState('upcoming');
 
-  const now = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const now = today.toISOString().slice(0, 10);
   const isArchived = (s) => s.invoice || s.archived;
+
+  // Count shows whose date falls in the current calendar month
+  const thisMonthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonthCount  = shows.filter((s) => s.date && s.date.startsWith(thisMonthPrefix)).length;
+  const monthName = today.toLocaleDateString('en-US', { month: 'long' });
 
   const filtered = shows.filter((s) => {
     if (filter === 'upcoming') return !isArchived(s) && (!s.date || s.date >= now);
@@ -35,9 +41,9 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow 
         <div className="page-header-left">
           <h1 className="page-title">Shows<span className="page-title-dot">.</span></h1>
           <p className="page-subtitle">
-            <span className="page-subtitle-num">{shows.length.toString().padStart(2, '0')}</span>
+            <span className="page-subtitle-num">{thisMonthCount.toString().padStart(2, '0')}</span>
             <span className="page-subtitle-line" />
-            <span>productions on the books</span>
+            <span>productions in {monthName}</span>
           </p>
         </div>
         <div className="page-marquee" aria-hidden="true">
