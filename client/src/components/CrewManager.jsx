@@ -156,7 +156,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
             className={`crew-tab ${tab === 'templates' ? 'active' : ''}`}
             onClick={() => setTab('templates')}
           >
-            Event Types
+            Event Types <span className="crew-count">{(eventTypes || []).length}</span>
           </button>
         </div>
         {tab === 'members' && (
