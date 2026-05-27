@@ -789,7 +789,7 @@ body {
   padding: 24px 28px 0;
 }
 
-.show-card-title { flex: 1; min-width: 0; direction: rtl; text-align: right; }
+.show-card-title { flex: 1; min-width: 0; }
 
 /* Event type — label sitting above the title */
 .show-card-type {
@@ -824,7 +824,9 @@ body {
   margin-bottom: 16px;
   font-optical-sizing: auto;
   font-variation-settings: "opsz" 48;
-  /* RTL inherited from .show-card-title parent */
+  /* RTL: right-align the show name in both web and mobile */
+  direction: rtl;
+  unicode-bidi: bidi-override;
   text-align: right;
   /* single line — truncate with ellipsis */
   white-space: nowrap;
