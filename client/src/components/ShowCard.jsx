@@ -53,16 +53,20 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     setBriefStatus('loading');
     try {
       const res = await fetch(`/api/shows/${show.id}/brief`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
         setBriefStatus('sent');
         if (data.docUrl) window.open(data.docUrl, '_blank');
       } else {
+        const msg = data.error || 'Brief creation failed';
         setBriefStatus('error');
+        // Show the actual server error so user knows what to fix
+        alert(`Brief error: ${msg}`);
       }
       setTimeout(() => setBriefStatus(null), 4000);
-    } catch {
+    } catch (e) {
       setBriefStatus('error');
+      alert(`Brief error: ${e.message || 'Network error'}`);
       setTimeout(() => setBriefStatus(null), 4000);
     }
   };
@@ -71,7 +75,12 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow }
     setPdfStatus('loading');
     try {
       const res = await fetch(`/api/shows/${show.id}/pdf`, { method: 'POST' });
-      if (!res.ok) { setPdfStatus('error'); setTimeout(() => setPdfStatus(null), 4000); return; }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const msg = data.details || data.error || 'PDF generation failed';
+        alert(`PDF error: ${msg}`);
+        setPdfStatus('error'); setTimeout(() => setPdfStatus(null), 4000); return;
+      }
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/pdf')) {
         const blob = await res.blob();

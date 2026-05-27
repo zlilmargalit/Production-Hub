@@ -20,23 +20,28 @@ const CHROME_PATH = process.env.CHROME_PATH || (() => {
   for (const bin of ['chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome']) {
     try {
       const p = execSync(`which ${bin}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-      if (p) return p;
+      if (p) { console.log(`[pdf] Found Chrome at: ${p}`); return p; }
     } catch { /* try next */ }
   }
-  return 'chromium'; // fallback: let the OS resolve via PATH
+  console.log('[pdf] Chrome not found via which, falling back to "chromium" in PATH');
+  return 'chromium';
 })();
+
+console.log('[pdf] CHROME_PATH =', CHROME_PATH);
 
 let browserPromise = null;
 
 async function launchBrowser() {
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
-    headless: 'new',
+    headless: true,           // 'new' is deprecated in puppeteer-core v22+
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
+      '--single-process',     // required in Railway/Docker containers
+      '--no-zygote',
     ],
   });
   // If the browser dies (crash, OOM, manual kill), drop the cached promise so

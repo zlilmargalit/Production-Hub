@@ -231,17 +231,18 @@ function App({ demoMode = false }) {
         {/* Brand (always left) */}
         <div className="header-brand">
           {/* Spot Pool mark — three semicircular arcs + floor line + orange subject dot */}
-          <svg width="36" height="26" viewBox="0 0 100 68" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg" aria-hidden="true">
+          {/* Spot Pool mark — sweep=1 arcs upward from the floor line */}
+          <svg width="36" height="28" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg" aria-hidden="true">
+            {/* Outer arc — radius 44, ends at x=6 and x=94 */}
+            <path d="M 6 62 A 44 44 0 0 1 94 62" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4"/>
+            {/* Middle arc — radius 29 */}
+            <path d="M 21 62 A 29 29 0 0 1 79 62" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" opacity="0.65"/>
+            {/* Inner arc — radius 15 */}
+            <path d="M 35 62 A 15 15 0 0 1 65 62" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.9"/>
             {/* Floor line */}
-            <line x1="4" y1="60" x2="96" y2="60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
-            {/* Outer arc */}
-            <path d="M 4 60 A 46 46 0 0 0 96 60" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.45"/>
-            {/* Middle arc */}
-            <path d="M 19 60 A 31 31 0 0 0 81 60" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.65"/>
-            {/* Inner arc */}
-            <path d="M 36 60 A 14 14 0 0 0 64 60" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.85"/>
-            {/* Subject dot (orange) */}
-            <circle cx="50" cy="60" r="5.5" fill="#F08D39"/>
+            <line x1="2" y1="62" x2="98" y2="62" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
+            {/* Subject dot */}
+            <circle cx="50" cy="62" r="5" fill="#F08D39"/>
           </svg>
           <h1>Production Hub</h1>
         </div>
