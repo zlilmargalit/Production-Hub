@@ -595,6 +595,75 @@ body {
 }
 .artist-option--new:hover { background: var(--accent-soft); }
 
+/* ── Per-artist row with three-dots menu ── */
+.artist-option-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.artist-option-row .artist-option {
+  flex: 1;
+  min-width: 0;
+}
+.artist-dots-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 10px;
+  height: 100%;
+  min-height: 34px;
+  color: var(--text-3);
+  font-size: 15px;
+  letter-spacing: 1px;
+  border-radius: var(--radius);
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+  line-height: 1;
+}
+.artist-option-row:hover .artist-dots-btn,
+.artist-dots-btn.active,
+.artist-dots-btn:focus-visible {
+  opacity: 1;
+  color: var(--text-2);
+}
+.artist-dots-btn:hover,
+.artist-dots-btn.active {
+  background: var(--surface-sunk);
+  color: var(--text);
+}
+.artist-dots-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  min-width: 148px;
+  overflow: hidden;
+  animation: menuIn 0.1s ease;
+}
+.artist-dots-item {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+.artist-dots-item--danger {
+  color: #d0362a;
+}
+.artist-dots-item--danger:hover {
+  background: rgba(208, 54, 42, 0.07);
+}
+
 /* ── New-artist modal (compact variant on top of .modal) ── */
 .artist-modal {
   max-width: 380px !important;

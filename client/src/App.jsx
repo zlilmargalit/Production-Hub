@@ -273,6 +273,34 @@ function App({ demoMode = false }) {
     return artist;
   }, [switchToArtist]);
 
+  const deleteArtist = useCallback((artist) => {
+    setConfirmModal({
+      title: 'Delete Artist',
+      message: `Remove "${artist.name}"? Their shows and data stay on the server but the artist will be removed from the list.`,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        await fetch(`/api/artists/${artist.id}`, { method: 'DELETE' });
+        setArtists((prev) => {
+          const remaining = prev.filter((a) => a.id !== artist.id);
+          // If the deleted artist was current, switch to the first remaining one
+          if (currentArtistRef.current === artist.id) {
+            if (remaining.length > 0) {
+              // switchToArtist updates ref + state + data
+              switchToArtist(remaining[0]);
+            } else {
+              currentArtistRef.current = null;
+              setCurrentArtist(null);
+              setShows([]); setCrew([]);
+              setTemplates({}); setFieldTemplates({}); setEventTypes([]);
+            }
+          }
+          return remaining;
+        });
+      },
+    });
+  }, [switchToArtist]);
+
   const openEdit = useCallback((show) => {
     setEditingShow(show);
     setShowForm(true);
@@ -330,6 +358,7 @@ function App({ demoMode = false }) {
                 currentArtist={currentArtist}
                 onSwitch={switchToArtist}
                 onAddNew={() => setNewArtistModal(true)}
+                onDelete={deleteArtist}
               />
             </>
           )}
@@ -459,13 +488,19 @@ function App({ demoMode = false }) {
 }
 
 // ── Artist switcher dropdown ──────────────────────────────────────────────────
-function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew }) {
+function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }) {
   const [open, setOpen] = useState(false);
+  const [dotsOpenFor, setDotsOpenFor] = useState(null);
   const ref = useRef(null);
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setDotsOpenFor(null);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
@@ -476,7 +511,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew }) {
     <div className="artist-switcher" ref={ref}>
       <button
         className="artist-switcher-btn"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { setOpen((o) => !o); setDotsOpenFor(null); }}
         aria-expanded={open}
         title="Switch artist"
       >
@@ -487,18 +522,44 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew }) {
       {open && (
         <div className="artist-switcher-panel">
           {artists.map((a) => (
-            <button
-              key={a.id}
-              className={`artist-option${a.id === currentArtist?.id ? ' active' : ''}`}
-              onClick={() => { onSwitch(a); setOpen(false); }}
-            >
-              {a.name}
-            </button>
+            <div key={a.id} className="artist-option-row">
+              <button
+                className={`artist-option${a.id === currentArtist?.id ? ' active' : ''}`}
+                onClick={() => { onSwitch(a); setOpen(false); setDotsOpenFor(null); }}
+              >
+                {a.name}
+              </button>
+              <button
+                className={`artist-dots-btn${dotsOpenFor === a.id ? ' active' : ''}`}
+                title="Artist options"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDotsOpenFor((prev) => (prev === a.id ? null : a.id));
+                }}
+              >
+                ···
+              </button>
+              {dotsOpenFor === a.id && (
+                <div className="artist-dots-menu">
+                  <button
+                    className="artist-dots-item artist-dots-item--danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDotsOpenFor(null);
+                      setOpen(false);
+                      onDelete(a);
+                    }}
+                  >
+                    Delete artist
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
           {artists.length > 0 && <div className="artist-option-divider" />}
           <button
             className="artist-option artist-option--new"
-            onClick={() => { setOpen(false); onAddNew(); }}
+            onClick={() => { setOpen(false); setDotsOpenFor(null); onAddNew(); }}
           >
             + New Artist
           </button>
