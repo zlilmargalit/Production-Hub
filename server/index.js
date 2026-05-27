@@ -300,6 +300,72 @@ async function gracefulExit(signal) {
 process.on('SIGTERM', () => gracefulExit('SIGTERM'));
 process.on('SIGINT',  () => gracefulExit('SIGINT'));
 
+// ── Startup migration: copy root data into any empty artist directories ───────
+// Runs on every boot. Safe & idempotent — only copies if the artist file is
+// empty/missing and the root file has actual content.
+async function migrateRootDataToArtists() {
+  try {
+    const DATA_DIR = path.join(__dirname, 'data');
+    const artistsFile = path.join(DATA_DIR, 'artists.json');
+    if (!fs.existsSync(artistsFile)) return;
+
+    const artists = JSON.parse(await fsp.readFile(artistsFile, 'utf8'));
+    if (!artists.length) return;
+
+    const fileDefs = [
+      { file: 'shows.json',          empty: [] },
+      { file: 'crew.json',           empty: [] },
+      { file: 'event-types.json',    empty: [] },
+      { file: 'field-templates.json',empty: {} },
+      { file: 'templates.json',      empty: {} },
+    ];
+
+    for (const artist of artists) {
+      const artistDir = path.join(DATA_DIR, 'artists', artist.id);
+      await fsp.mkdir(artistDir, { recursive: true });
+
+      let migratedCount = 0;
+      for (const { file, empty } of fileDefs) {
+        const dst = path.join(artistDir, file);
+        const src = path.join(DATA_DIR, file);
+
+        // Read current artist file (default to empty if missing)
+        let artistData = empty;
+        try { artistData = JSON.parse(await fsp.readFile(dst, 'utf8')); } catch {}
+        const isEmpty = Array.isArray(artistData)
+          ? artistData.length === 0
+          : Object.keys(artistData).length === 0;
+        if (!isEmpty) continue; // already has data — skip
+
+        // Read root file
+        let srcContent;
+        try { srcContent = await fsp.readFile(src, 'utf8'); } catch { continue; }
+        const srcData = JSON.parse(srcContent);
+        const hasContent = Array.isArray(srcData)
+          ? srcData.length > 0
+          : Object.keys(srcData).length > 0;
+        if (!hasContent) continue;
+
+        // Copy root → artist, then invalidate cache
+        await fsp.writeFile(dst, srcContent);
+        // Invalidate in-memory cache so next read gets fresh data
+        const { invalidate } = require('./cache');
+        if (typeof invalidate === 'function') {
+          const baseName = file.replace('.json', '');
+          invalidate(`${baseName}:art:${artist.id}`);
+        }
+        migratedCount++;
+        console.log(`[migrate] ${file} → ${artist.name}`);
+      }
+      if (migratedCount > 0) {
+        console.log(`[migrate] Copied ${migratedCount} root file(s) to artist "${artist.name}" (${artist.id})`);
+      }
+    }
+  } catch (e) {
+    console.warn('[migrate] startup migration skipped:', e.message);
+  }
+}
+
 app.listen(PORT, () => {
   const networkIp = Object.values(os.networkInterfaces())
     .flat()
@@ -316,5 +382,6 @@ app.listen(PORT, () => {
   console.log('│  Demo:  /demo  (no login required)          │');
   console.log('└─────────────────────────────────────────────┘');
   console.log('');
+  migrateRootDataToArtists(); // fire-and-forget — non-blocking
   startGmailPolling();
 });
