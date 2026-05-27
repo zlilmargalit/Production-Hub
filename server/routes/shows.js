@@ -437,10 +437,49 @@ async function createBriefDoc(payload, imageUrl) {
   return `https://docs.google.com/document/d/${docId}/edit`;
 }
 
+// ── Shared helpers ───────────────────────────────────────────────────────────
+// Reused in both the brief and PDF routes — no more duplication.
+function formatShowDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()}`;
+}
+function showFieldInPdf(show, key) {
+  if (key.startsWith('check_')) return show.pdfFields?.[key] === true;
+  return !show.pdfFields || show.pdfFields[key] !== false;
+}
+
+// ── slimShow: strip base64 payloads for the list endpoint ────────────────────
+// Cuts payload 90%+ when stage-layout images are attached.
+// Full data lives on disk and is returned by GET /:id (used for editing, PDF, brief).
+function slimShow(show) {
+  if (!show.customFields) return show;
+  const slim = {};
+  for (const [k, v] of Object.entries(show.customFields)) {
+    const src = typeof v === 'string' ? v : v?.data;
+    if (typeof src === 'string' && src.startsWith('data:')) {
+      slim[k] = typeof v === 'object' ? { ...v, data: null, _hasData: true } : { _hasData: true };
+    } else {
+      slim[k] = v;
+    }
+  }
+  return { ...show, customFields: slim };
+}
+
 // ─── CRUD routes ───────────────────────────────────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await readShows(req.userId));
+    res.json((await readShows(req.userId)).map(slimShow));
+  } catch (err) { next(err); }
+});
+
+// GET /:id — full show data (used by ShowForm when editing)
+router.get('/:id', async (req, res, next) => {
+  try {
+    const shows = await readShows(req.userId);
+    const show = shows.find((s) => s.id === req.params.id);
+    if (!show) return res.status(404).json({ error: 'Show not found' });
+    res.json(show);
   } catch (err) { next(err); }
 });
 
@@ -513,84 +552,57 @@ router.post('/apply-crew-templates', async (req, res, next) => {
 });
 
 // ─── Brief (Google Docs creator) ───────────────────────────────────────────
+// In-memory job store — keyed by jobId, auto-cleans after 10 min.
+const briefJobs = new Map();
+
+// GET /:id/brief/:jobId — poll brief generation status
+router.get('/:id/brief/:jobId', (req, res) => {
+  const job = briefJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found or expired' });
+  res.json(job);
+});
+
+// POST /:id/brief — returns { jobId } immediately; actual work runs in background.
+// Poll GET /:id/brief/:jobId until status === 'done' | 'error'.
 router.post('/:id/brief', async (req, res) => {
   try {
+    // Fast synchronous reads (cached) + credential check — all happen before we respond
     const shows = await readShows(req.userId);
     const show = shows.find((s) => s.id === req.params.id);
     if (!show) return res.status(404).json({ error: 'Show not found' });
 
     const [crew, fieldTemplates] = await Promise.all([readCrew(req.userId), readFieldTemplates(req.userId)]);
 
-    const formatDate = (d) => {
-      if (!d) return '';
-      const dt = new Date(d);
-      return `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()}`;
-    };
-
-    const inPdf = (key) => {
-      if (key.startsWith('check_')) return show.pdfFields?.[key] === true;
-      return !show.pdfFields || show.pdfFields[key] !== false;
-    };
-
-    const assignedCrew = (show.crewIds || []).map((id) => crew.find((m) => m.id === id)).filter(Boolean);
-    const techCrew = assignedCrew
-      .filter((m) => m.role !== 'נגן')
-      .map((m) => `${m.role} – ${m.name}`)
-      .join(' | ') || show.technicalCrew || '';
-    const musicians = assignedCrew
-      .filter((m) => m.role === 'נגן')
-      .map((m) => m.name)
-      .join(', ');
-
-    const customDefs = (show.eventType && fieldTemplates[show.eventType]) || [];
-
-    // Check whether Google credentials are available (env vars take priority over files).
     const hasEnvCreds = !!(process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN);
     let hasFileCreds = false;
     if (!hasEnvCreds) {
-      try {
-        await fsp.access(CREDENTIALS_PATH);
-        await fsp.access(TOKEN_PATH);
-        hasFileCreds = true;
-      } catch { /* no file creds */ }
+      try { await fsp.access(CREDENTIALS_PATH); await fsp.access(TOKEN_PATH); hasFileCreds = true; }
+      catch { /* no file creds */ }
     }
-    const canUpload = hasEnvCreds || hasFileCreds;
-
-    if (!canUpload) {
-      return res.status(503).json({
-        error: 'Google Drive credentials not configured. Set GMAIL_CREDENTIALS and GMAIL_TOKEN environment variables to enable Brief creation.',
-      });
+    if (!hasEnvCreds && !hasFileCreds) {
+      return res.status(503).json({ error: 'Google Drive credentials not configured.' });
     }
 
-    const imageUploadUrls = {};
+    // Build everything that doesn't require I/O synchronously
+    const inPdf   = (key) => showFieldInPdf(show, key);
+    const customDefs = (show.eventType && fieldTemplates[show.eventType]) || [];
 
-    if (canUpload) {
-      for (const def of customDefs) {
-        if (def.type !== 'image' && def.type !== 'file') continue;
-        if (show.pdfFields?.['cf_' + def.id] === false) continue;
-        const val = show.customFields?.[def.id];
-        if (!val) continue;
-        const dataUrl = typeof val === 'string' ? val : val.data;
-        const origName = typeof val === 'object' ? (val.name || def.label) : def.label;
-        if (!dataUrl) continue;
-        try {
-          const isPdf = (typeof val === 'object' && val.isPdf) ||
-                        dataUrl.startsWith('data:application/pdf');
-          const uploadUrl = isPdf ? await pdfDataUrlToPng(dataUrl) : dataUrl;
-          if (!uploadUrl) continue;
-          const uploadName = origName.replace(/\.pdf$/i, '.png');
-          imageUploadUrls[def.id] = await uploadDataUrlToDrive(uploadUrl, uploadName);
-        } catch (e) {
-          console.error('[brief] Drive upload failed for', def.label, e.message);
-        }
-      }
-    }
+    const assignedCrew = (show.crewIds || []).map((id) => crew.find((m) => m.id === id)).filter(Boolean);
+    const techCrew  = assignedCrew.filter((m) => m.role !== 'נגן').map((m) => `${m.role} – ${m.name}`).join(' | ') || show.technicalCrew || '';
+    const musicians = assignedCrew.filter((m) => m.role === 'נגן').map((m) => m.name).join(', ');
+
+    const checkItems = [
+      { key: 'check_mirror',       label: 'מראת גוף',   value: show.mirror },
+      { key: 'check_coffeeCorner', label: 'פינת קפה',   value: show.coffeeCorner },
+      { key: 'check_waterBottles', label: 'בקבוקי מים', value: show.waterBottles },
+      ...(show.eventType === 'אני גיטרה' ? [{ key: 'check_piano', label: 'פסנתר', value: show.piano }] : []),
+    ]
+      .filter((item) => inPdf(item.key))
+      .map((item) => `${item.label} ${item.value ? '✓' : '✕'}`)
+      .join('\n');
 
     const customFieldsText = customDefs
-      .filter((def) => {
-        if (def.type === 'image') return show.pdfFields?.['cf_' + def.id] !== false;
-        return show.pdfFields?.['cf_' + def.id] === true;
-      })
+      .filter((def) => def.type === 'image' ? show.pdfFields?.['cf_' + def.id] !== false : show.pdfFields?.['cf_' + def.id] === true)
       .map((def) => {
         const val = show.customFields?.[def.id];
         if (!val && val !== false) return '';
@@ -601,48 +613,70 @@ router.post('/:id/brief', async (req, res) => {
       .filter(Boolean)
       .join('\n');
 
-    const firstImageUrl = Object.values(imageUploadUrls)[0] || '';
-
-    const checkItems = [
-      { key: 'check_mirror',       label: 'מראת גוף',   value: show.mirror },
-      { key: 'check_coffeeCorner', label: 'פינת קפה',   value: show.coffeeCorner },
-      { key: 'check_waterBottles', label: 'בקבוקי מים', value: show.waterBottles },
-      ...(show.eventType === 'אני גיטרה' ? [{ key: 'check_piano', label: 'פסנתר', value: show.piano }] : []),
-    ]
-      .filter((item) => inPdf(item.key))
-      // Label first, then ✓/✕ — in RTL Google Docs the tick ends up on the LEFT of the label
-      .map((item) => `${item.label} ${item.value ? '✓' : '✕'}`)
-      .join('\n');
-
-    const payload = {
-      eventName:        show.name,
-      date:             formatDate(show.date),
-      venue:            inPdf('venue')            ? (show.venue            || '') : '',
-      address:          inPdf('address')          ? (show.address          || '') : '',
-      parking:          inPdf('parking')          ? (show.parking          || '') : '',
-      technicalCrew:    inPdf('technicalCrew')    ? techCrew                      : '',
-      musicians:        inPdf('musicians')        ? musicians                     : '',
-      transportation:   inPdf('transportation')   ? (show.transportation   || '') : '',
-      schedule:         inPdf('schedule')         ? (show.schedule         || '') : '',
-      contacts:         inPdf('contacts')         ? (show.contacts         || '') : '',
-      venueContact:     inPdf('venueContact')     ? (show.venueContact     || '') : '',
-      additionalDetails:inPdf('additionalDetails')? (show.additionalDetails|| '') : '',
-      food:             inPdf('food')             ? (show.food             || '') : '',
-      notes:            inPdf('notes')            ? (show.notes            || '') : '',
-      sound:            show.sound       || '',
-      lighting:         show.lighting    || '',
-      backline:         show.backline    || '',
-      crewEmails:       (show.crewEmails || []).join(', '),
-      customFields:          customFieldsText,
-      checkItems:            checkItems,
-      stageLayoutImageUrl:   firstImageUrl,
+    const basePayload = {
+      eventName:         show.name,
+      date:              formatShowDate(show.date),
+      venue:             inPdf('venue')             ? (show.venue             || '') : '',
+      address:           inPdf('address')           ? (show.address           || '') : '',
+      parking:           inPdf('parking')           ? (show.parking           || '') : '',
+      technicalCrew:     inPdf('technicalCrew')     ? techCrew                       : '',
+      musicians:         inPdf('musicians')         ? musicians                      : '',
+      transportation:    inPdf('transportation')    ? (show.transportation    || '') : '',
+      schedule:          inPdf('schedule')          ? (show.schedule          || '') : '',
+      contacts:          inPdf('contacts')          ? (show.contacts          || '') : '',
+      venueContact:      inPdf('venueContact')      ? (show.venueContact      || '') : '',
+      additionalDetails: inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
+      food:              inPdf('food')              ? (show.food              || '') : '',
+      notes:             inPdf('notes')             ? (show.notes             || '') : '',
+      sound:             show.sound    || '',
+      lighting:          show.lighting || '',
+      backline:          show.backline || '',
+      crewEmails:        (show.crewEmails || []).join(', '),
+      customFields:      customFieldsText,
+      checkItems,
     };
 
-    const docUrl = await createBriefDoc(payload, firstImageUrl);
-    res.json({ success: true, docUrl });
+    // ── Respond immediately with jobId ─────────────────────────────────────
+    const jobId = uuidv4();
+    briefJobs.set(jobId, { status: 'processing', createdAt: Date.now() });
+    res.json({ jobId, status: 'processing' });
+
+    // ── Background: image uploads + Google Doc creation ───────────────────
+    (async () => {
+      try {
+        const imageUploadUrls = {};
+        for (const def of customDefs) {
+          if (def.type !== 'image' && def.type !== 'file') continue;
+          if (show.pdfFields?.['cf_' + def.id] === false) continue;
+          const val = show.customFields?.[def.id];
+          if (!val) continue;
+          const dataUrl  = typeof val === 'string' ? val : val.data;
+          const origName = typeof val === 'object' ? (val.name || def.label) : def.label;
+          if (!dataUrl) continue;
+          try {
+            const isPdf = (typeof val === 'object' && val.isPdf) || dataUrl.startsWith('data:application/pdf');
+            const uploadUrl = isPdf ? await pdfDataUrlToPng(dataUrl) : dataUrl;
+            if (!uploadUrl) continue;
+            imageUploadUrls[def.id] = await uploadDataUrlToDrive(uploadUrl, origName.replace(/\.pdf$/i, '.png'));
+          } catch (e) {
+            console.error('[brief] Drive upload failed for', def.label, e.message);
+          }
+        }
+        const firstImageUrl = Object.values(imageUploadUrls)[0] || '';
+        const docUrl = await createBriefDoc({ ...basePayload, stageLayoutImageUrl: firstImageUrl }, firstImageUrl);
+        briefJobs.set(jobId, { status: 'done', docUrl });
+        console.log(`[brief] Job ${jobId} done: ${docUrl}`);
+      } catch (err) {
+        console.error(`[brief] Job ${jobId} failed:`, err.message);
+        briefJobs.set(jobId, { status: 'error', error: err.message });
+      } finally {
+        setTimeout(() => briefJobs.delete(jobId), 10 * 60 * 1000);
+      }
+    })();
+
   } catch (err) {
-    console.error('[brief] Doc creation failed:', err.message);
-    res.status(500).json({ error: 'Brief creation failed', details: err.message });
+    console.error('[brief] Setup failed:', err.message);
+    if (!res.headersSent) res.status(500).json({ error: 'Brief setup failed', details: err.message });
   }
 });
 
@@ -667,15 +701,9 @@ router.post('/:id/pdf', async (req, res) => {
       .map((m) => `${m.role} – ${m.name}`)
       .join(' | ');
 
-    const formatDate = (d) => {
-      if (!d) return '';
-      const dt = new Date(d);
-      return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
-    };
-
-    const esc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const esc   = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const nl2br = (s) => esc(s || '').replace(/\n/g, '<br>');
-    const inPdf = (key) => !show.pdfFields || show.pdfFields[key] !== false;
+    const inPdf = (key) => showFieldInPdf(show, key);
 
     const customDefs = (show.eventType && fieldTemplates[show.eventType]) || [];
     const isPdfData = (v) => typeof v === 'string' && v.startsWith('data:application/pdf');
@@ -811,7 +839,7 @@ router.post('/:id/pdf', async (req, res) => {
 <h1>דף תיאום — ${esc(show.name)}</h1>
 
 <h2>פרטי האירוע</h2>
-${show.date ? `<div class="row"><span class="label">תאריך:</span><span class="value">${formatDate(show.date)}</span></div>` : ''}
+${show.date ? `<div class="row"><span class="label">תאריך:</span><span class="value">${formatShowDate(show.date)}</span></div>` : ''}
 ${show.eventType ? `<div class="row"><span class="label">סוג אירוע:</span><span class="value">${esc(show.eventType)}</span></div>` : ''}
 ${inPdf('venue') && show.venue ? `<div class="row"><span class="label">מקום:</span><span class="value">${esc(show.venue)}</span></div>` : ''}
 ${inPdf('address') && show.address ? `<div class="row"><span class="label">כתובת:</span><span class="value">${esc(show.address)}</span></div>` : ''}
@@ -833,7 +861,7 @@ ${imageSectionHtml}
 </body>
 </html>`;
 
-    const dateStr = formatDate(show.date);
+    const dateStr = formatShowDate(show.date);
     const safeName = show.name.replace(/[/\\:*?"<>|]/g, '_');
     const filename = `אמדורסקי ${safeName}${dateStr ? ' ' + dateStr : ''}.pdf`;
 

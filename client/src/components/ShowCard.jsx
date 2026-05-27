@@ -2,6 +2,12 @@ import { useState } from 'react';
 import TaskManager from './TaskManager';
 import { etColorIdx } from '../utils/etColor';
 
+// ── Module-level constants — not recreated on every render ──────────────────
+const CREW_PALETTE = ['#3852B4', '#5E7AC4', '#F08D39', '#C26C1F', '#1F2D6E', '#B07729', '#8F4F1A', '#7A8FE0'];
+const colorFor     = (id) => CREW_PALETTE[(id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % CREW_PALETTE.length];
+const initialsFor  = (name) => (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+const formatDate   = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+
 function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
@@ -20,15 +26,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     : show.technicalCrew;
 
   const customDefs = (show.eventType && fieldTemplates?.[show.eventType]) || [];
-
-  const formatDate = (d) => {
-    if (!d) return null;
-    return new Date(d).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
 
   const toggleField = (field) => {
     onUpdateShow(show.id, { ...show, [field]: !show[field] });
@@ -57,20 +54,49 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     setBriefStatus('loading');
     setBriefError(null);
     try {
-      const res = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
+      const res  = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setBriefStatus('sent');
-        if (data.docUrl) window.open(data.docUrl, '_blank');
-      } else {
+      if (!res.ok) {
         setBriefStatus('error');
         setBriefError(data.error || 'Brief creation failed');
+        setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+        return;
       }
-      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 2000);
+      // Server returns immediately with a jobId — poll until done
+      const { jobId } = data;
+      let attempts = 0;
+      const poll = async () => {
+        if (++attempts > 60) { // 2-minute timeout
+          setBriefStatus('error');
+          setBriefError('Timed out — check Google Drive in a few minutes');
+          setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
+          return;
+        }
+        try {
+          const sr = await fetch(`/api/shows/${show.id}/brief/${jobId}${qs}`);
+          const sd = await sr.json().catch(() => ({}));
+          if (sd.status === 'done') {
+            setBriefStatus('sent');
+            if (sd.docUrl) window.open(sd.docUrl, '_blank');
+            setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 3000);
+          } else if (sd.status === 'error') {
+            setBriefStatus('error');
+            setBriefError(sd.error || 'Brief creation failed');
+            setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+          } else {
+            setTimeout(poll, 2000); // still processing — poll again
+          }
+        } catch {
+          setBriefStatus('error');
+          setBriefError('Network error while checking status');
+          setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+        }
+      };
+      setTimeout(poll, 3000); // first poll after 3s
     } catch (e) {
       setBriefStatus('error');
       setBriefError(e.message || 'Network error');
-      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 2000);
+      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
     }
   };
 
@@ -108,17 +134,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   // Detect Hebrew so the heading can pick the right font stack via :lang(he)
   const isHebrew = (show.name && /[\u0590-\u05FF]/.test(show.name)) ? 'he' : 'en';
 
-  // Stable color per crew member (deterministic hash → palette)
-  const crewPalette = ['#3852B4', '#5E7AC4', '#F08D39', '#C26C1F', '#1F2D6E', '#B07729', '#8F4F1A', '#7A8FE0'];
-  const colorFor = (id) => {
-    const hash = (id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    return crewPalette[hash % crewPalette.length];
-  };
-
   // Deterministic palette slot for event type (16 slots → CSS data-et-idx)
   const etIdx = etColorIdx(show.eventType);
-  const initialsFor = (name) =>
-    (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   return (
     <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
@@ -267,6 +284,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                           <a href={val.data} download={val.name} className="file-download-link" onClick={(e) => e.stopPropagation()}>
                             📎 {val.name}
                           </a>
+                        ) : val?._hasData && !val?.data ? (
+                          <span className="file-download-link">📎 Image attached</span>
                         ) : (
                           <img
                             src={typeof val === 'string' ? val : val.data}
@@ -318,7 +337,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
               onClick={createBrief}
               disabled={briefStatus === 'loading'}
             >
-              {briefStatus === 'loading' ? 'Sending...' :
+              {briefStatus === 'loading' ? 'Creating…' :
                briefStatus === 'sent' ? 'Sent ✓' :
                briefStatus === 'error' ? 'Error ✕' :
                'Brief'}

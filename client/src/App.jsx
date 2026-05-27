@@ -301,8 +301,15 @@ function App({ demoMode = false }) {
     });
   }, [switchToArtist]);
 
-  const openEdit = useCallback((show) => {
-    setEditingShow(show);
+  const openEdit = useCallback(async (show) => {
+    const qs = currentArtistRef.current
+      ? `?artistId=${encodeURIComponent(currentArtistRef.current)}` : '';
+    try {
+      const res = await fetch(`/api/shows/${show.id}${qs}`);
+      setEditingShow(res.ok ? await res.json() : show);
+    } catch {
+      setEditingShow(show); // fallback to slim show
+    }
     setShowForm(true);
   }, []);
 
