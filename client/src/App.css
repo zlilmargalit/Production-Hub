@@ -3646,3 +3646,38 @@ body {
   .settings-save-row { padding: 12px 16px 24px; }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   PRODUCTION HUB — hub-* classes
+   ══════════════════════════════════════════════════════════════ */
+
+.hub-panel {
+  border-top: 2px dashed var(--border-strong);
+}
+
+.hub-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 28px;
+  background: var(--text);
+}
+
+.hub-header-text { display: flex; flex-direction: column; gap: 3px; }
+
+.hub-eyebrow {
+  font-family: 'Courier New', monospace;
+  font-size: 0.5rem; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--surface); opacity: 0.45; line-height: 1;
+}
+
+.hub-heading {
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.875rem; font-weight: 700;
+  letter-spacing: -0.02em; color: var(--surface); line-height: 1;
+}
+
+@media (max-width: 600px) {
+  .hub-header { padding: 10px 16px; }
+}
+

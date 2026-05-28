@@ -193,10 +193,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <Field label="Address" value={show.address} inPdf={isPdfOn('address')} onTogglePdf={() => togglePdf('address')} />
             <Field label="Parking" value={show.parking} inPdf={isPdfOn('parking')} onTogglePdf={() => togglePdf('parking')} />
             <Field label="Technical Crew" value={techCrewDisplay} inPdf={isPdfOn('technicalCrew')} onTogglePdf={() => togglePdf('technicalCrew')} />
-            {musicians && <Field label="הרכב" value={musicians} inPdf={isPdfOn('musicians')} onTogglePdf={() => togglePdf('musicians')} />}
+            {musicians && <Field label="Musicians" value={musicians} inPdf={isPdfOn('musicians')} onTogglePdf={() => togglePdf('musicians')} />}
             <Field label="Transportation" value={show.transportation} inPdf={isPdfOn('transportation')} onTogglePdf={() => togglePdf('transportation')} />
             <Field label="Contacts" value={show.contacts} inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
-            {show.food && <Field label="Food" value={show.food} inPdf={isPdfOn('food')} onTogglePdf={() => togglePdf('food')} />}
 
           </div>
 
@@ -415,7 +414,17 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         </button>
       </div>
 
-      {showTasks && <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />}
+      {showTasks && (
+        <div className="hub-panel" aria-label="Production Hub — internal">
+          <div className="hub-header">
+            <div className="hub-header-text">
+              <div className="hub-eyebrow">Internal</div>
+              <div className="hub-heading">Production Hub</div>
+            </div>
+          </div>
+          <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />
+        </div>
+      )}
     </div>
   );
 }
