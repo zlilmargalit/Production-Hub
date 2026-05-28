@@ -1156,7 +1156,7 @@ body {
 
 /* Detail body — sunk background, hairline above/below */
 .show-details {
-  padding: 24px 28px 26px;
+  padding: 26px 28px 28px;
   background: var(--surface-sunk);
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
@@ -1166,11 +1166,13 @@ body {
 .details-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px 32px;
-  margin-bottom: 18px;
+  gap: 22px 36px;
+  margin-bottom: 4px;
+  padding-bottom: 22px;
+  border-bottom: 1px dashed var(--border-light);
 }
 
-.detail-field { display: flex; flex-direction: column; gap: 5px; }
+.detail-field { display: flex; flex-direction: column; gap: 7px; }
 
 .field-label {
   font-family: inherit;
@@ -1214,12 +1216,12 @@ body {
 .detail-full p { font-size: 0.875rem; color: var(--text); line-height: 1.5; }
 
 .additional-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 4px 18px;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px dashed var(--border-light);
 }
 
 /* ── Technical Coordination section ─────────────────────────────────────── */
@@ -1299,9 +1301,22 @@ body {
 }
 
 .check-pdf-pair {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
+  width: 100%;
+  padding: 7px 4px 7px 2px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+.check-pdf-pair:hover { background: var(--surface-2); }
+[data-theme="dark"] .check-pdf-pair:hover { background: var(--surface); }
+.check-pdf-pair .quick-check {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.9375rem;
 }
 
 .file-download-link {
@@ -1900,35 +1915,86 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  padding-bottom: 4px;
 }
+.detail-field .field-label-row { padding-bottom: 2px; }
 
 .pdf-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  padding: 2px 0 2px 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
   cursor: pointer;
-  opacity: 0.3;
-  transition: opacity 0.15s;
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  line-height: 1;
+  user-select: none;
   white-space: nowrap;
   flex-shrink: 0;
+  opacity: 0.32;
+  transition: opacity 0.18s ease, color 0.18s ease;
 }
-.pdf-toggle:has(input:checked) { opacity: 1; }
-.detail-field:hover .pdf-toggle,
-.detail-full:hover .pdf-toggle { opacity: 0.7; }
+
 .pdf-toggle input[type='checkbox'] {
-  width: 11px; height: 11px;
-  accent-color: var(--accent);
-  cursor: pointer;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
+
+.pdf-toggle::before {
+  content: "";
+  width: 9px;
+  height: 11px;
+  border: 1px solid currentColor;
+  border-radius: 1.5px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(135deg, transparent 0 50%, currentColor 50% 60%, transparent 60%) top right / 3.5px 3.5px no-repeat;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
 .pdf-toggle-text {
-  font-size: 0.5625rem;
-  font-weight: 600;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-3);
+  color: inherit;
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  transition: opacity 0.18s ease, max-width 0.22s ease;
 }
-.pdf-toggle:has(input:checked) .pdf-toggle-text { color: var(--text); }
+
+.detail-field:hover .pdf-toggle,
+.detail-full:hover .pdf-toggle,
+.check-pdf-pair:hover .pdf-toggle,
+.custom-field-display:hover .pdf-toggle { opacity: 0.55; }
+.pdf-toggle:hover { opacity: 0.85; color: var(--text-2); }
+.pdf-toggle:hover .pdf-toggle-text { opacity: 0.8; max-width: 32px; }
+
+.pdf-toggle:has(input:checked) {
+  opacity: 1;
+  color: var(--accent);
+}
+.pdf-toggle:has(input:checked)::before {
+  background: linear-gradient(currentColor, currentColor) center / 100% 100% no-repeat;
+  border-color: currentColor;
+  box-shadow: inset -3px 3px 0 -1px var(--surface-sunk);
+}
+.pdf-toggle:has(input:checked) .pdf-toggle-text {
+  opacity: 1;
+  max-width: 32px;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    MODAL

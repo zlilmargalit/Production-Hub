@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import ConfirmModal from './ConfirmModal';
 
-const MODES = ['מונית', 'ואן', 'עצמאית'];
+const MODES = ['Taxi', 'Van', 'Self'];
 
 function buildTransportText(mode, driver, time) {
   const parts = [];
   if (mode) parts.push(mode);
-  if (driver) parts.push(`נהג: ${driver}`);
+  if (driver) parts.push(`Driver: ${driver}`);
   if (time) parts.push(time);
   return parts.join(' — ');
 }
 
-function TaskManager({ show, onUpdate }) {
+function TaskManager({ show, onUpdate, artistId }) {
   const [transport, setTransport] = useState({
     mode: show.transportMode || '',
     driver: show.transportDriver || '',
@@ -152,7 +152,11 @@ function TaskManager({ show, onUpdate }) {
   const doSendCalendarInvite = async (testMode = false) => {
     setInviteStatus('loading');
     try {
-      const url = `/api/calendar/invite/${show.id}${testMode ? '?test=1' : ''}`;
+      const qs = new URLSearchParams();
+      if (artistId) qs.set('artistId', artistId);
+      if (testMode) qs.set('test', '1');
+      const qsStr = qs.toString() ? `?${qs.toString()}` : '';
+      const url = `/api/calendar/invite/${show.id}${qsStr}`;
       const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       const data = await res.json();
       setInviteStatus(res.ok ? { ok: true, data } : { error: data.error });
@@ -247,18 +251,18 @@ function TaskManager({ show, onUpdate }) {
         </div>
         <div className="fixed-inputs-row">
           <div className="fixed-input-group">
-            <label>שם נהג</label>
+            <label>Driver</label>
             <input
               className="fixed-input"
-              dir="rtl"
+              dir="auto"
               value={transport.driver}
               onChange={(e) => setTransport((p) => ({ ...p, driver: e.target.value }))}
               onBlur={() => saveTransport(transport)}
-              placeholder="שם הנהג"
+              placeholder="Driver name"
             />
           </div>
           <div className="fixed-input-group">
-            <label>שעה</label>
+            <label>Time</label>
             <input
               className="fixed-input"
               dir="ltr"
@@ -276,18 +280,18 @@ function TaskManager({ show, onUpdate }) {
         <h4 className="fixed-task-title">Food</h4>
         <div className="fixed-inputs-row">
           <div className="fixed-input-group">
-            <label>שם</label>
+            <label>Name</label>
             <input
               className="fixed-input"
-              dir="rtl"
+              dir="auto"
               value={food.name}
               onChange={(e) => setFood((p) => ({ ...p, name: e.target.value }))}
               onBlur={() => saveFood(food)}
-              placeholder="שם / מסעדה"
+              placeholder="Name / Restaurant"
             />
           </div>
           <div className="fixed-input-group">
-            <label>טלפון</label>
+            <label>Phone</label>
             <input
               className="fixed-input"
               dir="ltr"
@@ -298,7 +302,7 @@ function TaskManager({ show, onUpdate }) {
             />
           </div>
           <div className="fixed-input-group">
-            <label>שעה</label>
+            <label>Time</label>
             <input
               className="fixed-input"
               dir="ltr"
@@ -332,7 +336,7 @@ function TaskManager({ show, onUpdate }) {
               value={coord.rentalNeeds}
               onChange={(e) => setCoord((p) => ({ ...p, rentalNeeds: e.target.value }))}
               onBlur={() => saveCoord(coord)}
-              placeholder="ציוד להשכרה..."
+              placeholder="Equipment to rent..."
             />
           </div>
           {/* Right: Lighting */}
@@ -348,14 +352,14 @@ function TaskManager({ show, onUpdate }) {
           </div>
         </div>
         <div className="fixed-input-group" style={{ marginTop: 10 }}>
-          <label>מאיפה משכירים</label>
+          <label>Rental supplier</label>
           <input
             className="fixed-input"
-            dir="rtl"
+            dir="auto"
             value={coord.rentalSupplier}
             onChange={(e) => setCoord((p) => ({ ...p, rentalSupplier: e.target.value }))}
             onBlur={() => saveCoord(coord)}
-            placeholder="שם ספק / חברת השכרה"
+            placeholder="Supplier / Rental company"
           />
         </div>
       </div>

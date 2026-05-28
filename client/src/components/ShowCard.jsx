@@ -415,7 +415,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         </button>
       </div>
 
-      {showTasks && <TaskManager show={show} onUpdate={onUpdateShow} />}
+      {showTasks && <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />}
     </div>
   );
 }

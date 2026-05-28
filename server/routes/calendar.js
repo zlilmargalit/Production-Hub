@@ -9,8 +9,6 @@ const { dataPath, cacheKey } = require('../utils/userData');
 
 const CREDENTIALS_PATH   = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH         = path.join(__dirname, '../data/gmail-token.json');
-const DATA_FILE          = path.join(__dirname, '../data/shows.json');
-const CREW_FILE          = path.join(__dirname, '../data/crew.json');
 const CALENDAR_CFG_FILE  = path.join(__dirname, '../data/calendar-config.json');
 
 // Read calendar ID from config file; fall back to 'primary'.
@@ -166,11 +164,12 @@ router.post('/invite/:showId', async (req, res) => {
     return res.status(503).json({ error: 'Google Calendar not configured. Run gmail-auth.js first.' });
   }
 
-  const shows = await readJsonCached('shows', DATA_FILE, []);
+  const userId = req.userId || 'admin';
+  const shows = await readJsonCached(cacheKey(userId, 'shows'), dataPath(userId, 'shows.json'), []);
   const show  = shows.find((s) => s.id === req.params.showId);
   if (!show) return res.status(404).json({ error: 'Show not found' });
 
-  const crew = await readJsonCached('crew', CREW_FILE, []);
+  const crew = await readJsonCached(cacheKey(userId, 'crew'), dataPath(userId, 'crew.json'), []);
   const testMode = req.query.test === '1' || req.body.test === true;
 
   // Build attendees list
