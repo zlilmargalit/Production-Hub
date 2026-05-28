@@ -6,6 +6,7 @@ import ConfirmModal from './components/ConfirmModal';
 import DemoBanner from './components/DemoBanner';
 import GlobalTaskPanel from './components/GlobalTaskPanel';
 import TeamPanel       from './components/TeamPanel';
+import SetlistCalculator from './components/SetlistCalculator';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -430,6 +431,14 @@ function App({ demoMode = false }) {
               )}
             </button>
           )}
+          {!demoMode && (
+            <button
+              className={`nav-btn ${page === 'calculator' ? 'active' : ''}`}
+              onClick={() => setPage('calculator')}
+            >
+              ♩ Setlist
+            </button>
+          )}
           {!demoMode && userRole === 'admin' && (
             <button
               className={`nav-btn ${page === 'team' ? 'active' : ''}`}
@@ -526,6 +535,8 @@ function App({ demoMode = false }) {
             artistId={currentArtist?.id || null}
             readOnly={userRole !== 'admin'}
           />
+        ) : page === 'calculator' ? (
+          <SetlistCalculator defaultArtistName={currentArtist?.name || ''} />
         ) : page === 'team' && userRole === 'admin' ? (
           <TeamPanel artists={artists} />
         ) : page === 'tasks' ? (
