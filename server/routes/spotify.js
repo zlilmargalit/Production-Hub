@@ -145,12 +145,12 @@ router.post('/setlist-duration', async (req, res) => {
   let totalDurationMs = 0;
 
   for (const line of lines) {
-    // Detect "Artist - Song" override: only split on first " - "
+    // Detect "Song - Artist" override: only split on first " - "
     const dashIdx = line.indexOf(' - ');
     let artist, song;
     if (dashIdx !== -1) {
-      artist = line.slice(0, dashIdx).trim();
-      song   = line.slice(dashIdx + 3).trim();
+      song   = line.slice(0, dashIdx).trim();
+      artist = line.slice(dashIdx + 3).trim();
     } else {
       artist = defaultArtist.trim() || 'unknown';
       song   = line.trim();

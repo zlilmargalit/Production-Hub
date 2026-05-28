@@ -433,19 +433,17 @@ function App({ demoMode = false }) {
             </button>
           )}
           {!demoMode && (
-            <button
-              className={`nav-btn ${page === 'calculator' ? 'active' : ''}`}
-              onClick={() => setPage('calculator')}
-            >
-              ♩ Setlist
-            </button>
+            <ToolsDropdown
+              active={page === 'calculator'}
+              onSelectTool={(tool) => setPage(tool)}
+            />
           )}
           {!demoMode && (
             <button
               className={`nav-btn ${page === 'automations' ? 'active' : ''}`}
               onClick={() => setPage('automations')}
             >
-              ⚡ Automations
+              Automations
             </button>
           )}
           {!demoMode && userRole === 'admin' && (
@@ -547,7 +545,10 @@ function App({ demoMode = false }) {
         ) : page === 'automations' ? (
           <AutomationsPage />
         ) : page === 'calculator' ? (
-          <SetlistCalculator defaultArtistName={currentArtist?.name || ''} />
+          <SetlistCalculator
+            defaultArtistName={currentArtist?.name || ''}
+            artistName={currentArtist?.name || ''}
+          />
         ) : page === 'team' && userRole === 'admin' ? (
           <TeamPanel artists={artists} />
         ) : page === 'tasks' ? (
@@ -606,6 +607,52 @@ function App({ demoMode = false }) {
           onClose={() => setNewArtistModal(false)}
           onCreate={createArtist}
         />
+      )}
+    </div>
+  );
+}
+
+// ── Tools dropdown nav item ───────────────────────────────────────────────────
+const TOOLS = [
+  { key: 'calculator', label: 'Setlist Calculator' },
+];
+
+function ToolsDropdown({ active, onSelectTool }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="tools-nav-dropdown" ref={ref}>
+      <button
+        className={`nav-btn tools-nav-dropdown-trigger${active ? ' active' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        Tools
+        <span className="tools-nav-caret" aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="tools-nav-dropdown-panel">
+          {TOOLS.map((t) => (
+            <button
+              key={t.key}
+              className={`tools-nav-dropdown-item${active && t.key === 'calculator' ? ' active' : ''}`}
+              onClick={() => { onSelectTool(t.key); setOpen(false); }}
+            >
+              {t.label}
+            </button>
+          ))}
+          <div className="tools-nav-dropdown-footer">More tools coming soon</div>
+        </div>
       )}
     </div>
   );
