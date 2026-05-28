@@ -1553,11 +1553,12 @@ body {
 
 .transport-modes {
   display: flex;
-  gap: 20px;
+  gap: 8px;
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
+/* Generic mode-check-label — used by Sound/Lighting in tech-coord */
 .mode-check-label {
   display: inline-flex;
   align-items: center;
@@ -1573,6 +1574,41 @@ body {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+}
+
+/* Transport-specific override — pill toggle buttons */
+.transport-modes .mode-check-label {
+  gap: 0;
+  padding: 5px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 100px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-2);
+  background: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+.transport-modes .mode-check-label:hover {
+  border-color: var(--text-3);
+  background: var(--surface-2);
+}
+.transport-modes .mode-check-label:has(input:checked) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.transport-modes .mode-check-label input[type='checkbox'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .fixed-inputs-row {
