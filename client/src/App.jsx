@@ -433,12 +433,6 @@ function App({ demoMode = false }) {
             </button>
           )}
           {!demoMode && (
-            <ToolsDropdown
-              active={page === 'calculator'}
-              onSelectTool={(tool) => setPage(tool)}
-            />
-          )}
-          {!demoMode && (
             <button
               className={`nav-btn ${page === 'automations' ? 'active' : ''}`}
               onClick={() => setPage('automations')}
@@ -453,6 +447,12 @@ function App({ demoMode = false }) {
             >
               Team
             </button>
+          )}
+          {!demoMode && (
+            <ToolsDropdown
+              active={page === 'calculator'}
+              onSelectTool={(tool) => setPage(tool)}
+            />
           )}
           {!demoMode && (
             <span className="nav-artist-desktop">
