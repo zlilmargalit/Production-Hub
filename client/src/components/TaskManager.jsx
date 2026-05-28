@@ -27,6 +27,10 @@ function TaskManager({ show, onUpdate, artistId }) {
     sound: show.soundCoordinated || false,
     rentalNeeds: show.rentalNeeds || '',
     rentalSupplier: show.rentalSupplier || '',
+    soundRentalNeeds: show.soundRentalNeeds || '',
+    soundRentalSupplier: show.soundRentalSupplier || '',
+    lightingRentalNeeds: show.lightingRentalNeeds || '',
+    lightingRentalSupplier: show.lightingRentalSupplier || '',
   });
   // ── Tasks — typed ────────────────────────────────────────────────────
   const [newTaskType, setNewTaskType] = useState('checkbox');
@@ -81,6 +85,10 @@ function TaskManager({ show, onUpdate, artistId }) {
       soundCoordinated: updated.sound,
       rentalNeeds: updated.rentalNeeds,
       rentalSupplier: updated.rentalSupplier,
+      soundRentalNeeds: updated.soundRentalNeeds,
+      soundRentalSupplier: updated.soundRentalSupplier,
+      lightingRentalNeeds: updated.lightingRentalNeeds,
+      lightingRentalSupplier: updated.lightingRentalSupplier,
     });
   };
 
@@ -318,49 +326,78 @@ function TaskManager({ show, onUpdate, artistId }) {
       {/* Technical Coordination */}
       <div className="fixed-task-section">
         <h4 className="fixed-task-title">Technical Coordination</h4>
-        <div className="tech-coord-cols">
-          {/* Left: Sound + rental needs */}
-          <div className="tech-coord-col">
-            <label className="mode-check-label">
+        <div className="hub-tech-rows">
+
+          {/* ── Sound row ── */}
+          <div className="hub-tech-row">
+            <label className={`hub-coord-toggle${coord.sound ? ' hub-coord-toggle--on' : ''}`}>
               <input
                 type="checkbox"
                 checked={coord.sound}
                 onChange={() => toggleCoord('sound')}
               />
-              Sound
+              <span className="hub-coord-dot"></span>
+              <span>Sound</span>
             </label>
-            <textarea
-              className="fixed-input tech-coord-rental"
-              dir="rtl"
-              rows={2}
-              value={coord.rentalNeeds}
-              onChange={(e) => setCoord((p) => ({ ...p, rentalNeeds: e.target.value }))}
-              onBlur={() => saveCoord(coord)}
-              placeholder="Equipment to rent..."
-            />
+            <div className="fixed-input-group" style={{ flex: 2 }}>
+              <label>Rental Needs</label>
+              <input
+                className="fixed-input"
+                dir="auto"
+                value={coord.soundRentalNeeds}
+                onChange={(e) => setCoord((p) => ({ ...p, soundRentalNeeds: e.target.value }))}
+                onBlur={() => saveCoord(coord)}
+                placeholder="Equipment to rent..."
+              />
+            </div>
+            <div className="fixed-input-group">
+              <label>Supplier</label>
+              <input
+                className="fixed-input"
+                dir="auto"
+                value={coord.soundRentalSupplier}
+                onChange={(e) => setCoord((p) => ({ ...p, soundRentalSupplier: e.target.value }))}
+                onBlur={() => saveCoord(coord)}
+                placeholder="Rental company"
+              />
+            </div>
           </div>
-          {/* Right: Lighting */}
-          <div className="tech-coord-col">
-            <label className="mode-check-label">
+
+          {/* ── Lighting row ── */}
+          <div className="hub-tech-row">
+            <label className={`hub-coord-toggle${coord.lighting ? ' hub-coord-toggle--on' : ''}`}>
               <input
                 type="checkbox"
                 checked={coord.lighting}
                 onChange={() => toggleCoord('lighting')}
               />
-              Lighting
+              <span className="hub-coord-dot"></span>
+              <span>Lighting</span>
             </label>
+            <div className="fixed-input-group" style={{ flex: 2 }}>
+              <label>Rental Needs</label>
+              <input
+                className="fixed-input"
+                dir="auto"
+                value={coord.lightingRentalNeeds}
+                onChange={(e) => setCoord((p) => ({ ...p, lightingRentalNeeds: e.target.value }))}
+                onBlur={() => saveCoord(coord)}
+                placeholder="Equipment to rent..."
+              />
+            </div>
+            <div className="fixed-input-group">
+              <label>Supplier</label>
+              <input
+                className="fixed-input"
+                dir="auto"
+                value={coord.lightingRentalSupplier}
+                onChange={(e) => setCoord((p) => ({ ...p, lightingRentalSupplier: e.target.value }))}
+                onBlur={() => saveCoord(coord)}
+                placeholder="Rental company"
+              />
+            </div>
           </div>
-        </div>
-        <div className="fixed-input-group" style={{ marginTop: 10 }}>
-          <label>Rental supplier</label>
-          <input
-            className="fixed-input"
-            dir="auto"
-            value={coord.rentalSupplier}
-            onChange={(e) => setCoord((p) => ({ ...p, rentalSupplier: e.target.value }))}
-            onBlur={() => saveCoord(coord)}
-            placeholder="Supplier / Rental company"
-          />
+
         </div>
       </div>
 

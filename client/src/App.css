@@ -3682,38 +3682,150 @@ body {
   .settings-save-row { padding: 12px 16px 24px; }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PRODUCTION HUB — hub-* classes
-   ══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   PRODUCTION HUB — hub-* + TaskManager reskin
+   All scoped to .hub-panel. Safe to append.
+   ═══════════════════════════════════════════════════════════ */
 
-.hub-panel {
-  border-top: 2px dashed var(--border-strong);
-}
+/* Dashed boundary — visual threshold between public and internal */
+.hub-panel { border-top: 2px dashed var(--border-strong); }
 
+/* Inverted header band */
 .hub-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  display: flex; align-items: center; gap: 14px;
   padding: 11px 28px;
   background: var(--text);
 }
-
 .hub-header-text { display: flex; flex-direction: column; gap: 3px; }
-
 .hub-eyebrow {
   font-family: 'Courier New', monospace;
   font-size: 0.5rem; font-weight: 700;
   letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--surface); opacity: 0.45; line-height: 1;
 }
-
 .hub-heading {
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
   font-size: 0.875rem; font-weight: 700;
   letter-spacing: -0.02em; color: var(--surface); line-height: 1;
 }
 
+/* Hub body — 2-col grid: Transport + Food side by side */
+.hub-panel .fixed-tasks {
+  background: var(--bg);
+  padding: 18px 28px 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+/* Section 3 onward → full width */
+.hub-panel .fixed-task-section:nth-child(n+3) { grid-column: 1 / -1; }
+
+/* Each section → white card */
+.hub-panel .fixed-task-section {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 13px 15px;
+  border-bottom: none;
+  margin: 0;
+}
+[data-theme="dark"] .hub-panel .fixed-task-section {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+/* Section titles — monospace micro-caps */
+.hub-panel .fixed-task-title {
+  font-family: 'Courier New', monospace !important;
+  font-size: 0.5rem !important; font-weight: 700 !important;
+  letter-spacing: 0.18em !important; text-transform: uppercase !important;
+  color: var(--text-3) !important;
+  padding-bottom: 7px; margin-bottom: 9px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Input group labels */
+.hub-panel .fixed-input-group label {
+  font-family: 'Courier New', monospace !important;
+  font-size: 0.4375rem !important; font-weight: 700 !important;
+  letter-spacing: 0.14em !important; text-transform: uppercase !important;
+  color: var(--text-3) !important;
+}
+
+/* Inputs */
+.hub-panel .fixed-input {
+  background: var(--surface-sunk) !important;
+  border-color: var(--border-light) !important;
+  font-size: 0.875rem !important;
+  padding: 7px 10px !important;
+}
+[data-theme="dark"] .hub-panel .fixed-input { background: var(--surface) !important; }
+
+/* Transport mode PILL TOGGLES */
+.hub-panel .transport-modes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.hub-panel .transport-modes .mode-check-label {
+  padding: 4px 12px !important;
+  border: 1.5px solid var(--border) !important;
+  border-radius: var(--radius-pill, 100px) !important;
+  font-size: 0.75rem !important; font-weight: 600 !important;
+  color: var(--text-3) !important;
+  background: var(--surface-sunk) !important;
+  transition: all 0.14s !important;
+  user-select: none; gap: 0 !important;
+}
+.hub-panel .transport-modes .mode-check-label input[type='checkbox'] {
+  appearance: none; -webkit-appearance: none;
+  width: 0 !important; height: 0 !important; margin: 0 !important;
+  padding: 0 !important; border: none !important;
+  position: absolute !important; opacity: 0 !important;
+  pointer-events: none !important;
+}
+.hub-panel .transport-modes .mode-check-label:has(input:checked) {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft, rgba(94,122,196,0.12)) !important;
+  color: var(--accent) !important; font-weight: 700 !important;
+}
+[data-theme="dark"] .hub-panel .transport-modes .mode-check-label:has(input:checked) {
+  background: rgba(122,143,224,0.15) !important;
+}
+
+/* Technical Coordination — 2-row layout */
+.hub-tech-rows { display: flex; flex-direction: column; gap: 8px; }
+.hub-tech-row  { display: flex; align-items: center; gap: 14px; }
+
+/* Status toggle pills for Sound / Lighting */
+.hub-coord-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  background: var(--surface-sunk);
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.8125rem; font-weight: 600; color: var(--text-2);
+  cursor: pointer; transition: all 0.14s;
+  white-space: nowrap; min-width: 108px; user-select: none;
+}
+.hub-coord-toggle input[type='checkbox'] {
+  appearance: none; -webkit-appearance: none;
+  width: 0; height: 0; margin: 0; padding: 0;
+  border: none; position: absolute; opacity: 0;
+}
+.hub-coord-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border-strong); flex-shrink: 0;
+  transition: background 0.14s;
+}
+.hub-coord-toggle--on { border-color: var(--accent); background: var(--accent-soft, rgba(94,122,196,0.12)); color: var(--accent); }
+.hub-coord-toggle--on .hub-coord-dot { background: var(--accent); }
+[data-theme="dark"] .hub-coord-toggle--on { background: rgba(122,143,224,0.15); }
+
+/* Calendar row */
+.hub-panel .cal-picker-row { margin-bottom: 10px; }
+
+/* Mobile */
 @media (max-width: 600px) {
+  .hub-panel .fixed-tasks { grid-template-columns: 1fr; padding: 14px 16px 18px; }
+  .hub-panel .fixed-task-section:nth-child(n+3) { grid-column: unset; }
+  .hub-tech-row { flex-wrap: wrap; }
   .hub-header { padding: 10px 16px; }
 }
 
