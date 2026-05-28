@@ -22,6 +22,7 @@
 .auto-section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .auto-section-sub { font-size: 0.875rem; color: var(--text-2); margin-top: -8px; }
 .auto-section-header-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.auto-section-header-row > div { flex: 1; min-width: 0; }
 
 /* Integrations bar */
 .intg-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
