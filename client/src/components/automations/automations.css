@@ -17,7 +17,9 @@
 .auto-page-sub-num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums; }
 .auto-page-sub-sep { display: inline-block; width: 32px; height: 1px; background: var(--text-2); }
 .auto-section { display: flex; flex-direction: column; gap: 18px; }
-.auto-section-lbl { font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); padding-bottom: 12px; border-bottom: 1px solid var(--text); }
+.auto-section-lbl { font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); display: flex; align-items: center; gap: 12px; }
+.auto-section-lbl::before,
+.auto-section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .auto-section-sub { font-size: 0.875rem; color: var(--text-2); margin-top: -8px; }
 .auto-section-header-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 
@@ -58,7 +60,6 @@
 .recipe-band { height: 6px; background: var(--et-color, var(--accent)); }
 .recipe-body { padding: 16px 18px 12px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .recipe-icon-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
-.recipe-emoji { font-size: 1.1rem; line-height: 1; }
 .recipe-name { font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .recipe-desc { font-size: 0.8125rem; color: var(--text-2); line-height: 1.5; flex: 1; }
 .recipe-requires { font-size: 0.6875rem; color: var(--clay); font-weight: 500; margin-top: 4px; }
@@ -128,7 +129,6 @@
 
 /* Push notification opt-in banner */
 .auto-push-bar { display: flex; align-items: center; gap: 12px; padding: 11px 18px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius-lg); font-size: 0.875rem; color: var(--text-2); }
-.auto-push-bar-icon { font-size: 1.1rem; flex-shrink: 0; }
 .auto-push-bar-text { flex: 1; }
 .auto-push-bar-btn { font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; padding: 7px 16px; border: none; border-radius: var(--radius); background: var(--accent); color: #fff; cursor: pointer; white-space: nowrap; transition: opacity 0.14s; }
 .auto-push-bar-btn:hover { opacity: 0.85; }

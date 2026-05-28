@@ -161,7 +161,6 @@ export default function AutomationsPage() {
       {/* ── Push notification opt-in ── */}
       {swSupported && (
         <div className={`auto-push-bar${pushGranted ? ' auto-push-bar--granted' : ''}`}>
-          <span className="auto-push-bar-icon">🔔</span>
           <span className="auto-push-bar-text">
             {pushGranted
               ? 'Push notifications enabled — the Early Coordination Alert will reach you even when the tab is closed.'

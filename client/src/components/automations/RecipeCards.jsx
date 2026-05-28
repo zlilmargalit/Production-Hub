@@ -78,7 +78,6 @@ export default function RecipeCards({ automations, onActivate }) {
             <div className="recipe-band" style={{ '--et-color': recipe.color }} />
             <div className="recipe-body">
               <div className="recipe-icon-row">
-                <span className="recipe-emoji">{recipe.emoji}</span>
                 <span className="recipe-name">{recipe.name}</span>
               </div>
               <p className="recipe-desc">{recipe.desc}</p>
