@@ -2728,29 +2728,31 @@ body {
   }
   .header-brand h1 { font-size: 1.125rem; }
 
-  /* nav wraps to its own full-width row — no scroll, everything shrinks to fit */
+  /* nav wraps to its own full-width row — tabs share space equally, nothing scrolls */
   .page-nav {
     order: 99;
     flex: 0 0 100%;
     margin-left: 0;
     gap: 0;
     border-top: 1px solid var(--border-light);
-    padding: 4px 0 6px;
+    padding: 4px 4px 6px;
     align-items: center;
     flex-wrap: nowrap;
+    justify-content: space-between;
   }
   .nav-btn {
-    padding: 6px 0;
-    font-size: 0.6875rem;
-    letter-spacing: 0.04em;
-    margin: 0 8px 0 0;
+    flex: 1;
+    padding: 6px 2px;
+    font-size: 0.5625rem;
+    letter-spacing: 0;
+    margin: 0;
     white-space: nowrap;
-    flex-shrink: 1;
+    text-align: center;
   }
-  .artist-nav-sep { margin: 0 4px; flex-shrink: 0; }
-  .artist-switcher { flex-shrink: 1; min-width: 0; }
-  .artist-switcher-btn { margin: 0; font-size: 0.6875rem; min-width: 0; }
-  .artist-switcher-label { max-width: 120px; }
+  .artist-nav-sep { display: none; }
+  .artist-switcher { flex: 0 0 auto; flex-shrink: 0; }
+  .artist-switcher-btn { margin: 0; font-size: 0.5625rem; min-width: 0; padding-left: 6px; padding-right: 6px; }
+  .artist-switcher-label { max-width: 56px; }
   .artist-switcher-panel { left: 0; transform: none; }
 
   /* right-side buttons go right of brand on row 1 */
