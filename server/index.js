@@ -29,6 +29,7 @@ const { router: importRouter, findNewShows, DEFAULT_XLSX } = require('./routes/i
 const calendarRouter      = require('./routes/calendar');
 const tasksRouter         = require('./routes/tasks');
 const spotifyRouter       = require('./routes/spotify');
+const { router: automationsRouter, publicRouter: automationsPublicRouter, startCron: startAutomationsCron } = require('./routes/automations');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
@@ -324,6 +325,9 @@ app.post('/api/auth/register-invite', async (req, res) => {
   }
 });
 
+// Automations: OAuth callbacks are public (userId carried in signed state param)
+app.use('/api/automations', automationsPublicRouter);
+
 // Demo mode — serve the React app with window.__DEMO__ injected (no auth)
 app.get('/demo', (req, res) => {
   try {
@@ -569,6 +573,7 @@ app.use('/api/import',         importRouter);
 app.use('/api/calendar',       calendarRouter);
 app.use('/api/tasks',          tasksRouter);
 app.use('/api/spotify',        spotifyRouter);
+app.use('/api/automations',    automationsRouter);
 
 // ── Error handler ────────────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
@@ -707,4 +712,5 @@ app.listen(PORT, () => {
   console.log('');
   migrateRootDataToArtists(); // fire-and-forget — non-blocking
   startGmailPolling();
+  startAutomationsCron();    // daily 09:00 early-coordination alerts
 });

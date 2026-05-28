@@ -15,8 +15,10 @@
     "express-basic-auth": "^1.2.1",
     "googleapis": "^172.0.0",
     "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
     "puppeteer-core": "^25.1.0",
     "uuid": "^9.0.0",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   }
 }

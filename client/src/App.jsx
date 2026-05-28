@@ -7,6 +7,7 @@ import DemoBanner from './components/DemoBanner';
 import GlobalTaskPanel from './components/GlobalTaskPanel';
 import TeamPanel       from './components/TeamPanel';
 import SetlistCalculator from './components/SetlistCalculator';
+import AutomationsPage  from './components/automations/AutomationsPage';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -439,6 +440,14 @@ function App({ demoMode = false }) {
               ♩ Setlist
             </button>
           )}
+          {!demoMode && (
+            <button
+              className={`nav-btn ${page === 'automations' ? 'active' : ''}`}
+              onClick={() => setPage('automations')}
+            >
+              ⚡ Automations
+            </button>
+          )}
           {!demoMode && userRole === 'admin' && (
             <button
               className={`nav-btn ${page === 'team' ? 'active' : ''}`}
@@ -535,6 +544,8 @@ function App({ demoMode = false }) {
             artistId={currentArtist?.id || null}
             readOnly={userRole !== 'admin'}
           />
+        ) : page === 'automations' ? (
+          <AutomationsPage />
         ) : page === 'calculator' ? (
           <SetlistCalculator defaultArtistName={currentArtist?.name || ''} />
         ) : page === 'team' && userRole === 'admin' ? (
