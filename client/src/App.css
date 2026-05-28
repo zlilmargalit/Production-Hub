@@ -225,6 +225,18 @@ body {
 /* Desktop: hide-on-mobile utility */
 .header-desktop-only { display: inline-flex !important; }
 
+/* Artist-switcher placement helpers */
+.nav-artist-desktop { display: contents; }   /* invisible wrapper — children stay in nav flex */
+.header-artist-mobile { display: none; }      /* mobile-only slot in header-right */
+
+/* + New button placement helpers */
+.btn-new-desktop { /* visible by default — hidden on mobile */ }
+.btn-new-mobile  { display: none; }           /* shown on mobile via media query */
+
+/* Subtitle + mobile new-button row */
+.page-subtitle-row { display: flex; align-items: center; margin-top: 20px; }
+.page-subtitle-row .page-subtitle { margin-top: 0; }
+
 .page-nav {
   display: flex;
   gap: 4px;
@@ -2749,11 +2761,19 @@ body {
     white-space: nowrap;
     text-align: center;
   }
-  .artist-nav-sep { display: none; }
+  /* Artist switcher: hide from nav, show in header-right */
+  .nav-artist-desktop  { display: none; }
+  .header-artist-mobile { display: flex; align-items: center; }
   .artist-switcher { flex: 0 0 auto; flex-shrink: 0; }
   .artist-switcher-btn { margin: 0; font-size: 0.5625rem; min-width: 0; padding-left: 6px; padding-right: 6px; }
-  .artist-switcher-label { max-width: 56px; }
-  .artist-switcher-panel { left: 0; transform: none; }
+  .artist-switcher-label { max-width: 72px; }
+  /* Panel opens left so it doesn't overflow the right edge */
+  .artist-switcher-panel { right: 0; left: auto; transform: none; }
+
+  /* + New: hide from header, show in subtitle row */
+  .btn-new-desktop { display: none !important; }
+  .btn-new-mobile  { display: inline-flex; padding: 7px 14px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; }
+  .page-subtitle-row { justify-content: space-between; gap: 12px; }
 
   /* right-side buttons go right of brand on row 1 */
   .header-right {

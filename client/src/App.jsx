@@ -455,7 +455,7 @@ function App({ demoMode = false }) {
             </button>
           )}
           {!demoMode && (
-            <>
+            <span className="nav-artist-desktop">
               <span className="artist-nav-sep" aria-hidden="true" />
               <ArtistSwitcher
                 artists={artists}
@@ -464,12 +464,24 @@ function App({ demoMode = false }) {
                 onAddNew={() => setNewArtistModal(true)}
                 onDelete={deleteArtist}
               />
-            </>
+            </span>
           )}
         </nav>
 
         {/* Action buttons (right — admin tools hidden on mobile) */}
         <div className="header-right">
+          {/* Mobile-only: artist switcher moves here from the nav row */}
+          {!demoMode && (
+            <div className="header-artist-mobile">
+              <ArtistSwitcher
+                artists={artists}
+                currentArtist={currentArtist}
+                onSwitch={switchToArtist}
+                onAddNew={() => setNewArtistModal(true)}
+                onDelete={deleteArtist}
+              />
+            </div>
+          )}
           {page === 'shows' && !demoMode && (
             <>
               {/* Sync — admin-only, hidden in demo mode and on mobile */}
@@ -498,7 +510,7 @@ function App({ demoMode = false }) {
                   : 'Apply Crew'}
               </button>
               {userRole === 'admin' && (
-                <button className="btn-primary" onClick={() => setShowForm(true)}>
+                <button className="btn-primary btn-new-desktop" onClick={() => setShowForm(true)}>
                   + New
                 </button>
               )}
@@ -541,6 +553,7 @@ function App({ demoMode = false }) {
             onUpdateShow={updateShow}
             artistId={currentArtist?.id || null}
             readOnly={userRole !== 'admin'}
+            onNew={userRole === 'admin' ? () => setShowForm(true) : null}
           />
         ) : page === 'automations' ? (
           <AutomationsPage />

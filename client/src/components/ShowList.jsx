@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ShowCard from './ShowCard';
 
-function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
+function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew }) {
   const [filter, setFilter] = useState('upcoming');
 
   const today = new Date();
@@ -40,11 +40,16 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
       <div className="page-header-edit">
         <div className="page-header-left">
           <h1 className="page-title">Shows<span className="page-title-dot">.</span></h1>
-          <p className="page-subtitle">
-            <span className="page-subtitle-num">{thisMonthCount.toString().padStart(2, '0')}</span>
-            <span className="page-subtitle-line" />
-            <span>productions in {monthName}</span>
-          </p>
+          <div className="page-subtitle-row">
+            <p className="page-subtitle">
+              <span className="page-subtitle-num">{thisMonthCount.toString().padStart(2, '0')}</span>
+              <span className="page-subtitle-line" />
+              <span>productions in {monthName}</span>
+            </p>
+            {onNew && (
+              <button className="btn-primary btn-new-mobile" onClick={onNew}>+ New</button>
+            )}
+          </div>
         </div>
         <div className="page-marquee" aria-hidden="true">
           <span className="page-marquee-track">
