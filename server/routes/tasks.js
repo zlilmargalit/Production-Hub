@@ -23,13 +23,14 @@ router.post('/', async (req, res, next) => {
     if (!text?.trim()) return res.status(400).json({ error: 'text required' });
     const tasks = await readTasks(req.userId);
     const task = {
-      id:         uuidv4(),
-      text:       text.trim(),
-      completed:  false,
-      showId:     showId    || null,
-      dueDate:    dueDate   || null,
-      assignedTo: assignedTo || null,
-      createdAt:  new Date().toISOString(),
+      id:               uuidv4(),
+      text:             text.trim(),
+      completed:        false,
+      showId:           showId    || null,
+      dueDate:          dueDate   || null,
+      assignedTo:       assignedTo || null,
+      createdAt:        new Date().toISOString(),
+      pushNotifiedAt:   null,
     };
     await writeTasks(req.userId, [...tasks, task]);
     res.status(201).json(task);

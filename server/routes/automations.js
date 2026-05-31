@@ -460,6 +460,50 @@ async function checkUserScheduleAutomations(userId, shows) {
  * Main cron callback — iterates over every user (admin + registered) and
  * evaluates schedule-based automations against their shows.
  */
+/**
+ * Send push notifications for tasks due today (not yet notified, not completed).
+ * Marks each fired task with pushNotifiedAt so it never fires twice.
+ */
+async function checkUserTasksDue(userId, shows) {
+  const tasksFile = path.join(userDir(userId), 'tasks.json');
+  let tasks = [];
+  try {
+    tasks = JSON.parse(await fsp.readFile(tasksFile, 'utf8'));
+  } catch { return; } // no tasks file → skip
+
+  const todayStr = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+
+  const due = tasks.filter(
+    (t) => t.dueDate === todayStr && !t.completed && !t.pushNotifiedAt,
+  );
+  if (!due.length) return;
+
+  // Build a quick showId → name map
+  const showMap = {};
+  (shows || []).forEach((s) => { showMap[s.id] = s.name; });
+
+  for (const task of due) {
+    const body = task.showId && showMap[task.showId]
+      ? `Show: ${showMap[task.showId]}`
+      : 'Task due today';
+    console.log(`[tasks/cron] Sending push for task "${task.text}" → user ${userId}`);
+    await sendPushToUser(userId, task.text, body);
+  }
+
+  // Mark all fired tasks in one write
+  const now = new Date().toISOString();
+  const updatedTasks = tasks.map((t) =>
+    (t.dueDate === todayStr && !t.completed && !t.pushNotifiedAt)
+      ? { ...t, pushNotifiedAt: now }
+      : t,
+  );
+  await fsp.writeFile(tasksFile, JSON.stringify(updatedTasks, null, 2));
+  // Invalidate cache so the next GET returns fresh data
+  const { writeJsonAndCache } = require('../cache');
+  const { cacheKey, dataPath } = require('../utils/userData');
+  await writeJsonAndCache(cacheKey(userId, 'tasks'), dataPath(userId, 'tasks.json'), updatedTasks);
+}
+
 async function runDailyCheck() {
   console.log('[automations/cron] Running daily schedule check…');
   initWebPush();
@@ -477,9 +521,10 @@ async function runDailyCheck() {
       let shows = [];
       try {
         shows = JSON.parse(await fsp.readFile(showsFile, 'utf8'));
-      } catch { continue; } // no shows file → skip
+      } catch { /* no shows — tasks can still fire without show names */ }
 
       await checkUserScheduleAutomations(userId, shows);
+      await checkUserTasksDue(userId, shows);
     } catch (err) {
       console.error(`[automations/cron] Error processing user ${userId}:`, err.message);
     }
@@ -498,5 +543,51 @@ function startCron() {
   cron.schedule('0 9 * * *', runDailyCheck, { timezone: 'Asia/Jerusalem' });
   console.log('[automations/cron] Daily scheduler registered (09:00 Asia/Jerusalem)');
 }
+
+// ── POST /api/automations/push/test ─────────────────────────────────────────
+// Immediately fires a dummy push to the current user's subscriptions.
+// Useful for verifying VAPID setup and OS notification appearance.
+router.post('/push/test', async (req, res) => {
+  initWebPush();
+  if (!webpush) return res.status(503).json({ error: 'web-push not available on this server' });
+
+  const list = await readPushList(req.userId);
+  if (!list.length) {
+    return res.status(404).json({ error: 'No active push subscription found. Enable notifications in the Automations tab first.' });
+  }
+
+  const payload = JSON.stringify({
+    title: '🎵 Production Hub',
+    body:  'Push notifications are working ✓',
+    icon:  '/icon-192.png',
+  });
+
+  let sent = 0;
+  const toRemove = [];
+  await Promise.all(
+    list.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+        );
+        sent++;
+      } catch (err) {
+        if (err.statusCode === 410) toRemove.push(sub.endpoint);
+        else console.error('[push/test] failed:', err.message);
+      }
+    }),
+  );
+
+  if (toRemove.length) {
+    const cleaned = list.filter((s) => !toRemove.includes(s.endpoint));
+    await writePushList(req.userId, cleaned);
+  }
+
+  if (sent === 0) {
+    return res.status(500).json({ error: 'Subscription exists but push delivery failed. Check VAPID keys.' });
+  }
+  res.json({ sent });
+});
 
 module.exports = { router, publicRouter, startCron };

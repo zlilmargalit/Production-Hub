@@ -67,6 +67,22 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const [showId,     setShowId]     = useState('');
   const [filter,     setFilter]     = useState('active');
   const [editingId,  setEditingId]  = useState(null);
+  const [pushStatus, setPushStatus] = useState(null); // null | 'sending' | 'ok' | 'error'
+  const [pushMsg,    setPushMsg]    = useState('');
+
+  const handleTestPush = async () => {
+    setPushStatus('sending');
+    setPushMsg('');
+    try {
+      const res = await fetch('/api/automations/push/test', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setPushStatus('error'); setPushMsg(data.error || 'Failed'); }
+      else         { setPushStatus('ok');    setPushMsg(`Sent to ${data.sent} subscription${data.sent !== 1 ? 's' : ''}`); }
+    } catch {
+      setPushStatus('error'); setPushMsg('Network error');
+    }
+    setTimeout(() => { setPushStatus(null); setPushMsg(''); }, 4000);
+  };
 
   const handleAdd = () => {
     const trimmed = text.trim();
@@ -104,6 +120,18 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
             <span>active</span>
           </p>
         </div>
+        <button
+          className={`gtask-test-push-btn${pushStatus === 'ok' ? ' gtask-test-push-btn--ok' : pushStatus === 'error' ? ' gtask-test-push-btn--err' : ''}`}
+          onClick={handleTestPush}
+          disabled={pushStatus === 'sending'}
+          title="Send a test push notification to verify your browser subscription"
+        >
+          {pushStatus === 'sending' ? 'Sending…'
+            : pushStatus === 'ok'   ? `✓ ${pushMsg}`
+            : pushStatus === 'error'? `✕ ${pushMsg}`
+            : 'Test Push'}
+        </button>
+
         <div className="page-marquee" aria-hidden="true">
           <span className="page-marquee-track">
             <span>Tasks</span><span>·</span><span>Tasks</span><span>·</span>

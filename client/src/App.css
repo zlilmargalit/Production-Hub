@@ -2912,6 +2912,28 @@ body {
   padding: 0 0 48px;
 }
 
+/* Test push button — lives in the page-header-edit right zone */
+.gtask-test-push-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-3);
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.gtask-test-push-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.gtask-test-push-btn:disabled { opacity: 0.6; cursor: default; }
+.gtask-test-push-btn--ok  { border-color: var(--accent); color: var(--accent); border-style: solid; }
+.gtask-test-push-btn--err { border-color: var(--clay);   color: var(--clay);   border-style: solid; }
+
 /* Constrain only the form + list to a readable column */
 .gtask-add-card,
 .gtask-filter-bar,
