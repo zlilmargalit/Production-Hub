@@ -493,17 +493,13 @@ async function checkUserTasksDue(userId, shows) {
     await sendPushToUser(userId, task.text, body);
   }
 
-  // Mark all fired tasks in one write
+  // Mark all fired tasks in one write (also updates cache so next GET is fresh)
   const now = new Date().toISOString();
   const updatedTasks = tasks.map((t) =>
     (t.dueDate === todayStr && !t.completed && !t.pushNotifiedAt)
       ? { ...t, pushNotifiedAt: now }
       : t,
   );
-  await fsp.writeFile(tasksFile, JSON.stringify(updatedTasks, null, 2));
-  // Invalidate cache so the next GET returns fresh data
-  const { writeJsonAndCache } = require('../cache');
-  const { cacheKey, dataPath } = require('../utils/userData');
   await writeJsonAndCache(cacheKey(userId, 'tasks'), dataPath(userId, 'tasks.json'), updatedTasks);
 }
 

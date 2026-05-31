@@ -79,50 +79,47 @@ function sharesTwoWords(a, b) {
 // Fetches ALL events in a ±1-day window (no text filter) so name mismatches are handled.
 // Always prefers timed events (dateTime) over all-day events (date-only).
 // Match priority per tier: 1. exact title, 2. case-insensitive contains, 3. ≥2 shared words on same date.
+// Throws on API errors — callers must handle.
 async function findExistingEvent(calendar, calendarId, date, title) {
-  try {
-    const base = new Date(date + 'T00:00:00+03:00');
-    const timeMin = new Date(base); timeMin.setDate(timeMin.getDate() - 1);
-    const timeMax = new Date(base); timeMax.setDate(timeMax.getDate() + 2);
-    const res = await calendar.events.list({
-      calendarId,
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: true,
-      maxResults: 100,
+  const base = new Date(date + 'T00:00:00+03:00');
+  const timeMin = new Date(base); timeMin.setDate(timeMin.getDate() - 1);
+  const timeMax = new Date(base); timeMax.setDate(timeMax.getDate() + 2);
+  const res = await calendar.events.list({
+    calendarId,
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: true,
+    maxResults: 100,
+  });
+  const all = res.data.items || [];
+
+  // Split: timed events always preferred over all-day events
+  const timed  = all.filter((e) => !!e.start?.dateTime);
+  const allDay = all.filter((e) => !e.start?.dateTime);
+
+  const lower = title.toLowerCase();
+  const dayMax = new Date(base); dayMax.setDate(dayMax.getDate() + 1);
+
+  const findIn = (pool) => {
+    // 1. Exact title match
+    const exact = pool.find((e) => e.summary === title);
+    if (exact) return exact;
+    // 2. Case-insensitive contains
+    const contains = pool.find((e) => {
+      const s = (e.summary || '').toLowerCase();
+      return s.includes(lower) || lower.includes(s);
     });
-    const all = res.data.items || [];
+    if (contains) return contains;
+    // 3. Same calendar date + at least 2 shared words
+    const sameDay = pool.filter((e) => {
+      const start = new Date(e.start?.dateTime || e.start?.date);
+      return start >= base && start < dayMax;
+    });
+    return sameDay.find((e) => sharesTwoWords(title, e.summary || '')) || null;
+  };
 
-    // Split: timed events always preferred over all-day events
-    const timed  = all.filter((e) => !!e.start?.dateTime);
-    const allDay = all.filter((e) => !e.start?.dateTime);
-
-    const lower = title.toLowerCase();
-    const dayMax = new Date(base); dayMax.setDate(dayMax.getDate() + 1);
-
-    const findIn = (pool) => {
-      // 1. Exact title match
-      const exact = pool.find((e) => e.summary === title);
-      if (exact) return exact;
-      // 2. Case-insensitive contains
-      const contains = pool.find((e) => {
-        const s = (e.summary || '').toLowerCase();
-        return s.includes(lower) || lower.includes(s);
-      });
-      if (contains) return contains;
-      // 3. Same calendar date + at least 2 shared words
-      const sameDay = pool.filter((e) => {
-        const start = new Date(e.start?.dateTime || e.start?.date);
-        return start >= base && start < dayMax;
-      });
-      return sameDay.find((e) => sharesTwoWords(title, e.summary || '')) || null;
-    };
-
-    // Try timed events first, fall back to all-day only if nothing found
-    return findIn(timed) || findIn(allDay) || null;
-  } catch {
-    return null;
-  }
+  // Try timed events first, fall back to all-day only if nothing found
+  return findIn(timed) || findIn(allDay) || null;
 }
 
 // GET /api/calendar/config — returns current calendar ID + list of all accessible calendars
@@ -221,13 +218,15 @@ router.post('/invite/:showId', async (req, res) => {
       attendees: attendees.map((a) => a.email),
     });
   } catch (err) {
-    console.error('[calendar] Error:', err.message);
-    if (err.message?.includes('insufficientPermissions') || err.message?.includes('forbidden')) {
-      return res.status(403).json({
-        error: 'Calendar access not authorised. Re-run: node server/scripts/gmail-auth.js',
-      });
+    const msg = err?.message || String(err) || 'Google Calendar API error';
+    console.error('[calendar/invite]', msg, err?.response?.data || '');
+    if (msg.includes('insufficientPermissions') || msg.includes('forbidden')) {
+      return res.status(403).json({ error: 'Calendar access not authorised. Re-run: node server/scripts/gmail-auth.js' });
     }
-    res.status(500).json({ error: err.message });
+    if (msg.includes('invalid_grant') || msg.includes('Token has been expired') || msg.includes('invalid_client')) {
+      return res.status(401).json({ error: 'Google token expired — update GMAIL_TOKEN in Railway Variables with the current token from your local gmail-token.json' });
+    }
+    res.status(500).json({ error: msg });
   }
 });
 
@@ -295,11 +294,15 @@ router.post('/insert-show-event', async (req, res) => {
       eventLink: result.data.htmlLink,
     });
   } catch (err) {
-    console.error('[calendar/insert-show-event]', err.message);
-    if (err.message?.includes('insufficientPermissions') || err.message?.includes('forbidden')) {
+    const msg = err?.message || String(err) || 'Google Calendar API error';
+    console.error('[calendar/insert-show-event]', msg, err?.response?.data || '');
+    if (msg.includes('insufficientPermissions') || msg.includes('forbidden')) {
       return res.status(403).json({ error: 'Calendar access not authorised. Re-run: node server/scripts/gmail-auth.js' });
     }
-    res.status(500).json({ error: err.message });
+    if (msg.includes('invalid_grant') || msg.includes('Token has been expired') || msg.includes('invalid_client')) {
+      return res.status(401).json({ error: 'Google token expired — update GMAIL_TOKEN in Railway Variables with the current token from your local gmail-token.json' });
+    }
+    res.status(500).json({ error: msg });
   }
 });
 
