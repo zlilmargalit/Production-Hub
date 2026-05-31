@@ -229,7 +229,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                     disabled={calStatus === 'loading'}
                     title="Create / update Google Calendar event with this schedule and crew invites"
                   >
-                    {calStatus === 'loading' ? '⏳' : calStatus === 'done' ? '✓ Cal' : calStatus === 'error' ? '✕ Cal' : '📅 Export to Cal'}
+                    {calStatus === 'loading' ? 'Syncing…' : calStatus === 'done' ? '✓ Cal' : calStatus === 'error' ? '✕ Cal' : 'Export to Cal'}
                   </button>
                 </div>
               </div>

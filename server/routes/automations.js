@@ -556,8 +556,8 @@ router.post('/push/test', async (req, res) => {
   }
 
   const payload = JSON.stringify({
-    title: '🎵 Production Hub',
-    body:  'Push notifications are working ✓',
+    title: 'Production Hub',
+    body:  'Push notifications are working',
     icon:  '/icon-192.png',
   });
 
