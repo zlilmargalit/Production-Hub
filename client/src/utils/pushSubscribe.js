@@ -17,6 +17,12 @@ export async function subscribeToPush() {
   const { key } = await keyRes.json();
 
   const reg = await navigator.serviceWorker.ready;
+
+  // Always unsubscribe from any existing subscription so a VAPID key change
+  // doesn't leave a stale binding that causes 401 delivery failures.
+  const existing = await reg.pushManager.getSubscription();
+  if (existing) await existing.unsubscribe().catch(() => {});
+
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly:      true,
     applicationServerKey: urlBase64ToUint8Array(key),
