@@ -27,6 +27,7 @@ function App({ demoMode = false }) {
   const [confirmModal, setConfirmModal] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'admin' | 'user' | null
   const [username, setUsername] = useState(null);
+  const [workspaceRole, setWorkspaceRole] = useState(null); // 'producer' | 'backliner' | null
   const [tasks,    setTasks]    = useState([]);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
@@ -120,7 +121,16 @@ function App({ demoMode = false }) {
         let meData = null;
         const [, artistData] = await Promise.all([
           fetch('/api/me').then((r) => r.ok ? r.json() : null)
-            .then((d) => { if (d) { meData = d; setUserRole(d.role); setUsername(d.username); } }),
+            .then((d) => {
+              if (d) {
+                meData = d;
+                setUserRole(d.role);
+                setUsername(d.username);
+                const wr = d.workspaceRole || 'producer';
+                setWorkspaceRole(wr);
+                if (wr === 'backliner') setPage('backliner');
+              }
+            }),
           Promise.resolve(), // placeholder; artists fetched below after meData is set
         ]);
 
@@ -408,19 +418,23 @@ function App({ demoMode = false }) {
 
         {/* Nav tabs (centre on desktop, wraps to second row on mobile) */}
         <nav className="page-nav">
-          <button
-            className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
-            onClick={() => setPage('shows')}
-          >
-            Shows
-          </button>
-          <button
-            className={`nav-btn ${page === 'crew' ? 'active' : ''}`}
-            onClick={() => setPage('crew')}
-          >
-            Crew & Types
-          </button>
-          {!demoMode && (
+          {workspaceRole !== 'backliner' && (
+            <button
+              className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
+              onClick={() => setPage('shows')}
+            >
+              Shows
+            </button>
+          )}
+          {workspaceRole !== 'backliner' && (
+            <button
+              className={`nav-btn ${page === 'crew' ? 'active' : ''}`}
+              onClick={() => setPage('crew')}
+            >
+              Crew & Types
+            </button>
+          )}
+          {!demoMode && workspaceRole !== 'backliner' && (
             <button
               className={`nav-btn ${page === 'tasks' ? 'active' : ''}`}
               onClick={() => setPage('tasks')}
@@ -433,7 +447,7 @@ function App({ demoMode = false }) {
               )}
             </button>
           )}
-          {!demoMode && (
+          {!demoMode && workspaceRole !== 'backliner' && (
             <button
               className={`nav-btn ${page === 'automations' ? 'active' : ''}`}
               onClick={() => setPage('automations')}
@@ -441,7 +455,7 @@ function App({ demoMode = false }) {
               Automations
             </button>
           )}
-          {!demoMode && (
+          {!demoMode && workspaceRole === 'backliner' && (
             <button
               className={`nav-btn ${page === 'backliner' ? 'active' : ''}`}
               onClick={() => setPage('backliner')}
@@ -563,6 +577,7 @@ function App({ demoMode = false }) {
             artistId={currentArtist?.id || null}
             readOnly={userRole !== 'admin'}
             onNew={userRole === 'admin' ? () => setShowForm(true) : null}
+            workspaceRole={workspaceRole}
           />
         ) : page === 'automations' ? (
           <AutomationsPage />

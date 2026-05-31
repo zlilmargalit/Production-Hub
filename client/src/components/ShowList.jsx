@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ShowCard from './ShowCard';
 
-function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew }) {
+function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew, workspaceRole }) {
   const [filter, setFilter] = useState('upcoming');
 
   const today = new Date();
@@ -99,6 +99,7 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
               onDelete={onDelete}
               onUpdateShow={onUpdateShow}
               artistId={artistId}
+              workspaceRole={workspaceRole}
             />
           ))}
         </div>

@@ -523,6 +523,31 @@
   border-top: 1px solid var(--border-light);
 }
 
+/* ── Inline Tech panel (inside ShowCard) ── */
+.bk-inline-panel {
+  padding: 16px 0 0;
+}
+.bk-inline-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.bk-inline-tab-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bk-inline-tab-btn:hover { background: var(--surface-raised); color: var(--text-1); }
+.bk-inline-tab-btn.active { background: var(--text-1); color: var(--surface-base); border-color: var(--text-1); }
+.bk-inline-body {
+  min-height: 60px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 800px) {
   .bk-page { padding: 28px 16px 64px; gap: 28px; }

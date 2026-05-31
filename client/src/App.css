@@ -3582,6 +3582,34 @@ body {
   margin-bottom: 14px;
 }
 
+.settings-invite-role-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.settings-invite-role-label {
+  font-weight: 600;
+  color: var(--text-1);
+}
+.settings-role-radio {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.settings-role-select {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-base);
+  color: var(--text-1);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
 .settings-invite-box {
   display: flex;
   flex-wrap: wrap;

@@ -11,13 +11,14 @@ const RUBRIC_LABELS = {
 const ALL_RUBRICS = Object.keys(RUBRIC_LABELS);
 
 // ── Panel A: Invite link + users table ───────────────────────────────────────
-function PanelInvite({ users, onDeleteUser }) {
-  const [link,      setLink]      = useState('');
-  const [expires,   setExpires]   = useState('');
-  const [copied,    setCopied]    = useState(false);
-  const [generating,setGenerating]= useState(false);
-  const [invitations, setInvitations] = useState([]);
-  const [loadingInv,  setLoadingInv]  = useState(true);
+function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
+  const [link,          setLink]          = useState('');
+  const [expires,       setExpires]       = useState('');
+  const [copied,        setCopied]        = useState(false);
+  const [generating,    setGenerating]    = useState(false);
+  const [inviteRole,    setInviteRole]    = useState('producer');
+  const [invitations,   setInvitations]   = useState([]);
+  const [loadingInv,    setLoadingInv]    = useState(true);
 
   const loadInvitations = useCallback(async () => {
     setLoadingInv(true);
@@ -32,7 +33,11 @@ function PanelInvite({ users, onDeleteUser }) {
   const generate = async () => {
     setGenerating(true);
     try {
-      const r = await fetch('/api/invitations/generate', { method: 'POST' });
+      const r = await fetch('/api/invitations/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceRole: inviteRole }),
+      });
       const d = await r.json();
       setLink(d.link);
       setExpires(d.expiresAt);
@@ -67,6 +72,17 @@ function PanelInvite({ users, onDeleteUser }) {
       <h3 className="settings-section-title">Invite New Team Member</h3>
       <p className="settings-section-desc">Generate a one-time invite link. Expires in 48 hours.</p>
 
+      <div className="settings-invite-role-row">
+        <span className="settings-invite-role-label">Role:</span>
+        <label className="settings-role-radio">
+          <input type="radio" name="inviteRole" value="producer" checked={inviteRole === 'producer'} onChange={() => setInviteRole('producer')} />
+          Producer
+        </label>
+        <label className="settings-role-radio">
+          <input type="radio" name="inviteRole" value="backliner" checked={inviteRole === 'backliner'} onChange={() => setInviteRole('backliner')} />
+          Backliner
+        </label>
+      </div>
       <button className="btn-primary settings-generate-btn" onClick={generate} disabled={generating}>
         {generating ? 'Generating…' : 'Generate Invite Link'}
       </button>
@@ -131,7 +147,8 @@ function PanelInvite({ users, onDeleteUser }) {
             <thead>
               <tr>
                 <th>Username</th>
-                <th>Role</th>
+                <th>Auth Role</th>
+                <th>Workspace Role</th>
                 <th>Joined</th>
                 <th></th>
               </tr>
@@ -141,6 +158,16 @@ function PanelInvite({ users, onDeleteUser }) {
                 <tr key={u.id}>
                   <td>{u.username}</td>
                   <td><span className={`badge-role badge-role--${u.role}`}>{u.role}</span></td>
+                  <td>
+                    <select
+                      className="settings-role-select"
+                      value={u.workspaceRole || 'producer'}
+                      onChange={(e) => onChangeWorkspaceRole(u.id, e.target.value)}
+                    >
+                      <option value="producer">Producer</option>
+                      <option value="backliner">Backliner</option>
+                    </select>
+                  </td>
                   <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
                   <td>
                     <button className="btn-action btn-action--danger" onClick={() => onDeleteUser(u)}>
@@ -311,6 +338,17 @@ function SettingsPanel({ artists }) {
     if (r.ok) setUsers((prev) => prev.filter((u) => u.id !== user.id));
   };
 
+  const changeWorkspaceRole = async (userId, workspaceRole) => {
+    const r = await fetch(`/api/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspaceRole }),
+    });
+    if (r.ok) {
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, workspaceRole } : u));
+    }
+  };
+
   const isLoading = loadingUsers || loadingSettings;
 
   return (
@@ -355,7 +393,7 @@ function SettingsPanel({ artists }) {
       ) : (
         <>
           {tab === 'invite' && (
-            <PanelInvite users={users} onDeleteUser={deleteUser} />
+            <PanelInvite users={users} onDeleteUser={deleteUser} onChangeWorkspaceRole={changeWorkspaceRole} />
           )}
           {tab === 'rubrics' && (
             <PanelRubrics visibleRubrics={visibleRubrics} onChange={setVisibleRubrics} />

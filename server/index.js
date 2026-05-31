@@ -297,14 +297,15 @@ app.post('/api/auth/register-invite', async (req, res) => {
       return res.status(409).type('html').send(invitePage({ token, username, error: 'Username already taken.' }));
     }
 
-    // Create guest user (lowest privilege)
+    // Create guest user (lowest privilege), inherit workspaceRole from invite
     const newUser = {
-      id:           uuidv4(),
+      id:            uuidv4(),
       username,
-      email:        email?.trim() || null,
-      passwordHash: hashPassword(password),
-      role:         'guest',
-      createdAt:    new Date().toISOString(),
+      email:         email?.trim() || null,
+      passwordHash:  hashPassword(password),
+      role:          'guest',
+      workspaceRole: inv.workspaceRole || 'producer',
+      createdAt:     new Date().toISOString(),
     };
     users.push(newUser);
     saveUsers(users);
@@ -379,14 +380,36 @@ app.use((req, res, next) => {
 
 // ── Who-am-I (after auth gate) ───────────────────────────────────────────────
 app.get('/api/me', (req, res) => {
-  res.json({ userId: req.userId, username: req.username, role: req.userRole });
+  let workspaceRole = 'producer'; // admin always producer
+  if (req.userRole !== 'admin') {
+    const users = loadUsers();
+    const user = users.find((u) => u.id === req.userId);
+    workspaceRole = user?.workspaceRole || 'producer';
+  }
+  res.json({ userId: req.userId, username: req.username, role: req.userRole, workspaceRole });
 });
 
 // ── Admin-only: user management ───────────────────────────────────────────────
 app.get('/api/users', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const users = loadUsers().map(({ id, username, email, role, createdAt }) => ({ id, username, email: email || null, role, createdAt }));
+  const users = loadUsers().map(({ id, username, email, role, workspaceRole, createdAt }) => ({
+    id, username, email: email || null, role, workspaceRole: workspaceRole || 'producer', createdAt,
+  }));
   res.json(users);
+});
+
+app.patch('/api/users/:id', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'User not found' });
+  const { workspaceRole } = req.body || {};
+  if (workspaceRole && ['producer', 'backliner'].includes(workspaceRole)) {
+    users[idx].workspaceRole = workspaceRole;
+  }
+  saveUsers(users);
+  const { passwordHash: _ph, ...safe } = users[idx];
+  res.json({ ...safe, workspaceRole: users[idx].workspaceRole || 'producer' });
 });
 
 app.delete('/api/users/:id', async (req, res) => {
@@ -458,14 +481,18 @@ app.get('/api/invitations', (req, res) => {
 
 app.post('/api/invitations/generate', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { workspaceRole } = req.body || {};
   const token      = uuidv4();
   const expiresAt  = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
-  const invitation = { token, createdAt: new Date().toISOString(), expiresAt, usedBy: null };
+  const invitation = {
+    token, createdAt: new Date().toISOString(), expiresAt, usedBy: null,
+    workspaceRole: workspaceRole === 'backliner' ? 'backliner' : 'producer',
+  };
   const invitations = loadInvitations();
   invitations.push(invitation);
   saveInvitations(invitations);
   const link = `${req.protocol}://${req.get('host')}/register?token=${token}`;
-  res.json({ ok: true, token, link, expiresAt });
+  res.json({ ok: true, token, link, expiresAt, workspaceRole: invitation.workspaceRole });
 });
 
 app.delete('/api/invitations/:token', (req, res) => {

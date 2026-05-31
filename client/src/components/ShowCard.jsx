@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import TaskManager from './TaskManager';
+import ShowBacklinePanel from './ShowBacklinePanel';
 import { etColorIdx } from '../utils/etColor';
 
 // ── Module-level constants — not recreated on every render ──────────────────
@@ -8,9 +9,10 @@ const colorFor     = (id) => CREW_PALETTE[(id || '').split('').reduce((a, c) => 
 const initialsFor  = (name) => (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 const formatDate   = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
 
-function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
+function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, workspaceRole }) {
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  const [showTech, setShowTech] = useState(false);
   const [briefStatus, setBriefStatus] = useState(null);
   const [pdfStatus, setPdfStatus] = useState(null);
   const [briefError, setBriefError] = useState(null);
@@ -412,6 +414,14 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         >
           Logistics
         </button>
+        {workspaceRole !== 'backliner' && (
+          <button
+            className={`btn-tasks ${showTech ? 'active' : ''}`}
+            onClick={() => setShowTech(!showTech)}
+          >
+            Tech
+          </button>
+        )}
       </div>
 
       {showTasks && (
@@ -423,6 +433,18 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             </div>
           </div>
           <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />
+        </div>
+      )}
+
+      {showTech && (
+        <div className="hub-panel" aria-label="Tech / Backline">
+          <div className="hub-header">
+            <div className="hub-header-text">
+              <div className="hub-eyebrow">Backline</div>
+              <div className="hub-heading">Tech</div>
+            </div>
+          </div>
+          <ShowBacklinePanel show={show} onUpdateShow={onUpdateShow} />
         </div>
       )}
     </div>
