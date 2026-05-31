@@ -49,3 +49,27 @@ self.addEventListener('fetch', (e) => {
     )
   );
 });
+
+// ── Web Push ────────────────────────────────────────────────────────────────
+self.addEventListener('push', (e) => {
+  let data = { title: 'Production Hub', body: '' };
+  try { data = e.data.json(); } catch { data.body = e.data?.text() || ''; }
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body:  data.body,
+      icon:  data.icon || '/icon-192.png',
+      badge: '/icon-192.png',
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const focused = wins.find((w) => w.focus);
+      if (focused) return focused.focus();
+      return clients.openWindow('/');
+    })
+  );
+});
