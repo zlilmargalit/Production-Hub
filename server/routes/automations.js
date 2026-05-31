@@ -365,6 +365,9 @@ function initWebPush() {
   const subj = process.env.VAPID_SUBJECT || 'mailto:admin@production-hub.app';
   if (pub && priv) {
     webpush.setVapidDetails(subj, pub, priv);
+    console.log('[push] VAPID configured, pubkey prefix:', pub.slice(0, 12));
+  } else {
+    console.warn('[push] VAPID keys missing — VAPID_PUBLIC_KEY:', !!pub, 'VAPID_PRIVATE_KEY:', !!priv);
   }
 }
 
@@ -564,6 +567,7 @@ router.post('/push/test', async (req, res) => {
 
   let sent = 0;
   const toRemove = [];
+  const errors = [];
   await Promise.all(
     list.map(async (sub) => {
       try {
@@ -573,8 +577,13 @@ router.post('/push/test', async (req, res) => {
         );
         sent++;
       } catch (err) {
-        if (err.statusCode === 410) toRemove.push(sub.endpoint);
-        else console.error('[push/test] failed:', err.message);
+        if (err.statusCode === 410) {
+          toRemove.push(sub.endpoint);
+        } else {
+          const detail = `${err.statusCode || ''} ${err.message}`.trim();
+          console.error('[push/test] failed:', detail, err.body || '');
+          errors.push(detail);
+        }
       }
     }),
   );
@@ -585,7 +594,8 @@ router.post('/push/test', async (req, res) => {
   }
 
   if (sent === 0) {
-    return res.status(500).json({ error: 'Subscription exists but push delivery failed. Check VAPID keys.' });
+    const detail = errors[0] || 'unknown error';
+    return res.status(500).json({ error: `Push delivery failed: ${detail}` });
   }
   res.json({ sent });
 });
