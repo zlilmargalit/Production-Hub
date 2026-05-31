@@ -32,7 +32,7 @@ const spotifyRouter       = require('./routes/spotify');
 const { router: automationsRouter, publicRouter: automationsPublicRouter, startCron: startAutomationsCron } = require('./routes/automations');
 const driveRouter             = require('./routes/drive');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
-const { readJsonCached, writeJsonAndCache } = require('./cache');
+const { readJsonCached, writeJsonAndCache, clearAll: clearCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
 const { DATA_DIR, ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey } = require('./utils/userData');
 
@@ -416,6 +416,7 @@ app.post('/api/admin/restore-data', async (req, res) => {
       await fsp.writeFile(dest, typeof content === 'string' ? content : JSON.stringify(content, null, 2), 'utf8');
       written++;
     }
+    clearCache(); // flush stale in-memory cache so next reads come from disk
     res.json({ ok: true, written });
   } catch (err) {
     console.error('[restore]', err.message);
