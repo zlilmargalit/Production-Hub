@@ -398,20 +398,6 @@ app.get('/api/users', (req, res) => {
   res.json(users);
 });
 
-app.patch('/api/users/:id', (req, res) => {
-  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const users = loadUsers();
-  const idx = users.findIndex((u) => u.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: 'User not found' });
-  const { workspaceRole } = req.body || {};
-  if (workspaceRole && ['producer', 'backliner'].includes(workspaceRole)) {
-    users[idx].workspaceRole = workspaceRole;
-  }
-  saveUsers(users);
-  const { passwordHash: _ph, ...safe } = users[idx];
-  res.json({ ...safe, workspaceRole: users[idx].workspaceRole || 'producer' });
-});
-
 app.delete('/api/users/:id', async (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const users = loadUsers();
@@ -583,17 +569,26 @@ app.post('/api/team/notify', async (req, res) => {
   res.json({ ok: true, sent, failed, results });
 });
 
-// ── Admin: patch user email / role ───────────────────────────────────────────
+// ── Admin: patch user email / role / workspaceRole ───────────────────────────
 app.patch('/api/users/:id', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { email, role } = req.body || {};
+  const { email, role, workspaceRole } = req.body || {};
   const users = loadUsers();
   const user  = users.find((u) => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  if (email !== undefined) user.email = email?.trim() || null;
-  if (role  !== undefined && ['guest', 'user'].includes(role)) user.role = role;
+  if (email         !== undefined) user.email         = email?.trim() || null;
+  if (role          !== undefined && ['guest', 'user'].includes(role)) user.role = role;
+  if (workspaceRole !== undefined && ['producer', 'backliner'].includes(workspaceRole)) {
+    user.workspaceRole = workspaceRole;
+  }
   saveUsers(users);
-  res.json({ ok: true, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+  res.json({
+    ok: true,
+    user: {
+      id: user.id, username: user.username, email: user.email,
+      role: user.role, workspaceRole: user.workspaceRole || 'producer',
+    },
+  });
 });
 
 // ── Team-access middleware ────────────────────────────────────────────────────

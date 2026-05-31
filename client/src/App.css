@@ -501,6 +501,21 @@ body {
   margin: 0;
 }
 
+.user-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.user-menu-item:hover { background: var(--surface-raised); }
+
 .user-menu-logout {
   display: block;
   width: 100%;
@@ -515,6 +530,99 @@ body {
   transition: background 0.1s;
 }
 .user-menu-logout:hover { background: var(--clay-bg); }
+
+/* ── User Settings Modal ── */
+.user-settings-modal {
+  width: 440px;
+  max-width: 92vw;
+  padding: 0;
+  border-radius: var(--radius-lg, 12px);
+}
+.user-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.user-settings-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-1);
+  margin: 0;
+}
+.user-settings-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.user-settings-close:hover { color: var(--text-1); }
+.user-settings-section {
+  padding: 20px 24px;
+}
+.user-settings-section + .user-settings-section {
+  border-top: 1px solid var(--border-light);
+}
+.user-settings-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 14px;
+}
+.user-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.user-settings-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.user-settings-row-label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-1);
+}
+.user-settings-row-desc {
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.user-settings-toggle {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface-sunk);
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.user-settings-toggle.on {
+  background: var(--text-1);
+  color: var(--surface-base);
+  border-color: var(--text-1);
+}
+.user-settings-toggle:disabled { opacity: 0.6; cursor: not-allowed; }
+.user-settings-msg {
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.user-settings-msg.ok  { color: #2e7d32; }
+.user-settings-msg.err { color: var(--clay); }
 
 /* ═══════════════════════════════════════════════════════════════════════
    ARTIST SWITCHER
@@ -3332,7 +3440,56 @@ body {
 .team-save-msg.err { color: #B05448; }
 
 /* ── Invite tab ──────────────────────────────────────────────────────────── */
-.team-gen-btn { margin-bottom: 20px; }
+.team-invite-role-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+.team-invite-role-label {
+  font-weight: 600;
+  color: var(--text-1);
+}
+.team-role-radio {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.team-gen-btn { margin-bottom: 0; }
+.team-gen-error {
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--clay);
+}
+
+/* ── Workspace role badge + select ──────────────────────────────────────── */
+.badge-workspace-role {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--surface-sunk);
+  color: var(--text-2);
+}
+.badge-wr--producer  { background: #E9F5E9; color: #2e7d32; }
+.badge-wr--backliner { background: #E4EDF7; color: #3852B4; }
+[data-theme="dark"] .badge-wr--producer  { background: rgba(46,125,50,0.18);  color: #81c784; }
+[data-theme="dark"] .badge-wr--backliner { background: rgba(56,82,180,0.18); color: #8FA3E8; }
+
+.team-wr-select {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-base);
+  color: var(--text-1);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
 
 .team-invite-card {
   background: var(--surface-sunk);

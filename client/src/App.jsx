@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { subscribeToPush } from './utils/pushSubscribe';
 import ShowList from './components/ShowList';
 import ShowForm from './components/ShowForm';
 import CrewManager from './components/CrewManager';
@@ -28,6 +29,7 @@ function App({ demoMode = false }) {
   const [userRole, setUserRole] = useState(null); // 'admin' | 'user' | null
   const [username, setUsername] = useState(null);
   const [workspaceRole, setWorkspaceRole] = useState(null); // 'producer' | 'backliner' | null
+  const [showSettings, setShowSettings] = useState(false);
   const [tasks,    setTasks]    = useState([]);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
@@ -547,7 +549,7 @@ function App({ demoMode = false }) {
           >
             {theme === 'dark' ? '☀' : '◑'}
           </button>
-          {!demoMode && <UserMenu username={username} userRole={userRole} />}
+          {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} />}
         </div>
       </header>
 
@@ -654,6 +656,10 @@ function App({ demoMode = false }) {
           onClose={() => setNewArtistModal(false)}
           onCreate={createArtist}
         />
+      )}
+
+      {showSettings && (
+        <UserSettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   );
@@ -836,7 +842,7 @@ function NewArtistModal({ onClose, onCreate }) {
 }
 
 // ── User avatar + logout panel ────────────────────────────────────────────────
-function UserMenu({ username, userRole }) {
+function UserMenu({ username, userRole, onOpenSettings }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -876,11 +882,84 @@ function UserMenu({ username, userRole }) {
             )}
           </div>
           <div className="user-menu-divider" />
+          <button className="user-menu-item" onClick={() => { setOpen(false); onOpenSettings?.(); }}>
+            Settings
+          </button>
+          <div className="user-menu-divider" />
           <button className="user-menu-logout" onClick={logout}>
             Sign out
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── User Settings Modal ───────────────────────────────────────────────────────
+function UserSettingsModal({ onClose }) {
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushMsg,     setPushMsg]     = useState('');
+  const [pushBusy,    setPushBusy]    = useState(false);
+
+  // Check current push subscription state on mount
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => { if (sub) setPushEnabled(true); })
+      .catch(() => {});
+  }, []);
+
+  const handlePushToggle = async () => {
+    setPushBusy(true);
+    setPushMsg('');
+    try {
+      if (!pushEnabled) {
+        await subscribeToPush();
+        setPushEnabled(true);
+        setPushMsg('Push notifications enabled');
+      } else {
+        if (!('serviceWorker' in navigator)) throw new Error('Not supported');
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe();
+        setPushEnabled(false);
+        setPushMsg('Push notifications disabled');
+      }
+    } catch (e) {
+      setPushMsg(e.message || 'Could not update notification settings');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay confirm-overlay" onClick={onClose}>
+      <div className="modal user-settings-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="user-settings-header">
+          <h3 className="user-settings-title">Settings</h3>
+          <button className="user-settings-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="user-settings-section">
+          <h4 className="user-settings-section-title">Notifications</h4>
+          <div className="user-settings-row">
+            <div className="user-settings-row-info">
+              <span className="user-settings-row-label">Push Notifications</span>
+              <span className="user-settings-row-desc">Receive task reminders and show alerts on this device.</span>
+            </div>
+            <button
+              className={`user-settings-toggle${pushEnabled ? ' on' : ''}`}
+              onClick={handlePushToggle}
+              disabled={pushBusy}
+              aria-pressed={pushEnabled}
+            >
+              {pushBusy ? '…' : pushEnabled ? 'On' : 'Off'}
+            </button>
+          </div>
+          {pushMsg && <p className={`user-settings-msg${pushMsg.includes('enabled') ? ' ok' : pushMsg.includes('disabled') ? '' : ' err'}`}>{pushMsg}</p>}
+        </div>
+      </div>
     </div>
   );
 }

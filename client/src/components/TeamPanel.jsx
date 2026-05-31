@@ -32,7 +32,7 @@ function isExpired(iso) { return iso && new Date(iso) < new Date(); }
 //  TAB 1 — Members
 // ────────────────────────────────────────────────────────────────────────────
 function TabMembers({ users, artists, activityLog, visibleRubrics, userArtistAccess,
-                      onDeleteUser, onEditEmail, onSaveAccess }) {
+                      onDeleteUser, onEditEmail, onChangeWorkspaceRole, onSaveAccess }) {
   const [editingEmail, setEditingEmail] = useState(null);
   const [emailDraft,   setEmailDraft]   = useState('');
   const [visRubrics,   setVisRubrics]   = useState(visibleRubrics);
@@ -84,7 +84,8 @@ function TabMembers({ users, artists, activityLog, visibleRubrics, userArtistAcc
               <tr>
                 <th>Username</th>
                 <th>Email</th>
-                <th>Role</th>
+                <th>Auth Role</th>
+                <th>Workspace Role</th>
                 <th>Last seen</th>
                 <th>Artists</th>
                 <th></th>
@@ -124,6 +125,16 @@ function TabMembers({ users, artists, activityLog, visibleRubrics, userArtistAcc
                       )}
                     </td>
                     <td><span className={`badge-role badge-role--${u.role}`}>{u.role}</span></td>
+                    <td>
+                      <select
+                        className="team-wr-select"
+                        value={u.workspaceRole || 'producer'}
+                        onChange={(e) => onChangeWorkspaceRole(u.id, e.target.value)}
+                      >
+                        <option value="producer">Producer</option>
+                        <option value="backliner">Backliner</option>
+                      </select>
+                    </td>
                     <td className="team-td-lastseen">{fmtRelative(lastSeen[u.id])}</td>
                     <td className="team-td-artists">
                       {artists.length === 0
@@ -193,7 +204,9 @@ function TabInvite() {
   const [link,        setLink]        = useState('');
   const [expires,     setExpires]     = useState('');
   const [generating,  setGenerating]  = useState(false);
+  const [genError,    setGenError]    = useState('');
   const [copied,      setCopied]      = useState(false);
+  const [inviteRole,  setInviteRole]  = useState('producer');
   const [invitations, setInvitations] = useState([]);
   const [loadingInv,  setLoadingInv]  = useState(true);
 
@@ -208,13 +221,25 @@ function TabInvite() {
 
   const generate = async () => {
     setGenerating(true);
-    const r = await fetch('/api/invitations/generate', { method: 'POST' });
-    const d = await r.json();
-    setLink(d.link);
-    setExpires(d.expiresAt);
-    setCopied(false);
-    await load();
-    setGenerating(false);
+    setGenError('');
+    setLink('');
+    try {
+      const r = await fetch('/api/invitations/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceRole: inviteRole }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setGenError(d.error || 'Failed to generate invite link'); return; }
+      setLink(d.link);
+      setExpires(d.expiresAt);
+      setCopied(false);
+      await load();
+    } catch (e) {
+      setGenError(e.message || 'Network error');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const copy = () => {
@@ -235,9 +260,22 @@ function TabInvite() {
       <h3 className="team-section-title">Generate Invite Link</h3>
       <p className="team-section-desc">One-time link, valid for 48 hours. The recipient sets their own username and password.</p>
 
+      <div className="team-invite-role-row">
+        <span className="team-invite-role-label">Role for new member:</span>
+        <label className="team-role-radio">
+          <input type="radio" name="inviteRole" value="producer" checked={inviteRole === 'producer'} onChange={() => setInviteRole('producer')} />
+          Producer
+        </label>
+        <label className="team-role-radio">
+          <input type="radio" name="inviteRole" value="backliner" checked={inviteRole === 'backliner'} onChange={() => setInviteRole('backliner')} />
+          Backliner
+        </label>
+      </div>
+
       <button className="btn-primary team-gen-btn" onClick={generate} disabled={generating}>
         {generating ? 'Generating…' : '+ New Invite Link'}
       </button>
+      {genError && <p className="team-gen-error">{genError}</p>}
 
       {link && (
         <div className="team-invite-card">
@@ -279,6 +317,7 @@ function TabInvite() {
               <thead>
                 <tr>
                   <th>Status</th>
+                  <th>Role</th>
                   <th>Created</th>
                   <th>Expires</th>
                   <th>Used by</th>
@@ -295,6 +334,7 @@ function TabInvite() {
                           ? <span className="badge-expired">Expired</span>
                           : <span className="badge-active">Active</span>}
                     </td>
+                    <td><span className={`badge-workspace-role badge-wr--${inv.workspaceRole || 'producer'}`}>{inv.workspaceRole || 'producer'}</span></td>
                     <td>{fmtDate(inv.createdAt)}</td>
                     <td>{fmtDate(inv.expiresAt)}</td>
                     <td>{inv.usedByUsername || '—'}</td>
@@ -486,6 +526,17 @@ function TeamPanel({ artists }) {
     }
   };
 
+  const changeWorkspaceRole = async (userId, workspaceRole) => {
+    const r = await fetch(`/api/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspaceRole }),
+    });
+    if (r.ok) {
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, workspaceRole } : u));
+    }
+  };
+
   const saveAccess = (rubrics, access) => {
     setVisibleRubrics(rubrics);
     setUserArtistAccess(access);
@@ -546,6 +597,7 @@ function TeamPanel({ artists }) {
               userArtistAccess={userArtistAccess}
               onDeleteUser={deleteUser}
               onEditEmail={editEmail}
+              onChangeWorkspaceRole={changeWorkspaceRole}
               onSaveAccess={saveAccess}
             />
           )}
