@@ -399,6 +399,30 @@ app.delete('/api/users/:id', async (req, res) => {
   res.status(204).send();
 });
 
+// ── Admin: data restore (temporary — remove after recovery) ──────────────────
+// Accepts a full data dump (JSON files as strings) and writes them to DATA_DIR.
+// Protected by the existing admin-only auth middleware.
+app.post('/api/admin/restore-data', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const { files } = req.body || {};
+    if (!files || typeof files !== 'object') return res.status(400).json({ error: 'files object required' });
+    let written = 0;
+    for (const [relPath, content] of Object.entries(files)) {
+      // Sanitise path — no traversal outside DATA_DIR
+      const safe = relPath.replace(/\.\.\//g, '').replace(/^\//, '');
+      const dest = path.join(DATA_DIR, safe);
+      await fsp.mkdir(path.dirname(dest), { recursive: true });
+      await fsp.writeFile(dest, typeof content === 'string' ? content : JSON.stringify(content, null, 2), 'utf8');
+      written++;
+    }
+    res.json({ ok: true, written });
+  } catch (err) {
+    console.error('[restore]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Admin: team settings (RBAC) ───────────────────────────────────────────────
 app.get('/api/admin/settings', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
