@@ -75,9 +75,13 @@ export default function AutomationsPage() {
       await Promise.all([fetchIntegrations(), fetchAutomations()]);
       setLoading(false);
     })();
-    // Determine current push permission state
+    // Determine current push permission state.
+    // If already granted, silently re-subscribe so this server has the endpoint saved.
+    // subscribeToPush() is idempotent — pushManager.subscribe() returns the existing
+    // subscription without prompting; we just make sure the server record is current.
     if ('Notification' in window && Notification.permission === 'granted') {
       setPushState('granted');
+      subscribeToPush().catch(() => { /* non-fatal — user can tap Enable manually */ });
     }
   }, [fetchIntegrations, fetchAutomations]);
 
