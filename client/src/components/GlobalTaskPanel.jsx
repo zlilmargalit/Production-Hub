@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { subscribeToPush } from '../utils/pushSubscribe';
 
 const fmtDate = (d) => {
   if (!d) return null;
@@ -74,6 +75,11 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
     setPushStatus('sending');
     setPushMsg('');
     try {
+      // Silently re-register subscription so the server always has a current endpoint,
+      // regardless of whether the user has visited the Automations page yet.
+      if ('Notification' in window && Notification.permission === 'granted') {
+        await subscribeToPush().catch(() => {});
+      }
       const res = await fetch('/api/automations/push/test', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) { setPushStatus('error'); setPushMsg(data.error || 'Failed'); }
