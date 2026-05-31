@@ -6,8 +6,9 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
+const { DATA_DIR } = require('../utils/userData');
 
-const SHOWS_FILE = path.join(__dirname, '../data/shows.json');
+const SHOWS_FILE = path.join(DATA_DIR, 'shows.json');
 const DEFAULT_XLSX = path.join(__dirname, '../../אסף אמדורסקי לוח הופעות.xlsx');
 
 const readShows  = () => readJsonCached('shows', SHOWS_FILE, []);

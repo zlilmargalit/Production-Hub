@@ -12,8 +12,15 @@
 const path = require('path');
 const fsp  = require('fs').promises;
 
-const DATA_DIR    = path.join(__dirname, '../data');
+// DATA_DIR: use the Railway/env-configured volume path if set,
+// otherwise fall back to the local server/data/ directory.
+// On Railway, set DATA_DIR to the mounted volume path (e.g. /data) so data
+// survives deployments. Without a volume every deploy wipes the container.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
 const ARTIST_SEP  = '__art__';
+
+// Eagerly create DATA_DIR on startup so the volume is ready before any request.
+fsp.mkdir(DATA_DIR, { recursive: true }).catch(() => {});
 
 // Default content written when a user's or artist's files are created for the first time.
 const DEFAULTS = {

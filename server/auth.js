@@ -13,11 +13,12 @@
 const crypto = require('crypto');
 const path   = require('path');
 const fs     = require('fs');
+const { DATA_DIR } = require('./utils/userData');
 
 const COOKIE_NAME    = 'ph_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-const USERS_FILE = path.join(__dirname, 'data/users.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 // ── Secret ──────────────────────────────────────────────────────────────────
 function getSecret() {

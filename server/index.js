@@ -34,7 +34,7 @@ const driveRouter             = require('./routes/drive');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
-const { ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey } = require('./utils/userData');
+const { DATA_DIR, ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey } = require('./utils/userData');
 
 // ── Gmail credentials (for team notify) ─────────────────────────────────────
 const GMAIL_CREDENTIALS_PATH = path.join(__dirname, 'data/gmail-credentials.json');
@@ -76,7 +76,7 @@ async function sendGmail(to, subject, textBody) {
 }
 
 // ── Team activity log ────────────────────────────────────────────────────────
-const ACTIVITY_FILE = path.join(__dirname, 'data/team-activity.json');
+const ACTIVITY_FILE = path.join(DATA_DIR, 'team-activity.json');
 
 function loadActivity() {
   try { return JSON.parse(fs.readFileSync(ACTIVITY_FILE, 'utf8')); } catch { return []; }
@@ -92,8 +92,8 @@ function logActivity(userId, username, action, detail = '') {
 }
 
 // ── Invitation / team-settings paths ────────────────────────────────────────
-const INVITATIONS_FILE   = path.join(__dirname, 'data/invitations.json');
-const TEAM_SETTINGS_FILE = path.join(__dirname, 'data/team-settings.json');
+const INVITATIONS_FILE   = path.join(DATA_DIR, 'invitations.json');
+const TEAM_SETTINGS_FILE = path.join(DATA_DIR, 'team-settings.json');
 
 function loadInvitations() {
   try { return JSON.parse(fs.readFileSync(INVITATIONS_FILE, 'utf8')); } catch { return []; }
@@ -594,7 +594,7 @@ if (fs.existsSync(CLIENT_DIST)) {
 }
 
 // ── File watcher: auto-import xlsx ───────────────────────────────────────────
-const SHOWS_FILE = path.join(__dirname, 'data/shows.json');
+const SHOWS_FILE = path.join(DATA_DIR, 'shows.json');
 
 async function autoImport(xlsxPath) {
   try {
@@ -635,7 +635,6 @@ process.on('SIGINT',  () => gracefulExit('SIGINT'));
 // empty/missing and the root file has actual content.
 async function migrateRootDataToArtists() {
   try {
-    const DATA_DIR = path.join(__dirname, 'data');
     const artistsFile = path.join(DATA_DIR, 'artists.json');
     if (!fs.existsSync(artistsFile)) return;
 

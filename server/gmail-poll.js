@@ -1,11 +1,12 @@
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
+const { DATA_DIR } = require('./utils/userData');
 
 const CREDENTIALS_PATH = path.join(__dirname, 'data/gmail-credentials.json');
 const TOKEN_PATH       = path.join(__dirname, 'data/gmail-token.json');
 const XLSX_PATH        = path.join(__dirname, '../אסף אמדורסקי לוח הופעות.xlsx');
-const SHOWS_FILE       = path.join(__dirname, 'data/shows.json');
+const SHOWS_FILE       = path.join(DATA_DIR, 'shows.json');
 const LABEL_PROCESSED  = 'Label_16'; // "production-imported"
 
 const ALLOWED_SENDERS  = ['noa@hamonvolume.com', 'zlilmargalit0@gmail.com'];

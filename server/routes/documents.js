@@ -15,8 +15,9 @@ const {
   WidthType,
 } = require('docx');
 const { readJsonCached } = require('../cache');
+const { DATA_DIR } = require('../utils/userData');
 
-const DATA_FILE = path.join(__dirname, '../data/shows.json');
+const DATA_FILE = path.join(DATA_DIR, 'shows.json');
 const readShows = () => readJsonCached('shows', DATA_FILE, []);
 
 function field(label, value) {
