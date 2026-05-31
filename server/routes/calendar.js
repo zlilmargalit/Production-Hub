@@ -5,11 +5,11 @@ const fs   = require('fs');
 const fsp  = require('fs').promises;
 const path = require('path');
 const { readJsonCached } = require('../cache');
-const { dataPath, cacheKey } = require('../utils/userData');
+const { DATA_DIR, dataPath, cacheKey } = require('../utils/userData');
 
 const CREDENTIALS_PATH   = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH         = path.join(__dirname, '../data/gmail-token.json');
-const CALENDAR_CFG_FILE  = path.join(__dirname, '../data/calendar-config.json');
+const CALENDAR_CFG_FILE  = path.join(DATA_DIR, 'calendar-config.json');
 
 // Read calendar ID from config file; fall back to 'primary'.
 // Kept sync because it's only called at the start of route handlers where
