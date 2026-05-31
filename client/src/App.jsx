@@ -8,6 +8,7 @@ import GlobalTaskPanel from './components/GlobalTaskPanel';
 import TeamPanel       from './components/TeamPanel';
 import SetlistCalculator from './components/SetlistCalculator';
 import AutomationsPage  from './components/automations/AutomationsPage';
+import BacklinerDashboard from './components/backliner/BacklinerDashboard';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -440,6 +441,14 @@ function App({ demoMode = false }) {
               Automations
             </button>
           )}
+          {!demoMode && (
+            <button
+              className={`nav-btn ${page === 'backliner' ? 'active' : ''}`}
+              onClick={() => setPage('backliner')}
+            >
+              Backliner
+            </button>
+          )}
           {!demoMode && userRole === 'admin' && (
             <button
               className={`nav-btn ${page === 'team' ? 'active' : ''}`}
@@ -557,6 +566,16 @@ function App({ demoMode = false }) {
           />
         ) : page === 'automations' ? (
           <AutomationsPage />
+        ) : page === 'backliner' ? (
+          <BacklinerDashboard
+            shows={shows}
+            tasks={tasks}
+            crew={crew}
+            onUpdateShow={updateShow}
+            onAddTask={createTask}
+            onToggleTask={toggleTask}
+            onDeleteTask={deleteTask}
+          />
         ) : page === 'calculator' ? (
           <SetlistCalculator
             defaultArtistName={currentArtist?.name || ''}
