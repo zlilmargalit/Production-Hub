@@ -12,8 +12,11 @@ const { google } = require('googleapis');
 
 const {
   COOKIE_NAME, signToken, getAuthUser, checkAuthed,
-  cookieOptions, verifyCredentials, hashPassword,
+  cookieOptions, verifyCredentials, hashPassword, verifyPassword,
   loadUsers, saveUsers,
+  generateTotpSecret, verifyTotp, buildOtpAuthUri,
+  PENDING_2FA_COOKIE, signPending2faToken, verifyPending2faToken,
+  getCookie,
 } = require('./auth');
 const loginPage  = require('./login-page');
 const invitePage = require('./invite-page');
@@ -34,7 +37,7 @@ const driveRouter             = require('./routes/drive');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache, clearAll: clearCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
-const { DATA_DIR, ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey } = require('./utils/userData');
+const { DATA_DIR, ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey, artistScopedId } = require('./utils/userData');
 
 // ── Gmail credentials (for team notify) ─────────────────────────────────────
 const GMAIL_CREDENTIALS_PATH = path.join(__dirname, 'data/gmail-credentials.json');
@@ -94,6 +97,7 @@ function logActivity(userId, username, action, detail = '') {
 // ── Invitation / team-settings paths ────────────────────────────────────────
 const INVITATIONS_FILE   = path.join(DATA_DIR, 'invitations.json');
 const TEAM_SETTINGS_FILE = path.join(DATA_DIR, 'team-settings.json');
+const TEAMS_FILE         = path.join(DATA_DIR, 'teams.json');
 
 function loadInvitations() {
   try { return JSON.parse(fs.readFileSync(INVITATIONS_FILE, 'utf8')); } catch { return []; }
@@ -105,11 +109,46 @@ function loadTeamSettings() {
   try {
     return JSON.parse(fs.readFileSync(TEAM_SETTINGS_FILE, 'utf8'));
   } catch {
-    return { visibleRubrics: ['schedule', 'logistics', 'technical', 'notes'], userArtistAccess: {} };
+    return { visibleRubrics: ['schedule', 'logistics', 'technical', 'notes'], userArtistAccess: {}, userPermissions: {} };
   }
 }
 function saveTeamSettings(settings) {
   fs.writeFileSync(TEAM_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+}
+function loadTeams() {
+  try { return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch { return []; }
+}
+function saveTeams(teams) {
+  fs.writeFileSync(TEAMS_FILE, JSON.stringify(teams, null, 2), 'utf8');
+}
+
+/**
+ * Normalize userArtistAccess for one user.
+ * Handles both old array format `[artistId, ...]` and new per-artist object format
+ * `{ artistId: role | { role } }`.
+ * Returns: { [artistId]: { role, visibleRubrics, editRubrics } }
+ */
+function normalizeUserAccess(settings, userId) {
+  const raw = (settings.userArtistAccess || {})[userId];
+  if (!raw) return {};
+  const perms       = (settings.userPermissions || {})[userId] || {};
+  const visRubrics  = perms.viewRubrics  || settings.visibleRubrics || [];
+  const editRubrics = perms.editRubrics  || [];
+  if (Array.isArray(raw)) {
+    return Object.fromEntries(
+      raw.map((id) => [id, { role: 'viewer', visibleRubrics: visRubrics, editRubrics }])
+    );
+  }
+  return Object.fromEntries(
+    Object.entries(raw).map(([artistId, roleInfo]) => {
+      const role = typeof roleInfo === 'string' ? roleInfo : (roleInfo?.role || 'viewer');
+      return [artistId, { role, visibleRubrics: visRubrics, editRubrics }];
+    })
+  );
+}
+
+function getPermittedArtistIds(settings, userId) {
+  return Object.keys(normalizeUserAccess(settings, userId));
 }
 
 const app  = express();
@@ -142,18 +181,91 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 // Login page
 app.get('/login', (req, res) => {
   if (checkAuthed(req)) return res.redirect('/');
+  if (req.query.step === '2fa') {
+    // Only show 2FA page if there's a valid pending token
+    const pending = getCookie(req, PENDING_2FA_COOKIE);
+    if (verifyPending2faToken(pending)) {
+      return res.type('html').send(loginPage({ step: '2fa' }));
+    }
+    // No valid pending token — back to normal login
+    return res.redirect('/login');
+  }
   res.type('html').send(loginPage({ error: req.query.error === '1' }));
 });
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body || {};
   const authUser = verifyCredentials(username, password);
-  if (authUser) {
-    res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
-    logActivity(authUser.userId, authUser.username, 'login', 'Signed in');
-    return res.redirect('/');
+  if (!authUser) {
+    return res.status(401).type('html').send(loginPage({ error: true, username }));
   }
-  res.status(401).type('html').send(loginPage({ error: true, username }));
+
+  // Check whether this user has 2FA enabled
+  let has2fa = false;
+  if (authUser.userId === 'admin') {
+    const p = loadAdminProfile();
+    has2fa = !!(p.twoFactorEnabled && p.twoFactorSecret);
+  } else {
+    const user = loadUsers().find((u) => u.id === authUser.userId);
+    has2fa = !!(user?.twoFactorEnabled && user?.twoFactorSecret);
+  }
+
+  if (has2fa) {
+    // Issue a 5-min pending token and redirect to the 2FA step
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    res.cookie(PENDING_2FA_COOKIE, signPending2faToken(authUser.userId), {
+      httpOnly: true, secure: isHttps, sameSite: 'lax',
+      maxAge: 5 * 60 * 1000, path: '/',
+    });
+    return res.redirect('/login?step=2fa');
+  }
+
+  res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
+  logActivity(authUser.userId, authUser.username, 'login', 'Signed in');
+  return res.redirect('/');
+});
+
+// ── 2FA verification step ─────────────────────────────────────────────────────
+app.post('/login/2fa', (req, res) => {
+  const { code } = req.body || {};
+  const pendingToken = getCookie(req, PENDING_2FA_COOKIE);
+  const userId = verifyPending2faToken(pendingToken);
+
+  if (!userId) {
+    // Expired or tampered — go back to login
+    res.clearCookie(PENDING_2FA_COOKIE, { path: '/' });
+    return res.redirect('/login?error=1');
+  }
+
+  if (!code || !/^\d{6}$/.test(code.trim())) {
+    return res.type('html').send(loginPage({ step: '2fa', error2fa: 'Enter a 6-digit code.' }));
+  }
+
+  let secret   = null;
+  let authUser = null;
+
+  if (userId === 'admin') {
+    const p = loadAdminProfile();
+    if (p.twoFactorEnabled) {
+      secret   = p.twoFactorSecret;
+      authUser = { userId: 'admin', username: process.env.AUTH_USER || 'admin', role: 'admin' };
+    }
+  } else {
+    const user = loadUsers().find((u) => u.id === userId);
+    if (user?.twoFactorEnabled) {
+      secret   = user.twoFactorSecret;
+      authUser = { userId: user.id, username: user.username, role: user.role || 'user' };
+    }
+  }
+
+  if (!secret || !verifyTotp(secret, code.trim())) {
+    return res.type('html').send(loginPage({ step: '2fa', error2fa: 'Invalid code — please try again.' }));
+  }
+
+  res.clearCookie(PENDING_2FA_COOKIE, { path: '/' });
+  res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
+  logActivity(authUser.userId, authUser.username, 'login', 'Signed in (2FA)');
+  return res.redirect('/');
 });
 
 app.post('/logout', (req, res) => {
@@ -379,21 +491,337 @@ app.use((req, res, next) => {
 });
 
 // ── Who-am-I (after auth gate) ───────────────────────────────────────────────
+const ADMIN_PROFILE_PATH = () => path.join(DATA_DIR, 'admin-profile.json');
+
+function loadAdminProfile() {
+  try { return JSON.parse(fs.readFileSync(ADMIN_PROFILE_PATH(), 'utf8')); } catch { return {}; }
+}
+function saveAdminProfile(p) {
+  fs.writeFileSync(ADMIN_PROFILE_PATH(), JSON.stringify(p, null, 2), 'utf8');
+}
+
 app.get('/api/me', (req, res) => {
-  let workspaceRole = 'producer'; // admin always producer
-  if (req.userRole !== 'admin') {
+  let workspaceRole = 'producer';
+  let displayName   = null;
+  let timezone      = null;
+  let avatarUrl     = null;
+
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    displayName = p.displayName || null;
+    timezone    = p.timezone    || null;
+    if (p.avatarExt) avatarUrl = `/api/me/avatar`;
+  } else {
     const users = loadUsers();
-    const user = users.find((u) => u.id === req.userId);
+    const user  = users.find((u) => u.id === req.userId);
     workspaceRole = user?.workspaceRole || 'producer';
+    displayName   = user?.displayName   || null;
+    timezone      = user?.timezone      || null;
+    if (user?.avatarExt) avatarUrl = `/api/me/avatar`;
   }
-  res.json({ userId: req.userId, username: req.username, role: req.userRole, workspaceRole });
+
+  res.json({ userId: req.userId, username: req.username, role: req.userRole,
+             workspaceRole, displayName, timezone, avatarUrl });
+});
+
+// ── User: update own profile (workspaceRole, displayName, timezone) ───────────
+app.patch('/api/me', (req, res) => {
+  const { workspaceRole, displayName, timezone } = req.body || {};
+
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    if (displayName !== undefined) p.displayName = String(displayName).trim().slice(0, 100);
+    if (timezone    !== undefined) p.timezone    = String(timezone).slice(0, 60);
+    saveAdminProfile(p);
+    return res.json({ ok: true, workspaceRole: 'producer',
+                      displayName: p.displayName || null, timezone: p.timezone || null });
+  }
+
+  const users = loadUsers();
+  const user  = users.find((u) => u.id === req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  if (workspaceRole !== undefined && ['producer', 'backliner'].includes(workspaceRole)) {
+    user.workspaceRole = workspaceRole;
+  }
+  if (displayName !== undefined) user.displayName = String(displayName).trim().slice(0, 100);
+  if (timezone    !== undefined) user.timezone    = String(timezone).slice(0, 60);
+
+  saveUsers(users);
+  res.json({ ok: true, workspaceRole: user.workspaceRole || 'producer',
+             displayName: user.displayName || null, timezone: user.timezone || null });
+});
+
+// ── User: avatar upload / serve ───────────────────────────────────────────────
+app.post('/api/me/avatar', async (req, res) => {
+  const { dataUrl } = req.body || {};
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Invalid avatar data' });
+  }
+  const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+  if (!match) return res.status(400).json({ error: 'Invalid data URL format' });
+
+  const ext = match[1] === 'jpeg' ? 'jpg' : match[1].slice(0, 8);
+  const buf = Buffer.from(match[2], 'base64');
+  if (buf.length > 2 * 1024 * 1024) return res.status(400).json({ error: 'Avatar must be under 2 MB' });
+
+  const avatarDir = path.join(DATA_DIR, 'avatars');
+  await fsp.mkdir(avatarDir, { recursive: true });
+
+  // Remove any previous avatar files for this user
+  try {
+    const files = await fsp.readdir(avatarDir);
+    await Promise.all(
+      files
+        .filter((f) => f.startsWith(`${req.userId}.`))
+        .map((f) => fsp.unlink(path.join(avatarDir, f)).catch(() => {}))
+    );
+  } catch {}
+
+  await fsp.writeFile(path.join(avatarDir, `${req.userId}.${ext}`), buf);
+
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    p.avatarExt = ext;
+    saveAdminProfile(p);
+  } else {
+    const users = loadUsers();
+    const user  = users.find((u) => u.id === req.userId);
+    if (user) { user.avatarExt = ext; saveUsers(users); }
+  }
+
+  res.json({ ok: true, avatarUrl: `/api/me/avatar?t=${Date.now()}` });
+});
+
+app.get('/api/me/avatar', async (req, res) => {
+  const avatarDir = path.join(DATA_DIR, 'avatars');
+  const exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  for (const ext of exts) {
+    const fp = path.join(avatarDir, `${req.userId}.${ext}`);
+    try {
+      await fsp.access(fp);
+      const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+                        gif: 'image/gif', webp: 'image/webp' };
+      res.setHeader('Content-Type', mimeMap[ext] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.sendFile(fp);
+      return;
+    } catch {}
+  }
+  res.status(404).end();
+});
+
+// ── Spotify integration status (server-level credentials) ────────────────────
+app.get('/api/spotify/status', (req, res) => {
+  res.json({ connected: !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET) });
+});
+
+// ── Change password ───────────────────────────────────────────────────────────
+app.post('/api/me/change-password', (req, res) => {
+  if (req.userRole === 'admin') {
+    return res.status(403).json({ error: 'Admin password is managed via the AUTH_PASSWORD environment variable.' });
+  }
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password are required' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  }
+  const users = loadUsers();
+  const user  = users.find((u) => u.id === req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!verifyPassword(currentPassword, user.passwordHash)) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+  user.passwordHash = hashPassword(newPassword);
+  saveUsers(users);
+  res.json({ ok: true });
+});
+
+// ── 2FA status ────────────────────────────────────────────────────────────────
+app.get('/api/me/2fa/status', (req, res) => {
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    return res.json({ enabled: !!(p.twoFactorEnabled && p.twoFactorSecret) });
+  }
+  const user = loadUsers().find((u) => u.id === req.userId);
+  res.json({ enabled: !!(user?.twoFactorEnabled && user?.twoFactorSecret) });
+});
+
+// ── 2FA setup — generate secret (not yet saved) ───────────────────────────────
+app.post('/api/me/2fa/setup', (req, res) => {
+  const secret     = generateTotpSecret();
+  const otpauthUri = buildOtpAuthUri(secret, req.username || 'user');
+  res.json({ secret, otpauthUri });
+});
+
+// ── 2FA enable — verify code then persist ────────────────────────────────────
+app.post('/api/me/2fa/enable', (req, res) => {
+  const { secret, code } = req.body || {};
+  if (!secret || !code) return res.status(400).json({ error: 'secret and code are required' });
+  if (!verifyTotp(secret, code)) {
+    return res.status(401).json({ error: 'Invalid code — check your authenticator app and try again' });
+  }
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    p.twoFactorSecret  = secret;
+    p.twoFactorEnabled = true;
+    saveAdminProfile(p);
+  } else {
+    const users = loadUsers();
+    const user  = users.find((u) => u.id === req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    user.twoFactorSecret  = secret;
+    user.twoFactorEnabled = true;
+    saveUsers(users);
+  }
+  res.json({ ok: true });
+});
+
+// ── 2FA disable — verify current code then remove ────────────────────────────
+app.post('/api/me/2fa/disable', (req, res) => {
+  const { code } = req.body || {};
+  if (!code) return res.status(400).json({ error: 'Verification code required' });
+
+  let secret = null;
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    secret = p.twoFactorEnabled ? p.twoFactorSecret : null;
+  } else {
+    const user = loadUsers().find((u) => u.id === req.userId);
+    secret = user?.twoFactorEnabled ? user?.twoFactorSecret : null;
+  }
+
+  if (!secret) return res.status(400).json({ error: '2FA is not enabled' });
+  if (!verifyTotp(secret, code)) return res.status(401).json({ error: 'Invalid code' });
+
+  if (req.userRole === 'admin') {
+    const p = loadAdminProfile();
+    p.twoFactorEnabled = false;
+    p.twoFactorSecret  = null;
+    saveAdminProfile(p);
+  } else {
+    const users = loadUsers();
+    const user  = users.find((u) => u.id === req.userId);
+    if (user) { user.twoFactorEnabled = false; user.twoFactorSecret = null; saveUsers(users); }
+  }
+  res.json({ ok: true });
+});
+
+// ── Admin: Teams (groups) management ─────────────────────────────────────────
+app.get('/api/admin/teams', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  res.json(loadTeams());
+});
+
+app.post('/api/admin/teams', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { name, members = [], sharedArtists = [] } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
+  const team = { id: uuidv4(), name: name.trim(), members, sharedArtists, createdAt: new Date().toISOString() };
+  const teams = loadTeams();
+  teams.push(team);
+  saveTeams(teams);
+  res.status(201).json(team);
+});
+
+app.patch('/api/admin/teams/:id', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { name, members, sharedArtists } = req.body || {};
+  const teams = loadTeams();
+  const team  = teams.find((t) => t.id === req.params.id);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+  if (name            !== undefined) team.name          = name.trim();
+  if (Array.isArray(members))        team.members       = members;
+  if (Array.isArray(sharedArtists))  team.sharedArtists = sharedArtists;
+  saveTeams(teams);
+  res.json({ ok: true, team });
+});
+
+app.delete('/api/admin/teams/:id', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const teams = loadTeams();
+  const idx   = teams.findIndex((t) => t.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Team not found' });
+  teams.splice(idx, 1);
+  saveTeams(teams);
+  res.status(204).send();
+});
+
+// ── Teams: non-admin user gets their teams with shared show data ──────────────
+app.get('/api/teams', async (req, res) => {
+  if (req.userRole === 'admin') return res.json(loadTeams());
+
+  const myTeams   = loadTeams().filter((t) => (t.members || []).includes(req.userId));
+  const settings  = loadTeamSettings();
+  const accessMap = normalizeUserAccess(settings, req.userId);
+  const directIds = Object.keys(accessMap);
+
+  if (!myTeams.length && !directIds.length) return res.json([]);
+
+  const adminArtists = await readJsonCached(
+    udCacheKey('admin', 'artists'),
+    udDataPath('admin', 'artists.json'),
+    []
+  ).catch(() => []);
+
+  // Named-group results
+  const result = await Promise.all(myTeams.map(async (team) => {
+    const artistsData = await Promise.all((team.sharedArtists || []).map(async ({ artistId, visibleRubrics = [] }) => {
+      const artist = adminArtists.find((a) => a.id === artistId) || { id: artistId, name: '—' };
+      const uid    = artistScopedId('admin', artistId);
+      const shows  = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []).catch(() => []);
+      return { artistId, artistName: artist.name, visibleRubrics, shows };
+    }));
+    return { id: team.id, name: team.name, artistsData };
+  }));
+
+  // Direct-access artists (from userArtistAccess) not already covered by a named group
+  if (directIds.length > 0) {
+    const covered   = new Set(result.flatMap((t) => (t.artistsData || []).map((a) => a.artistId)));
+    const remaining = directIds.filter((id) => !covered.has(id));
+    if (remaining.length > 0) {
+      const directData = await Promise.all(remaining.map(async (artistId) => {
+        const artist  = adminArtists.find((a) => a.id === artistId) || { id: artistId, name: '—' };
+        const uid     = artistScopedId('admin', artistId);
+        const shows   = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []).catch(() => []);
+        const access  = accessMap[artistId] || {};
+        return {
+          artistId,
+          artistName:     artist.name,
+          role:           access.role           || 'viewer',
+          visibleRubrics: access.visibleRubrics || [],
+          shows,
+        };
+      }));
+      result.push({ id: '__direct__', name: null, artistsData: directData });
+    }
+  }
+
+  // Log content view — deduplicated: one entry per user per 10 minutes
+  const recentView = loadActivity().find(
+    (e) => e.userId === req.userId && e.action === 'view_teams' &&
+      Date.now() - new Date(e.timestamp).getTime() < 10 * 60 * 1000
+  );
+  if (!recentView && result.length > 0) {
+    const artistNames = [...new Set(
+      result.flatMap((t) => (t.artistsData || []).map((a) => a.artistName))
+    )].filter(Boolean).join(', ');
+    logActivity(req.userId, req.username, 'view_teams', artistNames || 'shared content');
+  }
+
+  res.json(result);
 });
 
 // ── Admin-only: user management ───────────────────────────────────────────────
 app.get('/api/users', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const users = loadUsers().map(({ id, username, email, role, workspaceRole, createdAt }) => ({
-    id, username, email: email || null, role, workspaceRole: workspaceRole || 'producer', createdAt,
+  const users = loadUsers().map(({ id, username, email, role, workspaceRole, assignedShowIds, createdAt }) => ({
+    id, username, email: email || null, role,
+    workspaceRole: workspaceRole || 'producer',
+    assignedShowIds: assignedShowIds || [],
+    createdAt,
   }));
   res.json(users);
 });
@@ -441,12 +869,14 @@ app.get('/api/admin/settings', (req, res) => {
 
 app.post('/api/admin/settings', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { visibleRubrics, userArtistAccess } = req.body || {};
+  const { visibleRubrics, userArtistAccess, userPermissions } = req.body || {};
   const current = loadTeamSettings();
   const updated = {
     visibleRubrics:   Array.isArray(visibleRubrics)   ? visibleRubrics   : current.visibleRubrics,
     userArtistAccess: userArtistAccess && typeof userArtistAccess === 'object'
       ? userArtistAccess : current.userArtistAccess,
+    userPermissions: userPermissions && typeof userPermissions === 'object'
+      ? userPermissions : (current.userPermissions || {}),
   };
   saveTeamSettings(updated);
   res.json({ ok: true, settings: updated });
@@ -494,8 +924,9 @@ app.delete('/api/invitations/:token', (req, res) => {
 // Non-admin users call this to discover which admin artists they can view.
 app.get('/api/team/artists', async (req, res) => {
   if (req.userRole === 'admin') return res.json([]);
-  const settings      = loadTeamSettings();
-  const permittedIds  = (settings.userArtistAccess || {})[req.userId] || [];
+  const settings  = loadTeamSettings();
+  const accessMap = normalizeUserAccess(settings, req.userId);
+  const permittedIds = Object.keys(accessMap);
   if (!permittedIds.length) return res.json([]);
   // Load admin's artists list
   const adminArtists = await readJsonCached(
@@ -503,7 +934,9 @@ app.get('/api/team/artists', async (req, res) => {
     udDataPath('admin', 'artists.json'),
     []
   );
-  const permitted = adminArtists.filter((a) => permittedIds.includes(a.id));
+  const permitted = adminArtists
+    .filter((a) => permittedIds.includes(a.id))
+    .map((a) => ({ ...a, role: accessMap[a.id]?.role || 'viewer' }));
   res.json(permitted);
 });
 
@@ -569,45 +1002,108 @@ app.post('/api/team/notify', async (req, res) => {
   res.json({ ok: true, sent, failed, results });
 });
 
-// ── Admin: patch user email / role / workspaceRole ───────────────────────────
+// ── Admin: patch user email / role / workspaceRole / assignedShowIds ─────────
 app.patch('/api/users/:id', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { email, role, workspaceRole } = req.body || {};
+  const { email, role, workspaceRole, assignedShowIds } = req.body || {};
   const users = loadUsers();
   const user  = users.find((u) => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  if (email         !== undefined) user.email         = email?.trim() || null;
-  if (role          !== undefined && ['guest', 'user'].includes(role)) user.role = role;
-  if (workspaceRole !== undefined && ['producer', 'backliner'].includes(workspaceRole)) {
+  if (email           !== undefined) user.email           = email?.trim() || null;
+  if (role            !== undefined && ['guest', 'user'].includes(role)) user.role = role;
+  if (workspaceRole   !== undefined && ['producer', 'backliner'].includes(workspaceRole)) {
     user.workspaceRole = workspaceRole;
   }
+  if (Array.isArray(assignedShowIds)) user.assignedShowIds = assignedShowIds;
   saveUsers(users);
   res.json({
     ok: true,
     user: {
       id: user.id, username: user.username, email: user.email,
       role: user.role, workspaceRole: user.workspaceRole || 'producer',
+      assignedShowIds: user.assignedShowIds || [],
     },
   });
 });
 
-// ── Team-access middleware ────────────────────────────────────────────────────
-// For non-admin users that carry ?artistId: if the admin has granted this user
-// access to that artist, rewrite req.userId to admin__art__<artistId> so they
-// read from the admin's data.  Sets req.teamMemberView = true so downstream
-// routes can strip fields that the team-settings hide.
-app.use('/api', (req, res, next) => {
-  if (req.userRole === 'admin') return next();
-  const artistId = req.query.artistId;
-  if (!artistId) return next();
-  const settings     = loadTeamSettings();
-  const permittedIds = (settings.userArtistAccess || {})[req.userId] || [];
-  if (permittedIds.includes(artistId)) {
-    req.userId         = `admin__art__${artistId}`;
-    req.teamMemberView = true;
-    req.visibleRubrics = settings.visibleRubrics || [];
+// ── Team member: controlled show write ───────────────────────────────────────
+// Team members update specific fields (checklist, setlist, techFiles) on admin's
+// shows they have edit rights for.  They never get req.userId rewritten to admin.
+app.patch('/api/team/show/:artistId/:showId', async (req, res) => {
+  if (req.userRole === 'admin') return res.status(400).json({ error: 'Use /api/shows for admin edits' });
+  const { artistId, showId } = req.params;
+  const settings   = loadTeamSettings();
+  const accessMap  = normalizeUserAccess(settings, req.userId);
+  const access     = accessMap[artistId];
+  if (!access) return res.status(403).json({ error: 'No access to this artist' });
+
+  // Fields a team member may write — always allow backline fields; respect editRubrics for others
+  const ALWAYS_EDITABLE = new Set(['checklist', 'setlist', 'techFiles']);
+  const editableRubrics = new Set(access.editRubrics || []);
+
+  const uid   = artistScopedId('admin', artistId);
+  const shows = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []);
+  const idx   = shows.findIndex((s) => s.id === showId);
+  if (idx === -1) return res.status(404).json({ error: 'Show not found' });
+
+  const patch = {};
+  for (const [key, val] of Object.entries(req.body || {})) {
+    if (ALWAYS_EDITABLE.has(key) || editableRubrics.has(key)) patch[key] = val;
   }
-  next();
+
+  const updated = { ...shows[idx], ...patch };
+  shows[idx] = updated;
+  await writeJsonAndCache(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), shows);
+  logActivity(req.userId, req.username, 'update_show', shows[idx].name || showId);
+  res.json(updated);
+});
+
+// ── Team member: toggle an assigned task ────────────────────────────────────
+app.patch('/api/tasks/assigned/:artistId/:id', async (req, res) => {
+  if (req.userRole === 'admin') return res.status(400).json({ error: 'Use /api/tasks for admin' });
+  const { artistId, id } = req.params;
+  const settings  = loadTeamSettings();
+  const accessMap = normalizeUserAccess(settings, req.userId);
+  if (!accessMap[artistId]) return res.status(403).json({ error: 'No access to this artist' });
+
+  const uid   = artistScopedId('admin', artistId);
+  const tasks = await readJsonCached(udCacheKey(uid, 'tasks'), udDataPath(uid, 'tasks.json'), []);
+  const idx   = tasks.findIndex((t) => t.id === id && t.assigneeId === req.userId);
+  if (idx === -1) return res.status(404).json({ error: 'Task not found or not assigned to you' });
+
+  const updated = { ...tasks[idx], ...req.body, id: tasks[idx].id };
+  tasks[idx] = updated;
+  await writeJsonAndCache(udCacheKey(uid, 'tasks'), udDataPath(uid, 'tasks.json'), tasks);
+  res.json(updated);
+});
+
+// ── Non-admin GET /api/tasks: own tasks + tasks assigned from team artists ────
+app.get('/api/tasks', async (req, res, next) => {
+  if (req.userRole === 'admin') return next(); // admin handled by tasksRouter
+  try {
+    const ownTasks  = await readJsonCached(
+      udCacheKey(req.userId, 'tasks'),
+      udDataPath(req.userId, 'tasks.json'),
+      []
+    );
+    const settings  = loadTeamSettings();
+    const accessMap = normalizeUserAccess(settings, req.userId);
+    const artistIds = Object.keys(accessMap);
+
+    const assignedGroups = await Promise.all(artistIds.map(async (artistId) => {
+      const uid   = artistScopedId('admin', artistId);
+      const tasks = await readJsonCached(
+        udCacheKey(uid, 'tasks'),
+        udDataPath(uid, 'tasks.json'),
+        []
+      ).catch(() => []);
+      return tasks
+        .filter((t) => t.assigneeId === req.userId)
+        .map((t) => ({ ...t, assignedToMe: true, fromArtistId: artistId }));
+    }));
+
+    res.json([...ownTasks, ...assignedGroups.flat()]);
+  } catch (err) { next(err); }
 });
 
 // ── API routers ──────────────────────────────────────────────────────────────

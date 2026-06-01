@@ -31,15 +31,31 @@ function isConfigured() {
 }
 
 function loadCreds() {
-  return process.env.GMAIL_CREDENTIALS
-    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
-    : JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
+  const raw = process.env.GMAIL_CREDENTIALS
+    ? process.env.GMAIL_CREDENTIALS
+    : fs.readFileSync(CREDENTIALS_PATH, 'utf8');
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(
+      'GMAIL_CREDENTIALS is not valid JSON. ' +
+      'Set the Railway variable to the full contents of server/data/gmail-credentials.json (paste the raw JSON, not a shell command).'
+    );
+  }
 }
 
 function loadTokens() {
-  return process.env.GMAIL_TOKEN
-    ? JSON.parse(process.env.GMAIL_TOKEN)
-    : JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
+  const raw = process.env.GMAIL_TOKEN
+    ? process.env.GMAIL_TOKEN
+    : fs.readFileSync(TOKEN_PATH, 'utf8');
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(
+      'GMAIL_TOKEN is not valid JSON. ' +
+      'Set the Railway variable to the full contents of server/data/gmail-token.json (paste the raw JSON, not a shell command).'
+    );
+  }
 }
 
 // OAuth client setup is bootstrap-time-equivalent; sync reads here are fine.
@@ -220,6 +236,9 @@ router.post('/invite/:showId', async (req, res) => {
   } catch (err) {
     const msg = err?.message || String(err) || 'Google Calendar API error';
     console.error('[calendar/invite]', msg, err?.response?.data || '');
+    if (msg.includes('GMAIL_TOKEN is not valid JSON') || msg.includes('GMAIL_CREDENTIALS is not valid JSON')) {
+      return res.status(500).json({ error: msg });
+    }
     if (msg.includes('insufficientPermissions') || msg.includes('forbidden')) {
       return res.status(403).json({ error: 'Calendar access not authorised. Re-run: node server/scripts/gmail-auth.js' });
     }
@@ -296,6 +315,9 @@ router.post('/insert-show-event', async (req, res) => {
   } catch (err) {
     const msg = err?.message || String(err) || 'Google Calendar API error';
     console.error('[calendar/insert-show-event]', msg, err?.response?.data || '');
+    if (msg.includes('GMAIL_TOKEN is not valid JSON') || msg.includes('GMAIL_CREDENTIALS is not valid JSON')) {
+      return res.status(500).json({ error: msg });
+    }
     if (msg.includes('insufficientPermissions') || msg.includes('forbidden')) {
       return res.status(403).json({ error: 'Calendar access not authorised. Re-run: node server/scripts/gmail-auth.js' });
     }

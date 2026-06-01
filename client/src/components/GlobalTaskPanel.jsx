@@ -105,14 +105,18 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const crewById = Object.fromEntries((crew  || []).map((m) => [m.id, m]));
   const showById = Object.fromEntries((shows || []).map((s) => [s.id, s]));
 
-  const filtered = tasks.filter((t) => {
+  // Split own tasks vs tasks assigned to me from team
+  const ownTasks      = tasks.filter((t) => !t.assignedToMe);
+  const assignedTasks = tasks.filter((t) =>  t.assignedToMe);
+
+  const filtered = ownTasks.filter((t) => {
     if (filter === 'active') return !t.completed;
     if (filter === 'done')   return  t.completed;
     return true;
   });
 
-  const countActive = tasks.filter((t) => !t.completed).length;
-  const countDone   = tasks.filter((t) =>  t.completed).length;
+  const countActive = ownTasks.filter((t) => !t.completed).length;
+  const countDone   = ownTasks.filter((t) =>  t.completed).length;
 
   return (
     <div className="gtask-page">
@@ -194,6 +198,42 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
           </button>
         ))}
       </div>
+
+      {/* Assigned-to-me section (team tasks) */}
+      {assignedTasks.length > 0 && (
+        <div className="gtask-assigned-section">
+          <div className="gtask-assigned-header">Assigned to me</div>
+          <ul className="gtask-list">
+            {assignedTasks.map((t) => {
+              const today = new Date(); today.setHours(0, 0, 0, 0);
+              const overdue = t.dueDate && !t.completed && new Date(t.dueDate) < today;
+              return (
+                <li key={t.id}
+                  className={`gtask-item${t.completed ? ' completed' : ''}${overdue ? ' overdue' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    className="gtask-check"
+                    checked={t.completed}
+                    onChange={() => onToggle(t.id, !t.completed)}
+                  />
+                  <div className="gtask-body">
+                    <span className="gtask-text" dir="auto">{t.text}</span>
+                    <div className="gtask-pills">
+                      <span className="gtask-pill gtask-pill--assigned">assigned</span>
+                      {t.dueDate && (
+                        <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
+                          {overdue ? '⚠ ' : ''}{fmtDate(t.dueDate)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* Task list */}
       {filtered.length === 0 ? (

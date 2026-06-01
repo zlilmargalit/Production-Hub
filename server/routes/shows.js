@@ -531,7 +531,27 @@ router.post('/', async (req, res, next) => {
 });
 
 router.put('/:id', async (req, res, next) => {
-  if (req.teamMemberView) return res.status(403).json({ error: 'Read-only access' });
+  if (req.teamMemberView) {
+    const editRubrics = req.editableRubrics || [];
+    if (editRubrics.length === 0) return res.status(403).json({ error: 'Read-only access' });
+    // Partial update: only allow fields belonging to the user's editable rubrics
+    try {
+      const shows = await readShows(req.userId);
+      const idx = shows.findIndex((s) => s.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: 'Show not found' });
+      const editableFields = new Set();
+      for (const rubric of editRubrics) {
+        for (const field of RUBRIC_FIELDS[rubric] || []) editableFields.add(field);
+      }
+      const partial = {};
+      for (const [k, v] of Object.entries(req.body)) {
+        if (editableFields.has(k)) partial[k] = v;
+      }
+      shows[idx] = { ...shows[idx], ...partial };
+      await writeShows(req.userId, shows);
+      return res.json(shows[idx]);
+    } catch (err) { return next(err); }
+  }
   try {
     const shows = await readShows(req.userId);
     const idx = shows.findIndex((s) => s.id === req.params.id);

@@ -102,6 +102,94 @@ function verifyToken(token) {
   }
 }
 
+// ── TOTP (RFC 6238) — pure Node.js crypto, no external deps ─────────────────
+const BASE32_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function base32Encode(buf) {
+  let bits = 0, val = 0, out = '';
+  for (let i = 0; i < buf.length; i++) {
+    val = (val << 8) | buf[i];
+    bits += 8;
+    while (bits >= 5) { out += BASE32_CHARS[(val >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += BASE32_CHARS[(val << (5 - bits)) & 31];
+  return out;
+}
+
+function base32Decode(str) {
+  const s = str.toUpperCase().replace(/[^A-Z2-7]/g, '');
+  let bits = 0, val = 0;
+  const out = [];
+  for (let i = 0; i < s.length; i++) {
+    const idx = BASE32_CHARS.indexOf(s[i]);
+    if (idx < 0) continue;
+    val = (val << 5) | idx;
+    bits += 5;
+    if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  return Buffer.from(out);
+}
+
+function generateTotpSecret() {
+  return base32Encode(crypto.randomBytes(20));
+}
+
+function _totpCode(secret, t) {
+  const key = base32Decode(secret);
+  const buf = Buffer.alloc(8);
+  buf.writeBigInt64BE(BigInt(t));
+  const hash   = crypto.createHmac('sha1', key).update(buf).digest();
+  const offset = hash[hash.length - 1] & 0xf;
+  const code   = (
+    ((hash[offset]     & 0x7f) << 24) |
+    ((hash[offset + 1] & 0xff) << 16) |
+    ((hash[offset + 2] & 0xff) <<  8) |
+     (hash[offset + 3] & 0xff)
+  ) % 1_000_000;
+  return String(code).padStart(6, '0');
+}
+
+/** Verify a 6-digit TOTP code with a ±1 time-step window. */
+function verifyTotp(secret, code) {
+  if (!secret || typeof code !== 'string' || !/^\d{6}$/.test(code.trim())) return false;
+  const t = Math.floor(Date.now() / 30_000);
+  for (let i = -1; i <= 1; i++) {
+    if (_totpCode(secret, t + i) === code.trim()) return true;
+  }
+  return false;
+}
+
+/** Build an otpauth:// URI for authenticator apps (Google Auth, Authy, etc.). */
+function buildOtpAuthUri(secret, username, issuer = 'Production Hub') {
+  return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(username)}` +
+         `?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+}
+
+// ── Pending-2FA short-lived token (5 min, never grants app access) ───────────
+const PENDING_2FA_COOKIE  = 'ph_2fa_pending';
+const PENDING_2FA_TTL_MS  = 5 * 60 * 1000;
+
+function signPending2faToken(userId) {
+  const payload = Buffer.from(JSON.stringify({ userId, t: Date.now() })).toString('base64url');
+  const sig = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+function verifyPending2faToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = crypto.createHmac('sha256', getSecret()).update(payload).digest('base64url');
+  try {
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (Date.now() - data.t > PENDING_2FA_TTL_MS) return null;
+    return data.userId;
+  } catch { return null; }
+}
+
 // ── Credential verification ───────────────────────────────────────────────────
 /**
  * Returns { userId, username, role } or null.
@@ -196,4 +284,12 @@ module.exports = {
   verifyPassword,
   loadUsers,
   saveUsers,
+  // TOTP
+  generateTotpSecret,
+  verifyTotp,
+  buildOtpAuthUri,
+  // Pending-2FA token
+  PENDING_2FA_COOKIE,
+  signPending2faToken,
+  verifyPending2faToken,
 };

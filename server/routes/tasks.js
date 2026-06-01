@@ -19,18 +19,20 @@ router.get('/', async (req, res, next) => {
 // POST /api/tasks
 router.post('/', async (req, res, next) => {
   try {
-    const { text, dueDate, assignedTo, showId } = req.body || {};
+    const { text, dueDate, assignedTo, showId, assigneeId, assigneeName } = req.body || {};
     if (!text?.trim()) return res.status(400).json({ error: 'text required' });
     const tasks = await readTasks(req.userId);
     const task = {
-      id:               uuidv4(),
-      text:             text.trim(),
-      completed:        false,
-      showId:           showId    || null,
-      dueDate:          dueDate   || null,
-      assignedTo:       assignedTo || null,
-      createdAt:        new Date().toISOString(),
-      pushNotifiedAt:   null,
+      id:              uuidv4(),
+      text:            text.trim(),
+      completed:       false,
+      showId:          showId       || null,
+      dueDate:         dueDate      || null,
+      assignedTo:      assignedTo   || null,
+      assigneeId:      assigneeId   || null,
+      assigneeName:    assigneeName || null,
+      createdAt:       new Date().toISOString(),
+      pushNotifiedAt:  null,
     };
     await writeTasks(req.userId, [...tasks, task]);
     res.status(201).json(task);

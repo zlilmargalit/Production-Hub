@@ -1,7 +1,76 @@
 // Self-contained login + register page.
 // No external assets — works on first paint even before the app bundle loads.
 
-module.exports = function loginPage({ error = false, username = '', tab = 'login', regError = '' } = {}) {
+module.exports = function loginPage({ error = false, username = '', tab = 'login', regError = '', step = '', error2fa = '' } = {}) {
+  // ── 2FA verification screen ───────────────────────────────────────────────
+  if (step === '2fa') {
+    return `<!DOCTYPE html>
+<html lang="he" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Production Hub — Verify</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#1A1714" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1A1714; color: #E8E4DE;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(20px, env(safe-area-inset-top, 20px)) 20px;
+  }
+  .card {
+    background: #25201C; border: 1px solid #3A3530;
+    border-radius: 16px; padding: 32px 24px;
+    width: 100%; max-width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    text-align: center;
+  }
+  .icon { font-size: 2rem; margin-bottom: 16px; }
+  h1 { font-size: 18px; font-weight: 600; color: #F0EAE0; margin-bottom: 8px; }
+  p { font-size: 13px; color: #A8A199; margin-bottom: 24px; line-height: 1.5; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #A8A199; margin-bottom: 6px; text-align: left; }
+  input[type=text] {
+    width: 100%; background: #1A1714; border: 1px solid #3A3530;
+    border-radius: 8px; padding: 14px; color: #F0EAE0; font-size: 22px;
+    font-family: 'Courier New', monospace; letter-spacing: 0.3em; text-align: center;
+    transition: border-color 0.15s;
+  }
+  input:focus { outline: none; border-color: #5E7AC4; }
+  .btn {
+    width: 100%; margin-top: 20px; background: #5E7AC4; color: #fff;
+    font-size: 15px; font-weight: 600; padding: 13px; border: none;
+    border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s;
+  }
+  .btn:hover { background: #4F69B0; }
+  .back { display: block; margin-top: 16px; font-size: 13px; color: #A8A199; text-decoration: none; }
+  .back:hover { color: #E8E4DE; }
+  .error {
+    margin-top: 16px; padding: 10px 12px;
+    background: rgba(176,84,72,0.15); border: 1px solid rgba(176,84,72,0.3);
+    border-radius: 8px; color: #E89B92; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔐</div>
+    <h1>Two-Factor Authentication</h1>
+    <p>Open your authenticator app and enter the 6-digit code for Production Hub.</p>
+    <form method="POST" action="/login/2fa" autocomplete="off">
+      <label for="code">Verification Code</label>
+      <input type="text" id="code" name="code" inputmode="numeric" pattern="\\d{6}"
+             maxlength="6" placeholder="000000" autofocus required />
+      <button class="btn" type="submit">Verify</button>
+      ${error2fa ? `<div class="error">${escapeHtml(error2fa)}</div>` : ''}
+    </form>
+    <a href="/login" class="back">← Back to sign in</a>
+  </div>
+</body>
+</html>`;
+  }
   return `<!DOCTYPE html>
 <html lang="he" dir="ltr">
 <head>

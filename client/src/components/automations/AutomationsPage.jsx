@@ -3,7 +3,6 @@ import IntegrationsBar from './IntegrationsBar';
 import RecipeCards     from './RecipeCards';
 import AutomationBuilder from './AutomationBuilder';
 import AutomationList  from './AutomationList';
-import { subscribeToPush } from '../../utils/pushSubscribe';
 import './automations.css';
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -11,8 +10,6 @@ export default function AutomationsPage() {
   const [integrations,  setIntegrations]  = useState({ gmail: false, gcal: false, gdrive: false });
   const [automations,   setAutomations]   = useState([]);
   const [loading,       setLoading]       = useState(true);
-  const [pushState,     setPushState]     = useState('idle'); // 'idle'|'subscribing'|'granted'|'error'
-  const [pushError,     setPushError]     = useState(null);
 
   // Derived stats for the hero sub-line
   const activeCount = automations.filter((a) => a.active).length;
@@ -37,14 +34,6 @@ export default function AutomationsPage() {
       await Promise.all([fetchIntegrations(), fetchAutomations()]);
       setLoading(false);
     })();
-    // Determine current push permission state.
-    // If already granted, silently re-subscribe so this server has the endpoint saved.
-    // subscribeToPush() is idempotent — pushManager.subscribe() returns the existing
-    // subscription without prompting; we just make sure the server record is current.
-    if ('Notification' in window && Notification.permission === 'granted') {
-      setPushState('granted');
-      subscribeToPush().catch(() => { /* non-fatal — user can tap Enable manually */ });
-    }
   }, [fetchIntegrations, fetchAutomations]);
 
   const handleCreateAutomation = async (data) => {
@@ -79,18 +68,6 @@ export default function AutomationsPage() {
     if (res.ok) setAutomations((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const handleEnablePush = async () => {
-    setPushState('subscribing');
-    setPushError(null);
-    try {
-      await subscribeToPush();
-      setPushState('granted');
-    } catch (err) {
-      setPushState('error');
-      setPushError(err.message);
-    }
-  };
-
   if (loading) {
     return (
       <div className="auto-page">
@@ -101,53 +78,28 @@ export default function AutomationsPage() {
     );
   }
 
-  const pushGranted = pushState === 'granted';
-  const swSupported = ('serviceWorker' in navigator) && ('PushManager' in window);
-
   return (
     <div className="auto-page">
       {/* ── Hero ── */}
-      <div>
-        <h2 className="auto-page-title">
-          Automations<span className="auto-page-dot">.</span>
-        </h2>
-        <div className="auto-page-sub">
-          <span className="auto-page-sub-num">{activeCount}</span>
-          <span className="auto-page-sub-sep" />
-          <span>active rule{activeCount !== 1 ? 's' : ''}</span>
-          {totalCount > activeCount && (
-            <>
-              <span className="auto-page-sub-sep" />
-              <span>{totalCount - activeCount} paused</span>
-            </>
-          )}
+      <div className="page-header-edit">
+        <div className="page-header-left">
+          <h1 className="page-title">Automations<span className="page-title-dot">.</span></h1>
+          <p className="page-subtitle">
+            <span className="page-subtitle-num">{String(activeCount).padStart(2, '0')}</span>
+            <span className="page-subtitle-line" />
+            <span>active rule{activeCount !== 1 ? 's' : ''}</span>
+            {totalCount > activeCount && (
+              <><span className="page-subtitle-line" /><span>{totalCount - activeCount} paused</span></>
+            )}
+          </p>
+        </div>
+        <div className="page-marquee" aria-hidden="true">
+          <span className="page-marquee-track">
+            <span>Automations</span><span>·</span><span>Automations</span><span>·</span>
+            <span>Automations</span><span>·</span><span>Automations</span><span>·</span>
+          </span>
         </div>
       </div>
-
-      {/* ── Push notification opt-in ── */}
-      {swSupported && (
-        <div className={`auto-push-bar${pushGranted ? ' auto-push-bar--granted' : ''}`}>
-          <span className="auto-push-bar-text">
-            {pushGranted
-              ? 'Push notifications enabled — the Early Coordination Alert will reach you even when the tab is closed.'
-              : 'Enable push notifications to receive show reminders in your browser.'}
-          </span>
-          {!pushGranted && (
-            <button
-              className="auto-push-bar-btn"
-              onClick={handleEnablePush}
-              disabled={pushState === 'subscribing'}
-            >
-              {pushState === 'subscribing' ? 'Enabling…' : 'Enable'}
-            </button>
-          )}
-        </div>
-      )}
-      {pushState === 'error' && (
-        <p style={{ color: 'var(--clay)', fontSize: '0.8125rem', marginTop: -40 }}>
-          Push failed: {pushError}
-        </p>
-      )}
 
       {/* ── Integrations ── */}
       <div className="auto-section">

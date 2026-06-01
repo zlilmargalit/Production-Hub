@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import BacklineChecklist from './BacklineChecklist';
 import TechnicalSetlist  from './TechnicalSetlist';
 import TechFiles         from './TechFiles';
@@ -143,12 +143,52 @@ function ShowDetail({ show, tasks, shows, onUpdateShow, onAddTask, onToggleTask,
 }
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
-export default function BacklinerDashboard({ shows, tasks, crew, onUpdateShow, onAddTask, onToggleTask, onDeleteTask }) {
-  const [selectedId, setSelectedId] = useState(null);
+export default function BacklinerDashboard({ shows: propShows, tasks, crew, onUpdateShow, onAddTask, onToggleTask, onDeleteTask, userRole }) {
+  const [selectedId,  setSelectedId]  = useState(null);
+  const [teamShows,   setTeamShows]   = useState(null); // null = not fetched yet
+
+  // For non-admin users, load shows from the team endpoint instead of the prop
+  useEffect(() => {
+    if (userRole === 'admin') return;
+    let cancelled = false;
+    fetch('/api/teams')
+      .then((r) => r.ok ? r.json() : [])
+      .then((groups) => {
+        if (cancelled) return;
+        // Flatten all shows from all artist groups, tagging each with its artistId
+        const flat = groups.flatMap((group) =>
+          (group.artistsData || []).flatMap((ad) =>
+            (ad.shows || []).map((s) => ({ ...s, _artistId: ad.artistId }))
+          )
+        );
+        setTeamShows(flat);
+      })
+      .catch(() => setTeamShows([]));
+    return () => { cancelled = true; };
+  }, [userRole]);
+
+  // Team members write via PATCH /api/team/show/:artistId/:showId
+  const handleTeamUpdateShow = async (id, data) => {
+    const show = activeShows.find((s) => s.id === id);
+    if (!show?._artistId) return;
+    const res = await fetch(`/api/team/show/${show._artistId}/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setTeamShows((prev) => prev.map((s) => s.id === id ? { ...updated, _artistId: show._artistId } : s));
+    }
+  };
+
+  // Decide which shows and update handler to use
+  const activeShows  = userRole !== 'admin' && teamShows !== null ? teamShows : (propShows || []);
+  const handleUpdate = userRole !== 'admin' ? handleTeamUpdateShow : onUpdateShow;
 
   const sorted = useMemo(() =>
-    [...shows].filter((s) => !s.archived).sort((a, b) => new Date(a.date) - new Date(b.date)),
-    [shows]
+    [...activeShows].filter((s) => !s.archived).sort((a, b) => new Date(a.date) - new Date(b.date)),
+    [activeShows]
   );
 
   const selected = sorted.find((s) => s.id === selectedId) || sorted[0] || null;
@@ -159,7 +199,7 @@ export default function BacklinerDashboard({ shows, tasks, crew, onUpdateShow, o
       <div className="bk-hero">
         <h2 className="bk-title">Backliner<span className="bk-dot">.</span></h2>
         <p className="bk-sub">
-          <span className="bk-sub-num">{String(sorted.length).padStart(2, '0')}</span>
+          <span className="bk-sub-num">{userRole !== 'admin' && teamShows === null ? '…' : String(sorted.length).padStart(2, '0')}</span>
           <span className="bk-sub-sep" />
           <span>show{sorted.length !== 1 ? 's' : ''}</span>
           {maintenanceTasks.filter((t) => !t.completed).length > 0 && (
@@ -190,8 +230,8 @@ export default function BacklinerDashboard({ shows, tasks, crew, onUpdateShow, o
             <ShowDetail
               show={selected}
               tasks={tasks}
-              shows={shows}
-              onUpdateShow={onUpdateShow}
+              shows={activeShows}
+              onUpdateShow={handleUpdate}
               onAddTask={onAddTask}
               onToggleTask={onToggleTask}
               onDeleteTask={onDeleteTask}

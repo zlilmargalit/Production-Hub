@@ -12,7 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 const { google } = require('googleapis');
 
 const { readJsonCached, writeJsonAndCache } = require('../cache');
-const { DATA_DIR } = require('../utils/userData');
+const { DATA_DIR, dataPath, cacheKey, artistScopedId } = require('../utils/userData');
 const { loadUsers } = require('../auth');
 
 const router       = express.Router();   // authenticated (mounted after auth gate)
@@ -466,9 +466,14 @@ async function checkUserScheduleAutomations(userId, shows) {
 /**
  * Send push notifications for tasks due today (not yet notified, not completed).
  * Marks each fired task with pushNotifiedAt so it never fires twice.
+ *
+ * @param {string} userId     - Data-path userId (may be artist-scoped: "admin__art__xyz")
+ * @param {Array}  shows      - Shows array for the same scope (for show-name lookup)
+ * @param {string} [pushUserId] - Real user to send push to (defaults to userId).
+ *                               Must be provided when userId is artist-scoped.
  */
-async function checkUserTasksDue(userId, shows) {
-  const tasksFile = path.join(userDir(userId), 'tasks.json');
+async function checkUserTasksDue(userId, shows, pushUserId) {
+  const tasksFile = dataPath(userId, 'tasks.json');
   let tasks = [];
   try {
     tasks = JSON.parse(await fsp.readFile(tasksFile, 'utf8'));
@@ -485,12 +490,14 @@ async function checkUserTasksDue(userId, shows) {
   const showMap = {};
   (shows || []).forEach((s) => { showMap[s.id] = s.name; });
 
+  const targetUserId = pushUserId || userId;
+
   for (const task of due) {
     const body = task.showId && showMap[task.showId]
       ? `Show: ${showMap[task.showId]}`
       : 'Task due today';
-    console.log(`[tasks/cron] Sending push for task "${task.text}" → user ${userId}`);
-    await sendPushToUser(userId, task.text, body);
+    console.log(`[tasks/cron] Sending push for task "${task.text}" → user ${targetUserId}`);
+    await sendPushToUser(targetUserId, task.text, body);
   }
 
   // Mark all fired tasks in one write (also updates cache so next GET is fresh)
@@ -516,14 +523,48 @@ async function runDailyCheck() {
 
   for (const userId of allUserIds) {
     try {
+      // ── 1. Non-artist-scoped shows + tasks ────────────────────────────────
       const showsFile = path.join(userDir(userId), 'shows.json');
-      let shows = [];
+      let ownShows = [];
       try {
-        shows = JSON.parse(await fsp.readFile(showsFile, 'utf8'));
+        ownShows = JSON.parse(await fsp.readFile(showsFile, 'utf8'));
       } catch { /* no shows — tasks can still fire without show names */ }
 
-      await checkUserScheduleAutomations(userId, shows);
-      await checkUserTasksDue(userId, shows);
+      await checkUserScheduleAutomations(userId, ownShows);
+      await checkUserTasksDue(userId, ownShows);
+
+      // ── 2. Artist-scoped shows + tasks ────────────────────────────────────
+      // For admin:  DATA_DIR/artists/{artistId}/
+      // For users:  DATA_DIR/users/{userId}/artists/{artistId}/
+      const artistsBaseDir = userId === 'admin'
+        ? path.join(DATA_DIR, 'artists')
+        : path.join(DATA_DIR, 'users', userId, 'artists');
+
+      let artistDirs = [];
+      try {
+        const entries = await fsp.readdir(artistsBaseDir, { withFileTypes: true });
+        artistDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+      } catch { /* no artists directory — skip */ }
+
+      for (const artistId of artistDirs) {
+        try {
+          const scopedId = artistScopedId(userId, artistId);
+
+          const artistShowsFile = dataPath(scopedId, 'shows.json');
+          let artistShows = [];
+          try {
+            artistShows = JSON.parse(await fsp.readFile(artistShowsFile, 'utf8'));
+          } catch { /* no shows */ }
+
+          // Tasks live at the artist-scoped path; push goes to the real user.
+          await checkUserTasksDue(scopedId, artistShows, userId);
+        } catch (err) {
+          console.error(
+            `[automations/cron] Error processing artist ${artistId} for user ${userId}:`,
+            err.message,
+          );
+        }
+      }
     } catch (err) {
       console.error(`[automations/cron] Error processing user ${userId}:`, err.message);
     }
@@ -542,6 +583,22 @@ function startCron() {
   cron.schedule('0 9 * * *', runDailyCheck, { timezone: 'Asia/Jerusalem' });
   console.log('[automations/cron] Daily scheduler registered (09:00 Asia/Jerusalem)');
 }
+
+// ── POST /api/automations/cron/trigger (admin only) ──────────────────────────
+// Immediately runs the daily task+schedule check without waiting for 09:00.
+// Useful to fire missed notifications or to verify the cron logic after a fix.
+router.post('/cron/trigger', async (req, res) => {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  try {
+    await runDailyCheck();
+    res.json({ ok: true, message: 'Daily check completed' });
+  } catch (err) {
+    console.error('[automations/cron/trigger]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── POST /api/automations/push/test ─────────────────────────────────────────
 // Immediately fires a dummy push to the current user's subscriptions.
