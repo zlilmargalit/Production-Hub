@@ -1156,6 +1156,22 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
     } catch {}
   };
 
+  // Admin-only: copies current integrations token data to clipboard so it can be
+  // pasted into the INTEGRATIONS_DATA Railway env var for persistence across deploys.
+  const handleBackupIntegrations = async () => {
+    try {
+      const r = await fetch('/api/automations/integrations/export');
+      if (!r.ok) throw new Error('Export failed');
+      const { data } = await r.json();
+      await navigator.clipboard.writeText(data);
+      setIntgMsg('Copied — paste as INTEGRATIONS_DATA in Railway Variables');
+      setTimeout(() => setIntgMsg(''), 6000);
+    } catch (e) {
+      setIntgMsg(e.message || 'Could not copy integration data');
+      setTimeout(() => setIntgMsg(''), 4000);
+    }
+  };
+
   const handlePushToggle = async () => {
     setPushBusy(true);
     setPushMsg('');
@@ -1422,6 +1438,16 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
                   {spotifyConnected ? 'Server credentials' : 'Add SPOTIFY_CLIENT_ID env var'}
                 </span>
               </div>
+            </div>
+          )}
+          {userRole === 'admin' && (
+            <div className="ust-intg-backup-row">
+              <button className="ust-btn-backup" onClick={handleBackupIntegrations}>
+                Backup connections
+              </button>
+              <span className="ust-intg-backup-hint">
+                Copy token data → paste as <code>INTEGRATIONS_DATA</code> in Railway Variables to keep integrations connected after deploys.
+              </span>
             </div>
           )}
           {intgMsg && <p className="user-settings-msg">{intgMsg}</p>}

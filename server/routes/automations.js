@@ -63,6 +63,28 @@ function verifyOAuthState(state) {
   } catch { return null; }
 }
 
+// ── Railway persistence: seed integrations.json from env var on cold start ───
+// Railway's filesystem is ephemeral — every deploy wipes it.
+// INTEGRATIONS_DATA env var acts as a persistent backup for admin's tokens.
+// Workflow:
+//   1. Connect integrations via Settings → tokens written to integrations.json.
+//   2. Visit Settings → "Backup connections" → copy JSON → paste into
+//      INTEGRATIONS_DATA Railway env var.
+//   3. Next deploy: this block seeds the file automatically → stays connected.
+(function seedIntegrationsFromEnv() {
+  if (!process.env.INTEGRATIONS_DATA) return;
+  const adminFile = path.join(DATA_DIR, 'integrations.json');
+  if (fs.existsSync(adminFile)) return; // already seeded this session or running locally
+  try {
+    JSON.parse(process.env.INTEGRATIONS_DATA); // validate before writing
+    fs.mkdirSync(path.dirname(adminFile), { recursive: true });
+    fs.writeFileSync(adminFile, process.env.INTEGRATIONS_DATA, 'utf8');
+    console.log('[automations] Restored integrations.json from INTEGRATIONS_DATA env var');
+  } catch (e) {
+    console.error('[automations] INTEGRATIONS_DATA is not valid JSON — integrations not restored:', e.message);
+  }
+})();
+
 // ── Per-user file helpers ─────────────────────────────────────────────────────
 function userDir(userId) {
   if (!userId || userId === 'admin') return DATA_DIR;
@@ -223,6 +245,19 @@ router.delete('/integrations/:provider', async (req, res) => {
     delete map[provider];
     await writeIntgMap(req.userId, map);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/automations/integrations/export
+// Admin-only: returns current integrations.json content (encrypted tokens) for
+// copying into the INTEGRATIONS_DATA Railway env var to survive future deploys.
+router.get('/integrations/export', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const data = await readIntgMap('admin');
+    res.json({ data: JSON.stringify(data) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
