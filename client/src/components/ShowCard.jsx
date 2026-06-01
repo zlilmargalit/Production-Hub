@@ -402,7 +402,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           </div>
         </div>
 
-        <div className="footer-right">
+        <div className="footer-center">
           <label className="quick-check footer-check">
             <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
             Invoice
@@ -411,6 +411,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <input type="checkbox" checked={show.receipt || false} onChange={toggleReceipt} />
             Receipt
           </label>
+        </div>
+
+        <div className="footer-right">
           <button
             className={`btn-technical ${showTech ? 'active' : ''}`}
             onClick={() => { setShowTech(!showTech); if (showTasks) setShowTasks(false); }}

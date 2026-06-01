@@ -27,10 +27,7 @@ const DEFAULTS = {
   'shows.json':          '[]',
   'crew.json':           '[]',
   'templates.json':      '{}',
-  'event-types.json':    JSON.stringify([
-    'חתונה', 'בר מצווה', 'בת מצווה', 'אירוע חברה', 'הופעת אולם',
-    'הופעת להקה', 'אירוע פרטי', 'סולו אקוסטי', 'חזרה', 'יום הולדת',
-  ]),
+  'event-types.json':    '[]',
   'field-templates.json':'{}',
   'tasks.json':          '[]',
 };

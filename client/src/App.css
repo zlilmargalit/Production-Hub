@@ -1951,22 +1951,37 @@ body {
 }
 .file-download-link:hover { border-color: var(--text-3); background: var(--surface); }
 
-/* ─── Card footer ────────────────────────────────────────────────────── */
+/* ─── Card footer — 3-column: [left] [center] [right] ──────────────── */
 .show-card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   padding: 16px 22px;
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
 
 .footer-left {
+  flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  justify-content: flex-start;
+}
+
+.footer-center {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 32px 0 4px;
+}
+
+.footer-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 /* Wrapper for a button + its inline error message */
@@ -3411,15 +3426,14 @@ body {
   .show-details { padding: 16px 16px 18px; }
   .details-grid { grid-template-columns: 1fr; gap: 14px; }
 
-  /* Footer: single row, compact — wrap only if truly necessary */
-  .show-card-footer { padding: 10px 12px; gap: 4px; flex-wrap: nowrap; }
-  .footer-left { gap: 4px; flex-shrink: 0; }
+  /* Footer: single row, compact */
+  .show-card-footer { padding: 10px 12px; }
+  .footer-left { gap: 4px; }
+  .footer-center { padding: 0 8px; gap: 10px; }
   .btn-brief, .btn-pdf { padding: 6px 10px; font-size: 0.75rem; }
-  /* Prevent Invoice/Receipt from stacking */
-  .quick-checks { flex-wrap: nowrap; gap: 4px 8px; flex-shrink: 0; }
   .quick-check { font-size: 0.72rem; gap: 4px; white-space: nowrap; }
-  /* Logistics button — always fits */
-  .btn-tasks { padding: 6px 12px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; }
+  .btn-tasks { padding: 6px 12px; font-size: 0.75rem; white-space: nowrap; }
+  .btn-technical { padding: 6px 12px; font-size: 0.75rem; white-space: nowrap; }
 
   .modal-overlay { padding: 0; align-items: flex-end; }
   .modal {
@@ -5407,25 +5421,12 @@ body {
 }
 .tech-checklist-input:focus { outline: none; border-color: var(--accent, #3852B4); }
 
-/* Footer quick-checks — align with buttons */
-.footer-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-/* Separator before Technical/Logistics in footer */
+/* Footer check labels — center column styling */
 .footer-check {
-  margin-right: 2px;
-}
-.footer-right .btn-technical,
-.footer-right .btn-tasks {
-  margin-left: 4px;
-}
-.footer-right .footer-check + .btn-technical,
-.footer-right .footer-check:first-of-type {
-  /* subtle separator */
-  padding-left: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
 }
 
 /* ── Notification Bell ─────────────────────────────────────────────── */
@@ -5839,4 +5840,522 @@ body {
 @media (max-width: 640px) {
   .tsp-page { padding: 24px 16px 40px; gap: 24px; }
   .tech-block--file-row { flex-direction: column; align-items: flex-start; padding: 14px 16px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEAM PANEL — redesigned member cards, stats bar, dot menu, perms panel
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Stats bar ────────────────────────────────────────────────────────────── */
+.tm-stats-bar {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 0 0 20px;
+  background: var(--surface);
+}
+.tm-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 12px;
+  border-right: 1px solid var(--border);
+  gap: 2px;
+}
+.tm-stat:last-child { border-right: none; }
+.tm-stat--total { background: var(--accent-soft); }
+.tm-stat-num {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+}
+.tm-stat--total .tm-stat-num { color: var(--accent); }
+.tm-stat-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ── Member card list ─────────────────────────────────────────────────────── */
+.tm-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tm-member-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.tm-member-card:hover { border-color: var(--border-strong); }
+.tm-member-card.expanded { border-color: var(--accent); }
+
+/* ── Member row (the always-visible clickable part) ───────────────────────── */
+.tm-member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.tm-member-row:hover { background: var(--surface-sunk); }
+
+/* ── Avatar circle ────────────────────────────────────────────────────────── */
+.tm-avatar {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+/* ── Name + email block ───────────────────────────────────────────────────── */
+.tm-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 0 0 160px;
+}
+.tm-member-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tm-member-email {
+  font-size: 0.75rem;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tm-member-email:hover { text-decoration: underline; }
+.tm-member-email.empty { color: var(--text-3); font-style: italic; }
+.tm-email-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Role badge ───────────────────────────────────────────────────────────── */
+.tm-role-badge {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.tm-role--backliner { background: #E8ECF7; color: #3852B4; }
+.tm-role--sound     { background: #E8F4ED; color: #1F7A4A; }
+.tm-role--light     { background: #FFF4DF; color: #B07729; }
+.tm-role--producer  { background: #F0EBF8; color: #7A3DB5; }
+.tm-role--viewer    { background: var(--surface-sunk); color: var(--text-3); }
+
+/* ── Artist chips ─────────────────────────────────────────────────────────── */
+.tm-artist-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.tm-artist-chip {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--accent-2-soft);
+  color: var(--accent-2);
+  white-space: nowrap;
+}
+.tm-no-artists {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+/* ── Last seen ────────────────────────────────────────────────────────────── */
+.tm-last-seen {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* ── Three-dot menu ───────────────────────────────────────────────────────── */
+.tm-dotmenu {
+  flex: 0 0 auto;
+  position: relative;
+}
+.tm-dots-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  transition: background 0.12s, color 0.12s;
+}
+.tm-dots-btn:hover { background: var(--surface-sunk); color: var(--text); }
+.tm-dots-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  z-index: 100;
+  min-width: 160px;
+  overflow: hidden;
+}
+.tm-dots-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tm-dots-item:hover { background: var(--surface-sunk); }
+.tm-dots-item--danger { color: var(--clay, #C84B3C); }
+.tm-dots-item--danger:hover { background: #FDF1F0; }
+
+/* ── Expanded section (tasks / shows / activity) ──────────────────────────── */
+.tm-expanded {
+  border-top: 1px solid var(--border-light);
+  background: var(--bg);
+}
+.tm-expanded-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-light);
+  padding: 0 14px;
+}
+.tm-exp-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 9px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.tm-exp-tab:hover { color: var(--text); }
+.tm-exp-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tm-exp-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.4;
+}
+.tm-exp-section {
+  padding: 12px 14px 14px;
+  min-height: 48px;
+}
+.tm-exp-empty {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Task list ────────────────────────────────────────────────────────────── */
+.tm-task-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tm-task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+}
+.tm-task-check { flex: 0 0 auto; cursor: pointer; }
+.tm-task-text {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.tm-task-show {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tm-add-task-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+.tm-task-show-select {
+  font-size: 0.78rem;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  max-width: 130px;
+}
+.tm-task-input {
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+}
+.tm-task-input:focus,
+.tm-task-show-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ── Upcoming shows list ──────────────────────────────────────────────────── */
+.tm-show-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tm-show-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+}
+.tm-show-name {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tm-show-date {
+  font-size: 0.73rem;
+  color: var(--text-3);
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tm-show-type,
+.tm-show-venue {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tm-show-type {
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* ── Per-user activity list ───────────────────────────────────────────────── */
+.tm-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tm-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.tm-activity-row:last-child { border-bottom: none; }
+.tm-activity-action {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+.tm-activity-time {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Permissions panel ────────────────────────────────────────────────────── */
+.tm-perm-panel {
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-2);
+  padding: 14px 16px;
+}
+.tm-perm-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.tm-perm-panel-title {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.tm-perm-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.tm-perm-close:hover { color: var(--text); background: var(--surface-sunk); }
+.tm-perm-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.tm-perm-rubric-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-light);
+}
+.tm-perm-rubric-row:last-child { border-bottom: none; }
+.tm-perm-rubric-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.tm-perm-rubric-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.tm-perm-rubric-sub {
+  font-size: 0.71rem;
+  color: var(--text-3);
+}
+.tm-perm-rubric-checks {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.tm-perm-check-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tm-perm-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Artist access block (inside expanded) ────────────────────────────────── */
+.tm-artist-access {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-2);
+}
+.tm-artist-access-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 8px;
+}
+.tm-artist-access-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tm-artist-access-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tm-save-access-btn {
+  margin-top: 4px;
 }
