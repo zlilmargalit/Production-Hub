@@ -113,18 +113,76 @@ function TeamArtistSection({ artistName, visibleRubrics, shows, role }) {
   );
 }
 
+// ── Pending join requests banner ──────────────────────────────────────────
+function PendingInvitations({ onAccepted }) {
+  const [requests, setRequests] = useState([]);
+  const [busy,     setBusy]     = useState({});
+
+  useEffect(() => {
+    fetch('/api/me/join-requests')
+      .then((r) => r.ok ? r.json() : [])
+      .then(setRequests)
+      .catch(() => {});
+  }, []);
+
+  const respond = async (id, action) => {
+    setBusy((b) => ({ ...b, [id]: true }));
+    await fetch(`/api/me/join-requests/${id}/${action}`, { method: 'POST' }).catch(() => {});
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (action === 'accept') onAccepted();
+  };
+
+  if (requests.length === 0) return null;
+
+  return (
+    <div style={{
+      background: 'var(--color-surface)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 10,
+      padding: '16px 20px',
+      marginBottom: 28,
+    }}>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>
+        Team invitation{requests.length > 1 ? 's' : ''} waiting
+      </p>
+      {requests.map((r) => (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, flex: 1 }}>You've been invited to join a team.</p>
+          <button
+            className="btn-primary btn-sm"
+            disabled={!!busy[r.id]}
+            onClick={() => respond(r.id, 'accept')}
+          >
+            Accept
+          </button>
+          <button
+            className="btn-secondary btn-sm"
+            disabled={!!busy[r.id]}
+            onClick={() => respond(r.id, 'decline')}
+          >
+            Decline
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Teams page ───────────────────────────────────────────────────────
 function TeamsPage() {
   const [teams,   setTeams]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
-  useEffect(() => {
+  const loadTeams = () => {
     fetch('/api/teams')
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data) => { setTeams(data); setLoading(false); })
       .catch(() => { setError('Could not load teams data.'); setLoading(false); });
-  }, []);
+  };
+
+  useEffect(() => { loadTeams(); }, []);
 
   return (
     <div>
@@ -144,6 +202,9 @@ function TeamsPage() {
           </span>
         </div>
       </div>
+
+      {/* Pending invitations — shown above everything else */}
+      <PendingInvitations onAccepted={loadTeams} />
 
       {loading ? (
         <div className="team-loading">Loading…</div>

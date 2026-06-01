@@ -34,7 +34,6 @@ function App({ demoMode = false }) {
   const [showSettings, setShowSettings] = useState(false);
   const [tasks,    setTasks]    = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
-  const [showJoinReqDropdown, setShowJoinReqDropdown] = useState(false);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
@@ -489,7 +488,7 @@ function App({ demoMode = false }) {
               Automations
             </button>
           )}
-          {!demoMode && userRole !== 'admin' && (
+          {!demoMode && userRole !== 'admin' && workspaceRole === 'backliner' && (
             <button
               className={`nav-btn ${page === 'backliner' ? 'active' : ''}`}
               onClick={() => setPage('backliner')}
@@ -589,44 +588,23 @@ function App({ demoMode = false }) {
           >
             {theme === 'dark' ? '☀' : '◑'}
           </button>
-          {/* Join-request notification bell (non-admin users only) */}
+          {/* Join-request notification — navigates to Teams page */}
           {!demoMode && userRole !== 'admin' && joinRequests.length > 0 && (
-            <div style={{ position: 'relative' }}>
-              <button
-                className="btn-theme-toggle"
-                title="Team join requests"
-                onClick={() => setShowJoinReqDropdown((v) => !v)}
-                style={{ position: 'relative' }}
-              >
-                ● <span style={{ fontSize: 11, marginLeft: 2 }}>{joinRequests.length}</span>
-              </button>
-              {showJoinReqDropdown && (
-                <div style={{
-                  position: 'absolute', right: 0, top: '110%', background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)', borderRadius: 8, padding: 16,
-                  minWidth: 260, zIndex: 1000, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                }}>
-                  <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Team join requests</p>
-                  {joinRequests.map((r) => (
-                    <div key={r.id} style={{ marginBottom: 12 }}>
-                      <p style={{ fontSize: 13, marginBottom: 6 }}>You've been invited to join a team.</p>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn-primary btn-sm" onClick={async () => {
-                          await fetch(`/api/me/join-requests/${r.id}/accept`, { method: 'POST' });
-                          setJoinRequests((prev) => prev.filter((x) => x.id !== r.id));
-                          setShowJoinReqDropdown(false);
-                        }}>Accept</button>
-                        <button className="btn-secondary btn-sm" onClick={async () => {
-                          await fetch(`/api/me/join-requests/${r.id}/decline`, { method: 'POST' });
-                          setJoinRequests((prev) => prev.filter((x) => x.id !== r.id));
-                          setShowJoinReqDropdown(false);
-                        }}>Decline</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              className="btn-theme-toggle"
+              title={`${joinRequests.length} pending team invitation${joinRequests.length > 1 ? 's' : ''}`}
+              onClick={() => setPage('teams')}
+              style={{ position: 'relative' }}
+            >
+              <span style={{ fontSize: 11 }}>Teams</span>
+              <span style={{
+                position: 'absolute', top: 2, right: 2,
+                background: '#E53935', color: '#fff',
+                borderRadius: '50%', width: 14, height: 14,
+                fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700,
+              }}>{joinRequests.length}</span>
+            </button>
           )}
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
