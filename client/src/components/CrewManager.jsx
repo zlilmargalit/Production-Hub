@@ -16,6 +16,20 @@ const BLANK_MEMBER = {
   eventTypes: [],
 };
 
+const CREW_ROLES = [
+  'Backliners',
+  'Production',
+  'Sound',
+  'Lighting',
+  'Musicians',
+  'Stage Manager',
+  'Tour Manager',
+  'Driver',
+  'Catering',
+  'Security',
+  'Other',
+];
+
 function buildCrewText(crewIds, crew) {
   return crewIds
     .map((id) => crew.find((m) => m.id === id))
@@ -632,7 +646,12 @@ function CrewForm({ member, eventTypes, onSubmit, onClose }) {
             </div>
             <div className="form-group">
               <label>Role</label>
-              <input dir="auto" name="role" value={form.role} onChange={set} placeholder="Production, Sound, Backliners, Lighting, Musicians…" />
+              <select name="role" value={form.role} onChange={set}>
+                <option value="">-- Select role --</option>
+                {CREW_ROLES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label>Phone</label>
