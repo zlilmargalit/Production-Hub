@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import TaskManager from './TaskManager';
+import TechnicalManager from './TechnicalManager';
 import { etColorIdx } from '../utils/etColor';
 
 // ── Module-level constants — not recreated on every render ──────────────────
@@ -11,6 +12,7 @@ const formatDate   = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: '
 function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  const [showTech, setShowTech] = useState(false);
   const [briefStatus, setBriefStatus] = useState(null);
   const [pdfStatus, setPdfStatus] = useState(null);
   const [briefError, setBriefError] = useState(null);
@@ -392,10 +394,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             </button>
             {pdfError && <span className="btn-error-msg" title={pdfError}>{pdfError}</span>}
           </div>
-        </div>
-
-        <div className="quick-checks">
-          <label className="quick-check">
+          <label className="quick-check" style={{ marginLeft: 8 }}>
             <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
             Invoice
           </label>
@@ -405,13 +404,25 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           </label>
         </div>
 
-        <button
-          className={`btn-tasks ${showTasks ? 'active' : ''}`}
-          onClick={() => setShowTasks(!showTasks)}
-        >
-          Logistics
-        </button>
+        <div className="footer-right">
+          <button
+            className={`btn-technical ${showTech ? 'active' : ''}`}
+            onClick={() => { setShowTech(!showTech); if (showTasks) setShowTasks(false); }}
+          >
+            Technical
+          </button>
+          <button
+            className={`btn-tasks ${showTasks ? 'active' : ''}`}
+            onClick={() => { setShowTasks(!showTasks); if (showTech) setShowTech(false); }}
+          >
+            Logistics
+          </button>
+        </div>
       </div>
+
+      {showTech && (
+        <TechnicalManager show={show} onUpdate={onUpdateShow} />
+      )}
 
       {showTasks && (
         <div className="hub-panel" aria-label="Production Hub — internal">
