@@ -17,18 +17,27 @@ const BLANK_MEMBER = {
 };
 
 const CREW_ROLES = [
-  'Backliners',
   'Production',
   'Sound',
   'Lighting',
-  'Musicians',
-  'Stage Manager',
-  'Tour Manager',
-  'Driver',
-  'Catering',
-  'Security',
-  'Other',
+  'Backline',
+  'Musician',
 ];
+
+// Map stored role values (including legacy Hebrew) to display labels
+const ROLE_DISPLAY = {
+  // Hebrew legacy values
+  'בקליין':    'Backline',
+  'בקליינים':  'Backline',
+  'הפקה':      'Production',
+  'תאורה':     'Lighting',
+  'סאונד':     'Sound',
+  'נגן':       'Musician',
+  'נגנים':     'Musician',
+  // English aliases
+  'Backliners': 'Backline',
+  'Musicians':  'Musician',
+};
 
 function buildCrewText(crewIds, crew) {
   return crewIds
@@ -199,7 +208,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                   >
                     {collapsedRoles.has(role) ? '+' : '−'}
                   </button>
-                  {role}
+                  {ROLE_DISPLAY[role] || role}
                   <span className="crew-group-count">{members.length}</span>
                 </h3>
                 {!collapsedRoles.has(role) && (
