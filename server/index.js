@@ -1254,6 +1254,21 @@ app.listen(PORT, () => {
   console.log('│  Demo:  /demo  (no login required)          │');
   console.log('└─────────────────────────────────────────────┘');
   console.log('');
+  // Storage diagnostics — check Railway logs after deploy to verify volume is mounted
+  console.log('[storage] DATA_DIR:', DATA_DIR);
+  try {
+    const entries = fs.readdirSync(DATA_DIR);
+    console.log('[storage] contents:', entries.join(', ') || '(empty)');
+    const artistsDir = path.join(DATA_DIR, 'artists');
+    if (fs.existsSync(artistsDir)) {
+      const artistDirs = fs.readdirSync(artistsDir);
+      console.log('[storage] artists:', artistDirs.join(', ') || '(none)');
+    } else {
+      console.log('[storage] artists dir: not found');
+    }
+  } catch (e) {
+    console.log('[storage] read error:', e.message);
+  }
   migrateRootDataToArtists(); // fire-and-forget — non-blocking
   startGmailPolling();
   startAutomationsCron();    // daily 09:00 early-coordination alerts
