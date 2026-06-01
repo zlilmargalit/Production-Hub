@@ -172,11 +172,6 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
               <input dir="auto" name="transportation" value={form.transportation} onChange={set} placeholder="Pickup time and details" />
             </div>
 
-            <div className="form-group">
-              <label>Food</label>
-              <input dir="auto" name="food" value={form.food} onChange={set} placeholder="Catering / rider" />
-            </div>
-
             {/* Crew Section — grouped by role, two-column top-to-bottom */}
             {sortedRoles.length > 0 && (
               <div className="form-group span-2">
