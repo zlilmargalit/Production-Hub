@@ -974,8 +974,10 @@ app.post('/api/team/join-request', (req, res) => {
   const requests = loadJoinRequests();
   const existing = requests.find((r) => r.toUserId === target.id && r.status === 'pending');
   if (existing) return res.status(409).json({ error: `A pending request already exists for "${target.username}"` });
+  const fromUsername = process.env.AUTH_USER || 'Admin';
   const req_ = {
     id: uuidv4(),
+    fromUsername,
     toUserId: target.id,
     toUsername: target.username,
     status: 'pending',

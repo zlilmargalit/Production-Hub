@@ -148,7 +148,9 @@ function PendingInvitations({ onAccepted }) {
       </p>
       {requests.map((r) => (
         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <p style={{ fontSize: 13, flex: 1 }}>You've been invited to join a team.</p>
+          <p style={{ fontSize: 13, flex: 1 }}>
+            <strong>{r.fromUsername || 'Admin'}</strong> invited you to join their team.
+          </p>
           <button
             className="btn-primary btn-sm"
             disabled={!!busy[r.id]}
