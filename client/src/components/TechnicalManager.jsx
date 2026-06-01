@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 
 function TechnicalManager({ show, onUpdate }) {
-  const [spec,     setSpec]     = useState(show.technicalSpec     || '');
-  const [stages,   setStages]   = useState(show.stages            || '');
-  const [setlist,  setSetlist]  = useState(show.setlistNotes      || '');
+  const [setlist,  setSetlist]  = useState(show.setlistNotes || '');
   const [newItem,  setNewItem]  = useState('');
   const [coord, setCoord] = useState({
     sound:                show.soundCoordinated        || false,
@@ -16,10 +14,12 @@ function TechnicalManager({ show, onUpdate }) {
 
   const checklist = show.equipmentChecklist || [];
 
-  // Re-sync if show data changes externally
+  // technicalSpec is either null/undefined, a legacy string, or { name, data, isPdf }
+  const specFile = show.technicalSpec && typeof show.technicalSpec === 'object'
+    ? show.technicalSpec
+    : null;
+
   useEffect(() => {
-    setSpec(show.technicalSpec  || '');
-    setStages(show.stages       || '');
     setSetlist(show.setlistNotes || '');
     setCoord({
       sound:                show.soundCoordinated        || false,
@@ -30,8 +30,7 @@ function TechnicalManager({ show, onUpdate }) {
       lightingRentalSupplier: show.lightingRentalSupplier || '',
     });
   }, [
-    show.id,
-    show.technicalSpec, show.stages, show.setlistNotes,
+    show.id, show.setlistNotes,
     show.soundCoordinated, show.lightingCoordinated,
     show.soundRentalNeeds, show.soundRentalSupplier,
     show.lightingRentalNeeds, show.lightingRentalSupplier,
@@ -73,9 +72,27 @@ function TechnicalManager({ show, onUpdate }) {
     save({ equipmentChecklist: checklist.filter((i) => i.id !== id) });
   };
 
+  const handleSpecFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      save({
+        technicalSpec: {
+          name: file.name,
+          data: ev.target.result,
+          isPdf: file.type === 'application/pdf',
+        },
+      });
+    };
+    reader.readAsDataURL(file);
+    // reset so re-selecting the same file still fires onChange
+    e.target.value = '';
+  };
+
   return (
     <div className="tech-panel">
-      {/* ── Header ───────────────────────────────────────────── */}
+      {/* Header */}
       <div className="hub-header">
         <div className="hub-header-text">
           <div className="hub-eyebrow">Stage &amp; Tech</div>
@@ -84,45 +101,43 @@ function TechnicalManager({ show, onUpdate }) {
       </div>
 
       <div className="tech-grid">
-        {/* ── Technical Spec ──────────────────────────────────── */}
-        <div className="tech-block tech-block--wide">
+        {/* Technical Spec — file attachment (compact wide row) */}
+        <div className="tech-block tech-block--wide tech-block--file-row">
           <div className="tech-block-header">
-            <span className="tech-block-icon">⚙</span>
-            <h4 className="tech-block-title">מפרט טכני</h4>
+            <h4 className="tech-block-title">Technical Spec</h4>
           </div>
-          <textarea
-            className="tech-textarea"
-            dir="auto"
-            value={spec}
-            onChange={(e) => setSpec(e.target.value)}
-            onBlur={() => save({ technicalSpec: spec })}
-            placeholder="רשימת ציוד, דרישות טכניות, הגברה..."
-            rows={5}
-          />
+          {specFile ? (
+            <div className="tech-spec-attached">
+              <a href={specFile.data} download={specFile.name} className="tech-spec-link">
+                {specFile.name}
+              </a>
+              <button
+                type="button"
+                className="tech-spec-remove"
+                onClick={() => save({ technicalSpec: null })}
+                title="Remove"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <label className="tech-spec-upload">
+              <input
+                type="file"
+                accept="application/pdf,.pdf,image/*"
+                style={{ display: 'none' }}
+                onChange={handleSpecFile}
+              />
+              <span className="tech-spec-upload-btn">Attach file</span>
+              <span className="tech-spec-upload-hint">PDF or image</span>
+            </label>
+          )}
         </div>
 
-        {/* ── Stages / במות ───────────────────────────────────── */}
+        {/* Setlist */}
         <div className="tech-block">
           <div className="tech-block-header">
-            <span className="tech-block-icon">◼</span>
-            <h4 className="tech-block-title">במות</h4>
-          </div>
-          <textarea
-            className="tech-textarea"
-            dir="auto"
-            value={stages}
-            onChange={(e) => setStages(e.target.value)}
-            onBlur={() => save({ stages })}
-            placeholder="פרטי הבמה, מידות, גובה..."
-            rows={5}
-          />
-        </div>
-
-        {/* ── Setlist ─────────────────────────────────────────── */}
-        <div className="tech-block">
-          <div className="tech-block-header">
-            <span className="tech-block-icon">♩</span>
-            <h4 className="tech-block-title">סטליסט</h4>
+            <h4 className="tech-block-title">Setlist</h4>
           </div>
           <textarea
             className="tech-textarea"
@@ -130,20 +145,19 @@ function TechnicalManager({ show, onUpdate }) {
             value={setlist}
             onChange={(e) => setSetlist(e.target.value)}
             onBlur={() => save({ setlistNotes: setlist })}
-            placeholder="רשימת שירים, סדר הופעה..."
+            placeholder="Song list, show order..."
             rows={5}
           />
         </div>
 
-        {/* ── Equipment Checklist ─────────────────────────────── */}
+        {/* Equipment Checklist */}
         <div className="tech-block tech-block--checklist">
           <div className="tech-block-header">
-            <span className="tech-block-icon">✓</span>
-            <h4 className="tech-block-title">צ'קליסט ציוד</h4>
+            <h4 className="tech-block-title">Equipment Checklist</h4>
           </div>
           <div className="tech-checklist">
             {checklist.length === 0 && (
-              <p className="tech-checklist-empty">אין פריטים עדיין</p>
+              <p className="tech-checklist-empty">No items yet</p>
             )}
             {checklist.map((item) => (
               <div key={item.id} className={`tech-checklist-row${item.checked ? ' checked' : ''}`}>
@@ -170,7 +184,7 @@ function TechnicalManager({ show, onUpdate }) {
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addChecklistItem()}
-              placeholder="הוסף פריט..."
+              placeholder="Add item..."
             />
             <button
               className="btn-primary btn-sm"
@@ -181,7 +195,7 @@ function TechnicalManager({ show, onUpdate }) {
         </div>
       </div>
 
-      {/* ── Technical Coordination ──────────────────────────── */}
+      {/* Technical Coordination */}
       <div className="fixed-task-section" style={{ marginTop: 0 }}>
         <h4 className="fixed-task-title">Technical Coordination</h4>
         <div className="hub-tech-rows">

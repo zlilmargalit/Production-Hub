@@ -6,3 +6,13 @@ server/data/gmail-credentials.json
 server/data/gmail-token.json
 .env
 server/.env
+# Sensitive credential files
+docs/client_secret*.json
+*client_secret*.json
+# Runtime data files — managed on server, not tracked in git
+server/data/*.json
+server/data/users/
+server/data/artists/
+# macOS metadata
+.DS_Store
+**/.DS_Store

@@ -556,6 +556,9 @@ router.put('/:id', async (req, res, next) => {
     const shows = await readShows(req.userId);
     const idx = shows.findIndex((s) => s.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Show not found' });
+    const logFields = ['transportMode','transportDriver','transportTime','foodContactName','foodContactPhone','foodContactTime','soundCoordinated','lightingCoordinated','soundRentalNeeds','lightingRentalNeeds'];
+    const changed = logFields.filter(f => req.body[f] !== undefined && req.body[f] !== shows[idx][f]);
+    if (changed.length) console.log('[PUT show]', shows[idx].name, '— logistics changed:', changed.map(f => `${f}=${JSON.stringify(req.body[f])}`).join(', '));
     shows[idx] = { ...shows[idx], ...req.body };
     await writeShows(req.userId, shows);
     res.json(shows[idx]);

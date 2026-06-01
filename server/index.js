@@ -28,6 +28,7 @@ const crewRouter          = require('./routes/crew');
 const templatesRouter     = require('./routes/templates');
 const eventTypesRouter    = require('./routes/event-types');
 const rolesRouter         = require('./routes/roles');
+const techSpecRouter      = require('./routes/tech-spec');
 const fieldTemplatesRouter= require('./routes/field-templates');
 const { router: importRouter, findNewShows, DEFAULT_XLSX } = require('./routes/import');
 const calendarRouter      = require('./routes/calendar');
@@ -1242,6 +1243,7 @@ app.use('/api/tasks',          tasksRouter);
 app.use('/api/spotify',        spotifyRouter);
 app.use('/api/drive',          driveRouter);
 app.use('/api/automations',    automationsRouter);
+app.use('/api/tools',          techSpecRouter);
 
 // ── Error handler ────────────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars

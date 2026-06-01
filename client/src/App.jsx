@@ -9,6 +9,7 @@ import GlobalTaskPanel from './components/GlobalTaskPanel';
 import TeamPanel       from './components/TeamPanel';
 import TeamsPage        from './components/TeamsPage';
 import SetlistCalculator from './components/SetlistCalculator';
+import TechSpecParser    from './components/TechSpecParser';
 import AutomationsPage  from './components/automations/AutomationsPage';
 import BacklinerDashboard from './components/backliner/BacklinerDashboard';
 
@@ -514,7 +515,7 @@ function App({ demoMode = false }) {
           )}
           {!demoMode && (
             <ToolsDropdown
-              active={page === 'calculator'}
+              activeTool={page}
               onSelectTool={(tool) => setPage(tool)}
             />
           )}
@@ -663,6 +664,12 @@ function App({ demoMode = false }) {
             defaultArtistName={currentArtist?.name || ''}
             artistName={currentArtist?.name || ''}
           />
+        ) : page === 'tech-spec' ? (
+          <TechSpecParser
+            shows={shows}
+            onUpdateShow={updateShow}
+            artistId={currentArtist?.id || null}
+          />
         ) : page === 'teams' ? (
           <TeamsPage />
         ) : page === 'team' && userRole === 'admin' ? (
@@ -740,12 +747,14 @@ function App({ demoMode = false }) {
 
 // ── Tools dropdown nav item ───────────────────────────────────────────────────
 const TOOLS = [
-  { key: 'calculator', label: 'Setlist Calculator' },
+  { key: 'calculator',  label: 'Setlist Calculator' },
+  { key: 'tech-spec',   label: 'Tech Spec Parser' },
 ];
 
-function ToolsDropdown({ active, onSelectTool }) {
+function ToolsDropdown({ activeTool, onSelectTool }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const isActive = TOOLS.some((t) => t.key === activeTool);
 
   useEffect(() => {
     if (!open) return;
@@ -759,7 +768,7 @@ function ToolsDropdown({ active, onSelectTool }) {
   return (
     <div className="tools-nav-dropdown" ref={ref}>
       <button
-        className={`nav-btn tools-nav-dropdown-trigger${active ? ' active' : ''}`}
+        className={`nav-btn tools-nav-dropdown-trigger${isActive ? ' active' : ''}`}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
@@ -771,13 +780,12 @@ function ToolsDropdown({ active, onSelectTool }) {
           {TOOLS.map((t) => (
             <button
               key={t.key}
-              className={`tools-nav-dropdown-item${active && t.key === 'calculator' ? ' active' : ''}`}
+              className={`tools-nav-dropdown-item${t.key === activeTool ? ' active' : ''}`}
               onClick={() => { onSelectTool(t.key); setOpen(false); }}
             >
               {t.label}
             </button>
           ))}
-          <div className="tools-nav-dropdown-footer">More tools coming soon</div>
         </div>
       )}
     </div>
