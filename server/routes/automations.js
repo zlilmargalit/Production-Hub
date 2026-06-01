@@ -217,6 +217,8 @@ router.get('/integrations/:provider/connect', (req, res) => {
   if (!PROVIDER_SCOPES[provider]) return res.status(400).json({ error: 'Unknown provider' });
 
   const callbackUrl  = buildCallbackUrl(req, provider);
+  // Log so we can verify what Google is seeing during OAuth
+  console.log('[automations/connect] redirect_uri =', callbackUrl);
   const oauth2Client = getOAuthClient(callbackUrl);
   const state        = signOAuthState(req.userId, provider);
   const url          = oauth2Client.generateAuthUrl({
