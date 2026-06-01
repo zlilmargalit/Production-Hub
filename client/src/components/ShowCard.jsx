@@ -136,7 +136,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const exportToCalendar = async () => {
     setCalStatus('loading'); setCalMsg(null);
     try {
-      const res  = await fetch('/api/calendar/insert-show-event', {
+      const res  = await fetch(`/api/calendar/insert-show-event${qs}`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ showId: show.id }),
