@@ -4,7 +4,7 @@ const { google } = require('googleapis');
 const fs   = require('fs');
 const fsp  = require('fs').promises;
 const path = require('path');
-const { readJsonCached } = require('../cache');
+const { readJsonCached, invalidate } = require('../cache');
 const { DATA_DIR, dataPath, cacheKey } = require('../utils/userData');
 
 const CREDENTIALS_PATH   = path.join(__dirname, '../data/gmail-credentials.json');
@@ -180,6 +180,7 @@ router.post('/invite/:showId', async (req, res) => {
   }
 
   const userId = req.userId || 'admin';
+  invalidate(cacheKey(userId, 'shows'));
   const shows = await readJsonCached(cacheKey(userId, 'shows'), dataPath(userId, 'shows.json'), []);
   const show  = shows.find((s) => s.id === req.params.showId);
   if (!show) return res.status(404).json({ error: 'Show not found' });
@@ -266,6 +267,9 @@ router.post('/insert-show-event', async (req, res) => {
   if (!showId) return res.status(400).json({ error: 'showId required' });
 
   const userId = req.userId || 'admin';
+  // Always read fresh from disk — the sync process writes shows.json directly
+  // without going through writeJsonAndCache, so the in-memory cache can be stale.
+  invalidate(cacheKey(userId, 'shows'));
   const shows  = await readJsonCached(cacheKey(userId, 'shows'), dataPath(userId, 'shows.json'), []);
   const show   = shows.find((s) => s.id === showId);
   if (!show) return res.status(404).json({ error: 'Show not found' });
