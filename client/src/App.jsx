@@ -510,7 +510,7 @@ function App({ demoMode = false }) {
               className={`nav-btn ${page === 'team' ? 'active' : ''}`}
               onClick={() => setPage('team')}
             >
-              Team
+              Teams
             </button>
           )}
           {!demoMode && (

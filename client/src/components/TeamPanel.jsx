@@ -1139,7 +1139,6 @@ function TeamPanel({ artists, shows = [], onUpdateShow }) {
     { key: 'groups',   label: 'Groups' },
     { key: 'invite',   label: 'Invite' },
     { key: 'activity', label: 'Activity' },
-    { key: 'notify',   label: 'Notify' },
   ];
 
   return (
@@ -1147,7 +1146,7 @@ function TeamPanel({ artists, shows = [], onUpdateShow }) {
       {/* Page header */}
       <div className="page-header-edit">
         <div className="page-header-left">
-          <h1 className="page-title">Team<span className="page-title-dot">.</span></h1>
+          <h1 className="page-title">Teams<span className="page-title-dot">.</span></h1>
           <p className="page-subtitle">
             <span className="page-subtitle-num">{String(users.length).padStart(2, '0')}</span>
             <span className="page-subtitle-line" />
@@ -1156,8 +1155,8 @@ function TeamPanel({ artists, shows = [], onUpdateShow }) {
         </div>
         <div className="page-marquee" aria-hidden="true">
           <span className="page-marquee-track">
-            <span>Team</span><span>·</span><span>Team</span><span>·</span>
-            <span>Team</span><span>·</span><span>Team</span><span>·</span>
+            <span>Teams</span><span>·</span><span>Teams</span><span>·</span>
+            <span>Teams</span><span>·</span><span>Teams</span><span>·</span>
           </span>
         </div>
       </div>
@@ -1200,7 +1199,6 @@ function TeamPanel({ artists, shows = [], onUpdateShow }) {
           {tab === 'groups'   && <TabGroups users={users} artists={artists} />}
           {tab === 'invite'   && <TabInvite />}
           {tab === 'activity' && <TabActivity activityLog={activityLog} loading={loading} />}
-          {tab === 'notify'   && <TabNotify users={users} />}
         </>
       )}
 
