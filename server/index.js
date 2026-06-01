@@ -496,7 +496,13 @@ app.get('/api/debug/artist-shows', async (req, res) => {
   const artistId = req.query.artistId;
   if (!artistId) return res.status(400).json({ error: 'artistId required' });
   const filePath = path.join(DATA_DIR, 'artists', artistId, 'shows.json');
+  const artistsFile = path.join(DATA_DIR, 'artists.json');
   try {
+    // Check artists.json — if artist is missing here, middleware won't scope requests
+    let artistsJson = [];
+    try { artistsJson = JSON.parse(await fsp.readFile(artistsFile, 'utf8')); } catch {}
+    const artistInList = artistsJson.some((a) => a.id === artistId);
+
     const raw = await fsp.readFile(filePath, 'utf8');
     const shows = JSON.parse(raw);
     const logisticsFields = ['transportMode','transportDriver','transportTime','foodContactName','foodContactPhone','foodContactTime','soundCoordinated','lightingCoordinated'];
@@ -505,7 +511,13 @@ app.get('/api/debug/artist-shows', async (req, res) => {
       for (const f of logisticsFields) if (s[f]) lf[f] = s[f];
       return { id: s.id, name: s.name, date: s.date, logistics: lf };
     });
-    res.json({ filePath, totalShows: shows.length, shows: summary });
+    res.json({
+      artistInArtistsJson: artistInList,
+      artistsJsonCount: artistsJson.length,
+      filePath,
+      totalShows: shows.length,
+      shows: summary,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message, filePath });
   }
