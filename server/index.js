@@ -796,6 +796,28 @@ app.delete('/api/admin/teams/:id', (req, res) => {
 app.get('/api/teams', async (req, res) => {
   if (req.userRole === 'admin') return res.json(loadTeams());
 
+  // Auto-apply default viewer access for users who accepted a join request
+  // but whose team-settings entry was never written (e.g., accepted before this fix).
+  const accepted = loadJoinRequests().find(
+    (r) => r.toUserId === req.userId && r.status === 'accepted'
+  );
+  if (accepted) {
+    const settings = loadTeamSettings();
+    if (!(settings.userArtistAccess || {})[req.userId]) {
+      const adminArtists = await readJsonCached(
+        udCacheKey('admin', 'artists'),
+        udDataPath('admin', 'artists.json'),
+        []
+      ).catch(() => []);
+      const uaa = settings.userArtistAccess || {};
+      uaa[req.userId] = Object.fromEntries(
+        adminArtists.map((a) => [a.id, { role: 'viewer' }])
+      );
+      settings.userArtistAccess = uaa;
+      saveTeamSettings(settings);
+    }
+  }
+
   const myTeams   = loadTeams().filter((t) => (t.members || []).includes(req.userId));
   const settings  = loadTeamSettings();
   const accessMap = normalizeUserAccess(settings, req.userId);
@@ -1014,7 +1036,7 @@ app.get('/api/me/join-requests', (req, res) => {
 });
 
 // POST /api/me/join-requests/:id/accept
-app.post('/api/me/join-requests/:id/accept', (req, res) => {
+app.post('/api/me/join-requests/:id/accept', async (req, res) => {
   if (!req.userId || req.userId === 'admin') return res.status(403).json({ error: 'Not available' });
   const requests = loadJoinRequests();
   const r = requests.find((r) => r.id === req.params.id && r.toUserId === req.userId);
@@ -1022,12 +1044,28 @@ app.post('/api/me/join-requests/:id/accept', (req, res) => {
   r.status = 'accepted';
   r.respondedAt = new Date().toISOString();
   saveJoinRequests(requests);
-  // Add user to teams file so admin can manage them
-  const teams = (() => { try { return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch { return []; } })();
-  if (!teams.find((t) => t.userId === req.userId)) {
-    teams.push({ userId: req.userId, username: r.toUsername, joinedAt: new Date().toISOString() });
-    fs.writeFileSync(TEAMS_FILE, JSON.stringify(teams, null, 2), 'utf8');
+
+  // Grant viewer access to all of the admin's current artists in team-settings
+  try {
+    const adminArtists = await readJsonCached(
+      udCacheKey('admin', 'artists'),
+      udDataPath('admin', 'artists.json'),
+      []
+    ).catch(() => []);
+    const settings = loadTeamSettings();
+    const uaa = settings.userArtistAccess || {};
+    if (!uaa[req.userId]) {
+      // Build an object with viewer access to every admin artist
+      uaa[req.userId] = Object.fromEntries(
+        adminArtists.map((a) => [a.id, { role: 'viewer' }])
+      );
+      settings.userArtistAccess = uaa;
+      saveTeamSettings(settings);
+    }
+  } catch (e) {
+    console.error('[accept join-request] could not grant artist access:', e.message);
   }
+
   res.json({ ok: true });
 });
 

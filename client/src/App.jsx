@@ -589,30 +589,13 @@ function App({ demoMode = false }) {
           >
             {theme === 'dark' ? '☀' : '◑'}
           </button>
-          {/* Join-request notification bell — navigates to Teams page */}
-          {!demoMode && userRole !== 'admin' && joinRequests.length > 0 && (
-            <button
-              onClick={() => setPage('teams')}
-              title={`${joinRequests.length} pending team invitation${joinRequests.length > 1 ? 's' : ''}`}
-              style={{
-                position: 'relative', background: 'none', border: 'none',
-                cursor: 'pointer', padding: '4px 6px', borderRadius: 6,
-                display: 'flex', alignItems: 'center', gap: 4,
-                color: 'var(--color-text)',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              <span style={{
-                position: 'absolute', top: 0, right: 0,
-                background: '#E53935', color: '#fff',
-                borderRadius: '50%', width: 16, height: 16,
-                fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, lineHeight: 1,
-              }}>{joinRequests.length}</span>
-            </button>
+          {/* Notification bell — join requests + assigned tasks */}
+          {!demoMode && userRole !== 'admin' && (
+            <NotificationBell
+              joinRequests={joinRequests}
+              tasks={tasks}
+              onNavigate={setPage}
+            />
           )}
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
@@ -976,6 +959,107 @@ function UserMenu({ username, userRole, onOpenSettings, avatarUrl }) {
           <button className="user-menu-logout" onClick={logout}>
             Sign out
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Notification Bell ─────────────────────────────────────────────────────────
+function NotificationBell({ joinRequests, tasks, onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('ph-seen-notifs') || '[]')); }
+    catch { return new Set(); }
+  });
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const inviteNotifs = (joinRequests || []).map((r) => ({
+    id:   `invite:${r.id}`,
+    type: 'invite',
+    text: `${r.fromUsername || 'Admin'} invited you to join their team`,
+    nav:  'teams',
+  }));
+
+  const taskNotifs = (tasks || [])
+    .filter((t) => t.assignedToMe && !t.completed)
+    .map((t) => ({
+      id:   `task:${t.id}`,
+      type: 'task',
+      text: t.text ? `Task assigned: ${t.text}` : 'New task assigned',
+      nav:  'tasks',
+    }));
+
+  const all    = [...inviteNotifs, ...taskNotifs];
+  const unread = all.filter((n) => !seenIds.has(n.id));
+
+  const saveSeen = (s) => {
+    setSeenIds(s);
+    localStorage.setItem('ph-seen-notifs', JSON.stringify([...s]));
+  };
+  const dismiss    = (id) => saveSeen(new Set([...seenIds, id]));
+  const dismissAll = ()   => saveSeen(new Set(all.map((n) => n.id)));
+
+  if (all.length === 0) return null;
+
+  return (
+    <div className="notif-bell" ref={ref}>
+      <button
+        className="notif-bell-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={`${unread.length} notification${unread.length !== 1 ? 's' : ''}`}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        {unread.length > 0 && (
+          <span className="notif-badge">{unread.length}</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="notif-panel">
+          <div className="notif-panel-header">
+            <span className="notif-panel-title">Notifications</span>
+            {unread.length > 0 && (
+              <button className="notif-dismiss-all" onClick={dismissAll}>
+                Dismiss all
+              </button>
+            )}
+          </div>
+          {all.length === 0 ? (
+            <p className="notif-empty">No notifications</p>
+          ) : (
+            <div className="notif-list">
+              {all.map((n) => (
+                <div key={n.id} className={`notif-item${seenIds.has(n.id) ? ' seen' : ' unseen'}`}>
+                  <button
+                    className="notif-item-text"
+                    onClick={() => { onNavigate(n.nav); setOpen(false); }}
+                  >
+                    {n.text}
+                  </button>
+                  <button
+                    className="notif-item-dismiss"
+                    onClick={() => dismiss(n.id)}
+                    title="Dismiss"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

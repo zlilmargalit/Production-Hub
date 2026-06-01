@@ -164,8 +164,14 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   // Deterministic palette slot for event type (16 slots → CSS data-et-idx)
   const etIdx = etColorIdx(show.eventType);
 
+  // Receipt = show is done → archive. Invoice = separate billing flag.
+  const toggleReceipt = () => {
+    const next = !show.receipt;
+    onUpdateShow(show.id, { ...show, receipt: next, archived: next });
+  };
+
   return (
-    <div className={`show-card ${show.invoice || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
+    <div className={`show-card ${show.receipt || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
       <div className="show-card-band" />
       <div className="show-card-header">
         <div className="show-card-top-row">
@@ -394,17 +400,17 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             </button>
             {pdfError && <span className="btn-error-msg" title={pdfError}>{pdfError}</span>}
           </div>
-          <label className="quick-check" style={{ marginLeft: 8 }}>
-            <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
-            Invoice
-          </label>
-          <label className="quick-check">
-            <input type="checkbox" checked={show.receipt || false} onChange={() => toggleField('receipt')} />
-            Receipt
-          </label>
         </div>
 
         <div className="footer-right">
+          <label className="quick-check footer-check">
+            <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
+            Invoice
+          </label>
+          <label className="quick-check footer-check">
+            <input type="checkbox" checked={show.receipt || false} onChange={toggleReceipt} />
+            Receipt
+          </label>
           <button
             className={`btn-technical ${showTech ? 'active' : ''}`}
             onClick={() => { setShowTech(!showTech); if (showTasks) setShowTasks(false); }}
