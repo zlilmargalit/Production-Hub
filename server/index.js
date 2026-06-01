@@ -27,6 +27,7 @@ const documentsRouter     = require('./routes/documents');
 const crewRouter          = require('./routes/crew');
 const templatesRouter     = require('./routes/templates');
 const eventTypesRouter    = require('./routes/event-types');
+const rolesRouter         = require('./routes/roles');
 const fieldTemplatesRouter= require('./routes/field-templates');
 const { router: importRouter, findNewShows, DEFAULT_XLSX } = require('./routes/import');
 const calendarRouter      = require('./routes/calendar');
@@ -1145,6 +1146,7 @@ app.use('/api/documents',      documentsRouter);
 app.use('/api/crew',           crewRouter);
 app.use('/api/templates',      templatesRouter);
 app.use('/api/event-types',    eventTypesRouter);
+app.use('/api/roles',          rolesRouter);
 app.use('/api/field-templates',fieldTemplatesRouter);
 app.use('/api/import',         importRouter);
 app.use('/api/calendar',       calendarRouter);
@@ -1221,6 +1223,7 @@ async function migrateRootDataToArtists() {
       { file: 'shows.json',          empty: [] },
       { file: 'crew.json',           empty: [] },
       { file: 'event-types.json',    empty: [] },
+      { file: 'roles.json',          empty: [] },
       { file: 'field-templates.json',empty: {} },
       { file: 'templates.json',      empty: {} },
     ];

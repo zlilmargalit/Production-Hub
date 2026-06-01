@@ -52,12 +52,29 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [customRoles, setCustomRoles] = useState([]);
 
   const openAdd = () => { setEditing(null); setShowForm(true); };
   const openEdit = (m) => { setEditing(m); setShowForm(true); };
   const closeForm = () => { setShowForm(false); setEditing(null); };
 
   const qs = artistId ? `?artistId=${encodeURIComponent(artistId)}` : '';
+
+  useEffect(() => {
+    if (demoMode) return;
+    fetch(`/api/roles${qs}`).then((r) => r.json()).then(setCustomRoles).catch(() => {});
+  }, [qs, demoMode]);
+
+  const saveCustomRoles = async (roles) => {
+    setCustomRoles(roles);
+    if (!demoMode) {
+      await fetch(`/api/roles${qs}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(roles),
+      });
+    }
+  };
 
   const saveMember = async (data) => {
     if (demoMode) {
@@ -263,7 +280,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       )}
 
       {showForm && (
-        <CrewForm member={editing} eventTypes={eventTypes || []} onSubmit={saveMember} onClose={closeForm} />
+        <CrewForm member={editing} eventTypes={eventTypes || []} customRoles={customRoles} onSaveCustomRoles={saveCustomRoles} onSubmit={saveMember} onClose={closeForm} />
       )}
 
       {confirmModal && (
@@ -617,14 +634,38 @@ function EventTypesTab({ eventTypes, onSave }) {
   );
 }
 
-function CrewForm({ member, eventTypes, onSubmit, onClose }) {
+function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onSubmit, onClose }) {
   const [form, setForm] = useState(
     member
       ? { name: member.name || '', role: member.role || '', phone: member.phone || '', email: member.email || '', notes: member.notes || '', eventTypes: member.eventTypes || [] }
       : { ...BLANK_MEMBER }
   );
+  const [addingRole, setAddingRole] = useState(false);
+  const [newRoleInput, setNewRoleInput] = useState('');
 
-  const set = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const allRoles = [...CREW_ROLES, ...customRoles];
+
+  const set = (e) => {
+    if (e.target.name === 'role' && e.target.value === '__add_new__') {
+      setAddingRole(true);
+      return;
+    }
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const confirmNewRole = () => {
+    const trimmed = newRoleInput.trim();
+    if (!trimmed || allRoles.includes(trimmed)) {
+      setAddingRole(false);
+      setNewRoleInput('');
+      return;
+    }
+    const updated = [...customRoles, trimmed];
+    onSaveCustomRoles(updated);
+    setForm((f) => ({ ...f, role: trimmed }));
+    setAddingRole(false);
+    setNewRoleInput('');
+  };
 
   const toggleEventType = (t) => {
     setForm((f) => ({
@@ -657,10 +698,25 @@ function CrewForm({ member, eventTypes, onSubmit, onClose }) {
               <label>Role</label>
               <select name="role" value={form.role} onChange={set}>
                 <option value="">-- Select role --</option>
-                {CREW_ROLES.map((r) => (
+                {allRoles.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
+                <option value="__add_new__">＋ Add new role...</option>
               </select>
+              {addingRole && (
+                <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                  <input
+                    autoFocus
+                    value={newRoleInput}
+                    onChange={(e) => setNewRoleInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmNewRole(); } if (e.key === 'Escape') { setAddingRole(false); setNewRoleInput(''); } }}
+                    placeholder="New role name"
+                    style={{ flex: 1 }}
+                  />
+                  <button type="button" className="btn-primary btn-sm" onClick={confirmNewRole}>Add</button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => { setAddingRole(false); setNewRoleInput(''); }}>Cancel</button>
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label>Phone</label>
