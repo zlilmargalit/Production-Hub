@@ -342,14 +342,23 @@ function TabInvite() {
   const [generating,  setGenerating]  = useState(false);
   const [genError,    setGenError]    = useState('');
   const [copied,      setCopied]      = useState(false);
-  const [inviteRole,  setInviteRole]  = useState('producer');
   const [invitations, setInvitations] = useState([]);
   const [loadingInv,  setLoadingInv]  = useState(true);
 
+  // "Add by username" state
+  const [usernameInput, setUsernameInput] = useState('');
+  const [sendingReq,    setSendingReq]    = useState(false);
+  const [reqMsg,        setReqMsg]        = useState(null);  // { type: 'ok'|'error', text }
+  const [joinRequests,  setJoinRequests]  = useState([]);
+
   const load = useCallback(async () => {
     setLoadingInv(true);
-    const r = await fetch('/api/invitations');
-    if (r.ok) setInvitations(await r.json());
+    const [invRes, jrRes] = await Promise.all([
+      fetch('/api/invitations'),
+      fetch('/api/team/join-requests'),
+    ]);
+    if (invRes.ok) setInvitations(await invRes.json());
+    if (jrRes.ok)  setJoinRequests(await jrRes.json());
     setLoadingInv(false);
   }, []);
 
@@ -363,7 +372,7 @@ function TabInvite() {
       const r = await fetch('/api/invitations/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceRole: inviteRole }),
+        body: JSON.stringify({}),
       });
       const d = await r.json();
       if (!r.ok) { setGenError(d.error || 'Failed to generate invite link'); return; }
@@ -376,6 +385,37 @@ function TabInvite() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const sendJoinRequest = async () => {
+    if (!usernameInput.trim()) return;
+    setSendingReq(true);
+    setReqMsg(null);
+    try {
+      const r = await fetch('/api/team/join-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setReqMsg({ type: 'error', text: d.error || 'Failed to send request' });
+      } else {
+        setReqMsg({ type: 'ok', text: `Request sent to "${usernameInput.trim()}"` });
+        setUsernameInput('');
+        await load();
+      }
+    } catch (e) {
+      setReqMsg({ type: 'error', text: e.message || 'Network error' });
+    } finally {
+      setSendingReq(false);
+      setTimeout(() => setReqMsg(null), 4000);
+    }
+  };
+
+  const cancelJoinRequest = async (id) => {
+    await fetch(`/api/team/join-request/${id}`, { method: 'DELETE' });
+    setJoinRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
   const copy = () => {
@@ -393,20 +433,47 @@ function TabInvite() {
 
   return (
     <div className="team-section">
+      {/* ── Add by username ─────────────────────────────── */}
+      <h3 className="team-section-title">Add by Username</h3>
+      <p className="team-section-desc">Send a join request to an existing user. They'll see it in their account and can accept or decline.</p>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+        <input
+          className="team-invite-input"
+          value={usernameInput}
+          onChange={(e) => setUsernameInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && sendJoinRequest()}
+          placeholder="Username…"
+          style={{ maxWidth: 240 }}
+        />
+        <button className="btn-primary" onClick={sendJoinRequest} disabled={sendingReq || !usernameInput.trim()}>
+          {sendingReq ? 'Sending…' : 'Send Request'}
+        </button>
+      </div>
+      {reqMsg && (
+        <p style={{ fontSize: 13, color: reqMsg.type === 'ok' ? 'var(--color-success, #2e7d32)' : 'var(--color-danger, #c0392b)', marginBottom: 8 }}>
+          {reqMsg.text}
+        </p>
+      )}
+
+      {/* Pending requests list */}
+      {joinRequests.filter((r) => r.status === 'pending').length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 20 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-muted)', marginBottom: 6 }}>Pending requests:</p>
+          {joinRequests.filter((r) => r.status === 'pending').map((r) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 13 }}>{r.toUsername}</span>
+              <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>{fmtDate(r.createdAt)}</span>
+              <button className="btn-action btn-action--danger" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => cancelJoinRequest(r.id)}>Cancel</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ borderTop: '1px solid var(--color-border)', margin: '20px 0' }} />
+
+      {/* ── Invite link ──────────────────────────────────── */}
       <h3 className="team-section-title">Generate Invite Link</h3>
       <p className="team-section-desc">One-time link, valid for 48 hours. The recipient sets their own username and password.</p>
-
-      <div className="team-invite-role-row">
-        <span className="team-invite-role-label">Role for new member:</span>
-        <label className="team-role-radio">
-          <input type="radio" name="inviteRole" value="producer" checked={inviteRole === 'producer'} onChange={() => setInviteRole('producer')} />
-          Producer
-        </label>
-        <label className="team-role-radio">
-          <input type="radio" name="inviteRole" value="backliner" checked={inviteRole === 'backliner'} onChange={() => setInviteRole('backliner')} />
-          Backliner
-        </label>
-      </div>
 
       <button className="btn-primary team-gen-btn" onClick={generate} disabled={generating}>
         {generating ? 'Generating…' : '+ New Invite Link'}

@@ -33,6 +33,8 @@ function App({ demoMode = false }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [tasks,    setTasks]    = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [showJoinReqDropdown, setShowJoinReqDropdown] = useState(false);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
@@ -152,6 +154,11 @@ function App({ demoMode = false }) {
           setCurrentArtist(first);
         }
 
+        // Non-admin users: poll for pending join requests
+        if (meData?.role !== 'admin') {
+          fetch('/api/me/join-requests').then((r) => r.ok ? r.json() : []).then(setJoinRequests).catch(() => {});
+        }
+
         await Promise.all([
           fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
           fetchTasks(),
@@ -215,6 +222,11 @@ function App({ demoMode = false }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('[updateShow] PUT failed', res.status, err);
+      return; // don't corrupt local state with error response
+    }
     const updated = await res.json();
     setShows((prev) => prev.map((s) => (s.id === id ? updated : s)));
   }, [demoMode]);
@@ -577,6 +589,45 @@ function App({ demoMode = false }) {
           >
             {theme === 'dark' ? '☀' : '◑'}
           </button>
+          {/* Join-request notification bell (non-admin users only) */}
+          {!demoMode && userRole !== 'admin' && joinRequests.length > 0 && (
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn-theme-toggle"
+                title="Team join requests"
+                onClick={() => setShowJoinReqDropdown((v) => !v)}
+                style={{ position: 'relative' }}
+              >
+                ● <span style={{ fontSize: 11, marginLeft: 2 }}>{joinRequests.length}</span>
+              </button>
+              {showJoinReqDropdown && (
+                <div style={{
+                  position: 'absolute', right: 0, top: '110%', background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)', borderRadius: 8, padding: 16,
+                  minWidth: 260, zIndex: 1000, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                }}>
+                  <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Team join requests</p>
+                  {joinRequests.map((r) => (
+                    <div key={r.id} style={{ marginBottom: 12 }}>
+                      <p style={{ fontSize: 13, marginBottom: 6 }}>You've been invited to join a team.</p>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn-primary btn-sm" onClick={async () => {
+                          await fetch(`/api/me/join-requests/${r.id}/accept`, { method: 'POST' });
+                          setJoinRequests((prev) => prev.filter((x) => x.id !== r.id));
+                          setShowJoinReqDropdown(false);
+                        }}>Accept</button>
+                        <button className="btn-secondary btn-sm" onClick={async () => {
+                          await fetch(`/api/me/join-requests/${r.id}/decline`, { method: 'POST' });
+                          setJoinRequests((prev) => prev.filter((x) => x.id !== r.id));
+                          setShowJoinReqDropdown(false);
+                        }}>Decline</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
       </header>

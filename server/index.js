@@ -99,6 +99,14 @@ function logActivity(userId, username, action, detail = '') {
 const INVITATIONS_FILE   = path.join(DATA_DIR, 'invitations.json');
 const TEAM_SETTINGS_FILE = path.join(DATA_DIR, 'team-settings.json');
 const TEAMS_FILE         = path.join(DATA_DIR, 'teams.json');
+const JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'join-requests.json');
+
+function loadJoinRequests() {
+  try { return JSON.parse(fs.readFileSync(JOIN_REQUESTS_FILE, 'utf8')); } catch { return []; }
+}
+function saveJoinRequests(list) {
+  fs.writeFileSync(JOIN_REQUESTS_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
 
 function loadInvitations() {
   try { return JSON.parse(fs.readFileSync(INVITATIONS_FILE, 'utf8')); } catch { return []; }
@@ -952,6 +960,84 @@ app.delete('/api/invitations/:token', (req, res) => {
   if (filtered.length === invitations.length) return res.status(404).json({ error: 'Not found' });
   saveInvitations(filtered);
   res.status(204).send();
+});
+
+// ── Join requests (admin → user) ─────────────────────────────────────────────
+// POST /api/team/join-request  — admin sends a request to a user by username
+app.post('/api/team/join-request', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { username } = req.body || {};
+  if (!username?.trim()) return res.status(400).json({ error: 'username required' });
+  const users = loadUsers();
+  const target = users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+  if (!target) return res.status(404).json({ error: `No user found with username "${username}"` });
+  const requests = loadJoinRequests();
+  const existing = requests.find((r) => r.toUserId === target.id && r.status === 'pending');
+  if (existing) return res.status(409).json({ error: `A pending request already exists for "${target.username}"` });
+  const req_ = {
+    id: uuidv4(),
+    toUserId: target.id,
+    toUsername: target.username,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+  requests.push(req_);
+  saveJoinRequests(requests);
+  res.status(201).json({ ok: true, request: req_ });
+});
+
+// GET /api/team/join-requests — admin sees all outgoing requests
+app.get('/api/team/join-requests', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  res.json(loadJoinRequests());
+});
+
+// DELETE /api/team/join-request/:id — admin cancels a pending request
+app.delete('/api/team/join-request/:id', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const requests = loadJoinRequests();
+  const filtered = requests.filter((r) => r.id !== req.params.id);
+  if (filtered.length === requests.length) return res.status(404).json({ error: 'Not found' });
+  saveJoinRequests(filtered);
+  res.status(204).send();
+});
+
+// GET /api/me/join-requests — authenticated user fetches their pending requests
+app.get('/api/me/join-requests', (req, res) => {
+  if (!req.userId || req.userId === 'admin') return res.json([]);
+  const uid = req.userId;
+  const pending = loadJoinRequests().filter((r) => r.toUserId === uid && r.status === 'pending');
+  res.json(pending);
+});
+
+// POST /api/me/join-requests/:id/accept
+app.post('/api/me/join-requests/:id/accept', (req, res) => {
+  if (!req.userId || req.userId === 'admin') return res.status(403).json({ error: 'Not available' });
+  const requests = loadJoinRequests();
+  const r = requests.find((r) => r.id === req.params.id && r.toUserId === req.userId);
+  if (!r) return res.status(404).json({ error: 'Request not found' });
+  r.status = 'accepted';
+  r.respondedAt = new Date().toISOString();
+  saveJoinRequests(requests);
+  // Add user to teams file so admin can manage them
+  const teams = (() => { try { return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch { return []; } })();
+  if (!teams.find((t) => t.userId === req.userId)) {
+    teams.push({ userId: req.userId, username: r.toUsername, joinedAt: new Date().toISOString() });
+    fs.writeFileSync(TEAMS_FILE, JSON.stringify(teams, null, 2), 'utf8');
+  }
+  res.json({ ok: true });
+});
+
+// POST /api/me/join-requests/:id/decline
+app.post('/api/me/join-requests/:id/decline', (req, res) => {
+  if (!req.userId || req.userId === 'admin') return res.status(403).json({ error: 'Not available' });
+  const requests = loadJoinRequests();
+  const r = requests.find((r) => r.id === req.params.id && r.toUserId === req.userId);
+  if (!r) return res.status(404).json({ error: 'Request not found' });
+  r.status = 'declined';
+  r.respondedAt = new Date().toISOString();
+  saveJoinRequests(requests);
+  res.json({ ok: true });
 });
 
 // ── Team member: accessible artists ──────────────────────────────────────────
