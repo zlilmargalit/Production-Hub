@@ -123,10 +123,14 @@ function buildCallbackUrl(req, provider) {
 }
 
 function getOAuthClient(callbackUrl) {
-  const creds = process.env.GMAIL_CREDENTIALS
-    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
-    : JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
-  const { client_id, client_secret } = creds.installed || creds.web;
+  // Automations needs a Web-application type OAuth client (not Desktop/installed)
+  // because it uses server-side redirect URIs. Use AUTOMATIONS_CREDENTIALS if set;
+  // fall back to GMAIL_CREDENTIALS / local file (Desktop type — only works for localhost).
+  const raw = process.env.AUTOMATIONS_CREDENTIALS
+    || process.env.GMAIL_CREDENTIALS
+    || fs.readFileSync(CREDENTIALS_PATH, 'utf8');
+  const creds = JSON.parse(raw);
+  const { client_id, client_secret } = creds.web || creds.installed;
   return new google.auth.OAuth2(client_id, client_secret, callbackUrl);
 }
 
