@@ -490,6 +490,27 @@ app.use((req, res, next) => {
   res.redirect('/login');
 });
 
+// ── Temp debug: read artist shows directly from disk (admin only) ─────────────
+app.get('/api/debug/artist-shows', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const artistId = req.query.artistId;
+  if (!artistId) return res.status(400).json({ error: 'artistId required' });
+  const filePath = path.join(DATA_DIR, 'artists', artistId, 'shows.json');
+  try {
+    const raw = await fsp.readFile(filePath, 'utf8');
+    const shows = JSON.parse(raw);
+    const logisticsFields = ['transportMode','transportDriver','transportTime','foodContactName','foodContactPhone','foodContactTime','soundCoordinated','lightingCoordinated'];
+    const summary = shows.map((s) => {
+      const lf = {};
+      for (const f of logisticsFields) if (s[f]) lf[f] = s[f];
+      return { id: s.id, name: s.name, date: s.date, logistics: lf };
+    });
+    res.json({ filePath, totalShows: shows.length, shows: summary });
+  } catch (err) {
+    res.status(500).json({ error: err.message, filePath });
+  }
+});
+
 // ── Who-am-I (after auth gate) ───────────────────────────────────────────────
 const ADMIN_PROFILE_PATH = () => path.join(DATA_DIR, 'admin-profile.json');
 
