@@ -95,8 +95,10 @@ function sharesTwoWords(a, b) {
 // Fetches ALL events in a ±1-day window (no text filter) so name mismatches are handled.
 // Always prefers timed events (dateTime) over all-day events (date-only).
 // Match priority per tier: 1. exact title, 2. case-insensitive contains, 3. ≥2 shared words on same date.
+// Options:
+//   timedOnly: true  → only consider dateTime events; never fall back to all-day events.
 // Throws on API errors — callers must handle.
-async function findExistingEvent(calendar, calendarId, date, title) {
+async function findExistingEvent(calendar, calendarId, date, title, { timedOnly = false } = {}) {
   const base = new Date(date + 'T00:00:00+03:00');
   const timeMin = new Date(base); timeMin.setDate(timeMin.getDate() - 1);
   const timeMax = new Date(base); timeMax.setDate(timeMax.getDate() + 2);
@@ -134,8 +136,8 @@ async function findExistingEvent(calendar, calendarId, date, title) {
     return sameDay.find((e) => sharesTwoWords(title, e.summary || '')) || null;
   };
 
-  // Try timed events first, fall back to all-day only if nothing found
-  return findIn(timed) || findIn(allDay) || null;
+  // Try timed events first; fall back to all-day only when timedOnly is false
+  return findIn(timed) || (timedOnly ? null : findIn(allDay)) || null;
 }
 
 // GET /api/calendar/config — returns current calendar ID + list of all accessible calendars
@@ -250,8 +252,10 @@ router.post('/invite/:showId', async (req, res) => {
 });
 
 // POST /api/calendar/insert-show-event
-// Creates (or updates) a Google Calendar event for a show, including the
-// schedule into the description of the existing (or new) calendar event.
+// Finds an EXISTING timed (dateTime) Google Calendar event matching the show, then writes
+// the show's schedule text into that event's description.
+// Match criteria: same date + at least 2 shared words between show name and event title.
+// Does NOT create new events — returns 404 if no matching timed event is found.
 // Does NOT send invites, does NOT set location.
 router.post('/insert-show-event', async (req, res) => {
   if (!isConfigured()) {
@@ -280,37 +284,29 @@ router.post('/insert-show-event', async (req, res) => {
     const auth     = getOAuthClient();
     const calendar = google.calendar({ version: 'v3', auth });
 
-    const existing = await findExistingEvent(calendar, calendarId, dateBase, show.name);
-    let result, action;
+    // Only look at timed (dateTime) events — never fall back to all-day
+    const existing = await findExistingEvent(calendar, calendarId, dateBase, show.name, { timedOnly: true });
 
-    if (existing) {
-      result = await calendar.events.patch({
-        calendarId,
-        eventId:     existing.id,
-        sendUpdates: 'none',          // no invites
-        requestBody: eventBody,
+    if (!existing) {
+      return res.status(404).json({
+        error: `No timed event found in your calendar matching "${show.name}" on ${show.date}. ` +
+               `Make sure a timed Google Calendar event exists on that date with at least 2 words in common with the show name.`,
       });
-      action = 'updated';
-    } else {
-      // No matching event found — create a minimal all-day event with the schedule
-      result = await calendar.events.insert({
-        calendarId,
-        sendUpdates: 'none',          // no invites
-        requestBody: {
-          summary:     show.name,
-          description,
-          start: { date: dateBase },
-          end:   { date: dateBase },
-        },
-      });
-      action = 'created';
     }
+
+    const result = await calendar.events.patch({
+      calendarId,
+      eventId:     existing.id,
+      sendUpdates: 'none',          // no invites
+      requestBody: eventBody,
+    });
 
     res.json({
       ok:        true,
-      action,
+      action:    'updated',
       eventId:   result.data.id,
       eventLink: result.data.htmlLink,
+      eventName: existing.summary,
     });
   } catch (err) {
     const msg = err?.message || String(err) || 'Google Calendar API error';
