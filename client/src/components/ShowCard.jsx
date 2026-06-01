@@ -364,56 +364,54 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         </div>
       )}
 
-      {expanded && (
-        <div className="show-card-footer">
-          <div className="footer-left">
-            <div className="btn-action-wrap">
-              <button
-                className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
-                onClick={createBrief}
-                disabled={briefStatus === 'loading'}
-              >
-                {briefStatus === 'loading' ? 'Creating…' :
-                 briefStatus === 'sent' ? 'Sent ✓' :
-                 briefStatus === 'error' ? 'Error ✕' :
-                 'Brief'}
-              </button>
-              {briefError && <span className="btn-error-msg" title={briefError}>{briefError}</span>}
-            </div>
-            <div className="btn-action-wrap">
-              <button
-                className={`btn-pdf ${pdfStatus === 'saved' ? 'saved' : pdfStatus === 'error' ? 'error' : ''}`}
-                onClick={savePdf}
-                disabled={pdfStatus === 'loading'}
-              >
-                {pdfStatus === 'loading' ? 'Saving...' :
-                 pdfStatus === 'saved' ? 'Saved ✓' :
-                 pdfStatus === 'error' ? 'Error ✕' :
-                 'PDF'}
-              </button>
-              {pdfError && <span className="btn-error-msg" title={pdfError}>{pdfError}</span>}
-            </div>
+      <div className="show-card-footer">
+        <div className="footer-left">
+          <div className="btn-action-wrap">
+            <button
+              className={`btn-brief ${briefStatus === 'sent' ? 'sent' : briefStatus === 'error' ? 'error' : ''}`}
+              onClick={createBrief}
+              disabled={briefStatus === 'loading'}
+            >
+              {briefStatus === 'loading' ? 'Creating…' :
+               briefStatus === 'sent' ? 'Sent ✓' :
+               briefStatus === 'error' ? 'Error ✕' :
+               'Brief'}
+            </button>
+            {briefError && <span className="btn-error-msg" title={briefError}>{briefError}</span>}
           </div>
-
-          <div className="quick-checks">
-            <label className="quick-check">
-              <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
-              Invoice
-            </label>
-            <label className="quick-check">
-              <input type="checkbox" checked={show.receipt || false} onChange={() => toggleField('receipt')} />
-              Receipt
-            </label>
+          <div className="btn-action-wrap">
+            <button
+              className={`btn-pdf ${pdfStatus === 'saved' ? 'saved' : pdfStatus === 'error' ? 'error' : ''}`}
+              onClick={savePdf}
+              disabled={pdfStatus === 'loading'}
+            >
+              {pdfStatus === 'loading' ? 'Saving...' :
+               pdfStatus === 'saved' ? 'Saved ✓' :
+               pdfStatus === 'error' ? 'Error ✕' :
+               'PDF'}
+            </button>
+            {pdfError && <span className="btn-error-msg" title={pdfError}>{pdfError}</span>}
           </div>
-
-          <button
-            className={`btn-tasks ${showTasks ? 'active' : ''}`}
-            onClick={() => setShowTasks(!showTasks)}
-          >
-            Logistics
-          </button>
         </div>
-      )}
+
+        <div className="quick-checks">
+          <label className="quick-check">
+            <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
+            Invoice
+          </label>
+          <label className="quick-check">
+            <input type="checkbox" checked={show.receipt || false} onChange={() => toggleField('receipt')} />
+            Receipt
+          </label>
+        </div>
+
+        <button
+          className={`btn-tasks ${showTasks ? 'active' : ''}`}
+          onClick={() => setShowTasks(!showTasks)}
+        >
+          Logistics
+        </button>
+      </div>
 
       {showTasks && (
         <div className="hub-panel" aria-label="Production Hub — internal">
