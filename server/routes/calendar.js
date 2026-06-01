@@ -270,9 +270,12 @@ router.post('/insert-show-event', async (req, res) => {
   const show   = shows.find((s) => s.id === showId);
   if (!show) return res.status(404).json({ error: 'Show not found' });
   if (!show.date) return res.status(400).json({ error: 'Show has no date set' });
+  if (!show.schedule || !show.schedule.trim()) {
+    return res.status(400).json({ error: 'This show has no schedule text to export. Add a schedule first.' });
+  }
 
   // Only the schedule goes into the event description — nothing else
-  const description = show.schedule || '';
+  const description = show.schedule.trim();
 
   // Patch body — only update description, nothing else
   const eventBody = { description };

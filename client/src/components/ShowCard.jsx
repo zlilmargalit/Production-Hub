@@ -147,8 +147,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         setCalMsg(data.error || 'Calendar export failed');
       } else {
         setCalStatus('done');
-        setCalMsg(data.action === 'created' ? 'Event created ✓' : 'Schedule updated ✓');
-        if (data.eventLink) window.open(data.eventLink, '_blank');
+        setCalMsg(`Schedule added to "${data.eventName || show.name}" ✓`);
       }
     } catch (e) {
       setCalStatus('error');
