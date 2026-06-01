@@ -56,7 +56,25 @@ function TaskManager({ show, onUpdate, artistId }) {
       phone: show.foodContactPhone || '',
       time: show.foodContactTime || '',
     });
-  }, [show.id]);
+    setCoord({
+      lighting: show.lightingCoordinated || false,
+      sound: show.soundCoordinated || false,
+      rentalNeeds: show.rentalNeeds || '',
+      rentalSupplier: show.rentalSupplier || '',
+      soundRentalNeeds: show.soundRentalNeeds || '',
+      soundRentalSupplier: show.soundRentalSupplier || '',
+      lightingRentalNeeds: show.lightingRentalNeeds || '',
+      lightingRentalSupplier: show.lightingRentalSupplier || '',
+    });
+  }, [
+    show.id,
+    show.transportMode, show.transportDriver, show.transportTime,
+    show.foodContactName, show.foodContactPhone, show.foodContactTime,
+    show.lightingCoordinated, show.soundCoordinated,
+    show.rentalNeeds, show.rentalSupplier,
+    show.soundRentalNeeds, show.soundRentalSupplier,
+    show.lightingRentalNeeds, show.lightingRentalSupplier,
+  ]);
 
   const saveTransport = (updated) => {
     const text = buildTransportText(updated.mode, updated.driver, updated.time);
