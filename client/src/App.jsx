@@ -539,18 +539,6 @@ function App({ demoMode = false }) {
               onSelectTool={(tool) => setPage(tool)}
             />
           )}
-          {!demoMode && (
-            <span className="nav-artist-desktop">
-              <span className="artist-nav-sep" aria-hidden="true" />
-              <ArtistSwitcher
-                artists={artists}
-                currentArtist={currentArtist}
-                onSwitch={switchToArtist}
-                onAddNew={() => setNewArtistModal(true)}
-                onDelete={deleteArtist}
-              />
-            </span>
-          )}
         </>)}</nav>
 
         {/* Action buttons (right — admin tools hidden on mobile) */}
