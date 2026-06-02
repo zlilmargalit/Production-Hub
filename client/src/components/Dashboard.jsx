@@ -19,7 +19,11 @@ function toDateStr(d) {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function localDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // Extract first HH:MM from schedule text or loadIn
@@ -174,7 +178,7 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
   const cells = Array.from({ length: totalCells }, (_, i) => {
     const dayOffset = i - startPad;
     const date      = new Date(year, m, 1 + dayOffset);
-    const dateStr   = date.toISOString().split('T')[0];
+    const dateStr   = localDateStr(date);
     const isCurrentMonth = date.getMonth() === m;
     const isToday        = dateStr === today;
     const shows = filtered
@@ -452,22 +456,6 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
           <span>{artists.length} active artist{artists.length !== 1 ? 's' : ''}</span>
           <span className="dash-subline-rule" aria-hidden="true" />
           <span>{upcoming.length} show{upcoming.length !== 1 ? 's' : ''} this month</span>
-        </div>
-      </div>
-
-      {/* ── Stats ── */}
-      <div className="dash-stats">
-        <div className="dash-stat">
-          <span className="dash-stat-value">{upcoming.length}</span>
-          <span className="dash-stat-label">Total Upcoming Shows</span>
-        </div>
-        <div className="dash-stat">
-          <span className="dash-stat-value">{artists.length}</span>
-          <span className="dash-stat-label">Active Artists</span>
-        </div>
-        <div className="dash-stat">
-          <span className="dash-stat-value">{openTasks.length}</span>
-          <span className="dash-stat-label">Open Tasks</span>
         </div>
       </div>
 
