@@ -34,8 +34,9 @@ function App({ demoMode = false }) {
   const [workspaceRole, setWorkspaceRole] = useState(null); // 'producer' | 'backliner' | null
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [tasks,    setTasks]    = useState([]);
+  const [tasks,       setTasks]       = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
+  const [wsToast, setWsToast] = useState(null);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
@@ -439,6 +440,14 @@ function App({ demoMode = false }) {
     setPage('shows');
   }, [artists, switchToArtist]);
 
+  // ── Workspace selector: switch to an artist workspace ─────────────────────
+  const handleWorkspaceSwitch = useCallback(async (artist) => {
+    setWsToast(`Entering ${artist.name}'s workspace…`);
+    await switchToArtist(artist);
+    setPage('shows');
+    setTimeout(() => setWsToast(null), 2200);
+  }, [switchToArtist]);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="app">
@@ -608,6 +617,15 @@ function App({ demoMode = false }) {
               onNavigate={setPage}
             />
           )}
+          {!demoMode && (
+            <WorkspaceSelector
+              page={page}
+              artists={artists}
+              currentArtist={currentArtist}
+              onSwitch={handleWorkspaceSwitch}
+              onGoHome={() => setPage('home')}
+            />
+          )}
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
       </header>
@@ -743,6 +761,10 @@ function App({ demoMode = false }) {
           onAvatarChange={(url) => setAvatarUrl(url)}
         />
       )}
+
+      {wsToast && (
+        <div className="ws-toast" role="status" aria-live="polite">{wsToast}</div>
+      )}
     </div>
   );
 }
@@ -870,6 +892,102 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
           >
             + New Artist
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Workspace Selector ────────────────────────────────────────────────────────
+const WS_PALETTE = ['#3852B4', '#F08D39', '#C79A3F', '#4E7265'];
+
+function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const isHome = page === 'home';
+  const activeColor = !isHome && currentArtist
+    ? WS_PALETTE[artists.findIndex((a) => a.id === currentArtist.id) % WS_PALETTE.length] || '#3852B4'
+    : null;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="ws-selector" ref={ref}>
+      <button
+        className="ws-trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label="Switch workspace"
+      >
+        {activeColor ? (
+          <span className="ws-artist-dot-trigger" style={{ background: activeColor }} />
+        ) : (
+          <span className="ws-globe-dot" />
+        )}
+        <span className="ws-trigger-text">
+          <span className="ws-trigger-eyebrow">WORKSPACE</span>
+          <span className="ws-trigger-label">
+            {isHome ? 'Global Home' : (currentArtist?.name || 'Global Home')}
+          </span>
+        </span>
+        <span className="ws-trigger-caret">▾</span>
+      </button>
+
+      {open && (
+        <div className="ws-dropdown">
+          <div className="ws-dropdown-head">Switch workspace</div>
+
+          {/* Global Home row */}
+          <button
+            className={`ws-dropdown-item${isHome ? ' ws-dropdown-item--active' : ''}`}
+            onClick={() => { onGoHome(); setOpen(false); }}
+          >
+            <span className="ws-dropdown-item-globe" />
+            <span className="ws-dropdown-item-text">
+              <span className="ws-dropdown-item-name">Global Home</span>
+              <span className="ws-dropdown-item-sub">All artists</span>
+            </span>
+            {isHome && <span className="ws-dropdown-check">✓</span>}
+          </button>
+
+          {/* Artist rows */}
+          {artists.length > 0 && (
+            <>
+              <div className="ws-dropdown-divider">Artists</div>
+              {artists.map((a, i) => {
+                const color = WS_PALETTE[i % WS_PALETTE.length];
+                const isActive = !isHome && currentArtist?.id === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    className={`ws-dropdown-item${isActive ? ' ws-dropdown-item--active' : ''}`}
+                    onClick={() => { onSwitch(a); setOpen(false); }}
+                  >
+                    <span className="ws-dropdown-item-swatch" style={{ background: color }} />
+                    <span className="ws-dropdown-item-text">
+                      <span className="ws-dropdown-item-name">{a.name}</span>
+                    </span>
+                    {isActive
+                      ? <span className="ws-dropdown-check">✓</span>
+                      : <span className="ws-dropdown-arrow">→</span>
+                    }
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          <div className="ws-dropdown-footer">
+            Opening an artist enters its isolated workspace — Shows · Crew · Tools appear in the nav. Return here anytime via Global Home.
+          </div>
         </div>
       )}
     </div>

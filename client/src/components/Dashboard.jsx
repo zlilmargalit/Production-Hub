@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// ── Artist colour palette (4 colours, cycling) ────────────────────────────────
+// ── Artist colour palette (stable by index) ────────────────────────────────────
 const PALETTE = [
-  { color: '#3852B4', soft: '#EEF1FB' },
-  { color: '#F08D39', soft: '#FEF3E7' },
-  { color: '#C79A3F', soft: '#FBF4E3' },
-  { color: '#4E7265', soft: '#E8F0ED' },
+  { color: '#3852B4', soft: '#E8ECF7' },
+  { color: '#F08D39', soft: '#FCE3CC' },
+  { color: '#C79A3F', soft: '#F6EDD7' },
+  { color: '#4E7265', soft: '#E6EDEA' },
 ];
 
 function withColor(artists) {
@@ -22,48 +22,49 @@ function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
-function isMissingCrew(show) {
-  return !show.crewIds || show.crewIds.length === 0;
+// Extract first HH:MM from schedule text or loadIn
+function getShowTime(show) {
+  if (show.schedule) {
+    const m = show.schedule.match(/\d{1,2}:\d{2}/);
+    if (m) return m[0];
+  }
+  return show.loadIn || '';
 }
 
-function isNoInvoice(show) {
-  return !show.invoice;
+// Parse "HH:MM label" lines from schedule field
+function parseScheduleLines(text) {
+  if (!text) return [];
+  return text.split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const m = l.match(/^(\d{1,2}:\d{2})\s+(.+)$/);
+      return m ? { time: m[1], label: m[2] } : { time: '', label: l };
+    });
 }
 
-// ── Event pill ────────────────────────────────────────────────────────────────
+// ── Event pill ─────────────────────────────────────────────────────────────────
 function EventPill({ show, onClick }) {
-  const missing = isMissingCrew(show) || isNoInvoice(show);
-  const time = show.schedule
-    ? show.schedule.split('\n')[0].match(/\d{1,2}:\d{2}/)?.[0] || ''
-    : '';
+  const time = getShowTime(show);
   return (
     <button
       className="ev-pill"
-      style={{ '--pill-color': show.color }}
+      style={{ '--pill-color': show.color, '--pill-soft': show.soft }}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={show.name}
     >
       <span className="ev-pill-bar" />
       {time && <span className="ev-pill-time">{time}</span>}
-      <span className="ev-pill-name">{show.artistName || show.name}</span>
-      {missing && <span className="ev-pill-warn" aria-label="needs attention" />}
+      <span className="ev-pill-name">{show.name}</span>
     </button>
   );
 }
 
-// ── Quick-view popover ────────────────────────────────────────────────────────
-function QuickViewPopover({ show, crew, artists, onClose, onOpenShow }) {
+// ── Quick-view popover ─────────────────────────────────────────────────────────
+function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
   const ref = useRef(null);
   const artist = artists.find((a) => a.id === show.artistId);
 
-  const assigned = (show.crewIds || [])
-    .map((id) => crew.find((m) => m.id === id))
-    .filter(Boolean);
-
-  const missing  = isMissingCrew(show);
-  const noInv    = isNoInvoice(show);
-
-  // Close on outside click
   useEffect(() => {
     function handleClick(e) {
       if (ref.current && !ref.current.contains(e.target)) onClose();
@@ -74,121 +75,143 @@ function QuickViewPopover({ show, crew, artists, onClose, onOpenShow }) {
 
   const dateStr = show.date
     ? new Date(show.date + 'T12:00:00').toLocaleDateString('en-GB', {
-        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+        day: 'numeric', month: 'long', year: 'numeric',
       })
     : '';
 
+  const scheduleLines = parseScheduleLines(show.schedule);
+  const artistColor   = artist?.color || 'var(--accent)';
+
   return (
     <div className="qv-backdrop">
-      <div className="qv-popover" ref={ref}>
-        <button className="qv-close" onClick={onClose} aria-label="Close">✕</button>
+      <div
+        className="qv-popover"
+        ref={ref}
+        style={{ '--qv-color': artistColor, '--qv-soft': artist?.soft || 'var(--accent-soft)' }}
+      >
+        <div className="qv-top-band" />
+        <div className="qv-body">
+          <button className="qv-close" onClick={onClose} aria-label="Close">✕</button>
 
-        {artist && (
-          <div className="qv-artist" style={{ color: artist.color, '--artist-soft': artist.soft }}>
-            <span className="qv-artist-dot" />
-            {artist.name}
-          </div>
-        )}
+          {artist && (
+            <div className="qv-artist" style={{ color: artistColor }}>
+              <span className="qv-artist-dot" />
+              {artist.name}
+            </div>
+          )}
 
-        <h3 className="qv-show-name" dir="auto">{show.name}</h3>
-        {dateStr && <p className="qv-date">{dateStr}</p>}
+          <h3 className="qv-show-name" dir="auto">{show.name}</h3>
 
-        {(show.venue || show.address) && (
-          <div className="qv-section">
-            {show.venue  && <p className="qv-venue" dir="auto">{show.venue}</p>}
-            {show.address && <p className="qv-address" dir="auto">{show.address}</p>}
-          </div>
-        )}
+          <p className="qv-date">
+            {dateStr}{show.loadIn ? ` · Doors ${show.loadIn}` : ''}
+          </p>
 
-        {assigned.length > 0 && (
-          <div className="qv-section">
-            <p className="qv-section-label">Crew</p>
-            {assigned.map((m) => (
-              <div key={m.id} className="qv-crew-row">
-                <span className="qv-avatar" aria-hidden="true">
-                  {(m.name || '?')[0].toUpperCase()}
-                </span>
-                <span dir="auto">{m.name}</span>
-                <span className="qv-role" dir="auto">{m.role}</span>
+          {(show.venue || show.address) && (
+            <div className="qv-venue-row">
+              <span className="qv-venue-label">Venue</span>
+              <div className="qv-venue-val">
+                {show.venue   && <span dir="auto">{show.venue}</span>}
+                {show.address && <span className="qv-venue-addr" dir="auto">{show.address}</span>}
               </div>
-            ))}
+            </div>
+          )}
+
+          {scheduleLines.length > 0 && (
+            <div className="qv-section">
+              <p className="qv-section-label">Schedule · לו״ז</p>
+              <div className="qv-sched">
+                {scheduleLines.map((line, i) => (
+                  <div key={i} className="qv-sched-row">
+                    {line.time && (
+                      <span className="qv-sched-time" style={{ color: artistColor }}>
+                        {line.time}
+                      </span>
+                    )}
+                    <span className="qv-sched-label" dir="auto">{line.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="qv-footer">
+            <button
+              className="qv-open-link"
+              onClick={() => { onOpenShow(show); onClose(); }}
+            >
+              Open show →
+            </button>
           </div>
-        )}
-
-        <div className="qv-flags">
-          {missing  && <span className="flag flag-danger">Missing crew</span>}
-          {noInv    && <span className="flag flag-warn">No invoice</span>}
-          {!missing && !noInv && <span className="flag flag-ok">Fully staffed</span>}
         </div>
-
-        <button
-          className="qv-open-btn"
-          onClick={() => { onOpenShow(show); onClose(); }}
-        >
-          Open show →
-        </button>
       </div>
     </div>
   );
 }
 
-// ── Master Calendar ───────────────────────────────────────────────────────────
-function MasterCalendar({ allShows, artists, crew, selectedArtists, onOpenShow }) {
-  const [month, setMonth]   = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1);
+// ── Master Calendar ────────────────────────────────────────────────────────────
+function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
+  const [month, setMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const [popover, setPopover] = useState(null); // { show }
+  const [popover, setPopover] = useState(null);
 
-  const today  = todayStr();
-  const year   = month.getFullYear();
-  const m      = month.getMonth();
+  const today = todayStr();
+  const year  = month.getFullYear();
+  const m     = month.getMonth();
 
   const filtered = selectedArtists.length === 0
     ? allShows
     : allShows.filter((s) => selectedArtists.includes(s.artistId));
 
-  // Build grid cells
-  const firstDay = new Date(year, m, 1);
-  const lastDay  = new Date(year, m + 1, 0);
-  const startPad = firstDay.getDay(); // 0=Sun
+  // Week starts Monday
+  const firstDay   = new Date(year, m, 1);
+  const lastDay    = new Date(year, m + 1, 0);
+  const rawStart   = firstDay.getDay();             // 0=Sun
+  const startPad   = rawStart === 0 ? 6 : rawStart - 1; // Mon=0 … Sun=6
   const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
 
   const cells = Array.from({ length: totalCells }, (_, i) => {
     const dayOffset = i - startPad;
-    const date = new Date(year, m, 1 + dayOffset);
-    const dateStr = date.toISOString().split('T')[0];
+    const date      = new Date(year, m, 1 + dayOffset);
+    const dateStr   = date.toISOString().split('T')[0];
     const isCurrentMonth = date.getMonth() === m;
-    const isToday = dateStr === today;
+    const isToday        = dateStr === today;
     const shows = filtered
       .filter((s) => toDateStr(s.date) === dateStr && !s.archived)
-      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      .sort((a, b) => getShowTime(a).localeCompare(getShowTime(b)));
     return { date, dateStr, isCurrentMonth, isToday, shows };
   });
 
-  const monthLabel = month.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthName = month.toLocaleString('default', { month: 'long' });
 
   const prevMonth = () => setMonth(new Date(year, m - 1, 1));
   const nextMonth = () => setMonth(new Date(year, m + 1, 1));
-  const goToday   = () => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const goToday   = () => {
+    const n = new Date();
+    setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
+  };
 
   return (
     <div className="mcal">
       <div className="mcal-topbar">
-        <h2 className="mcal-title">Master Calendar</h2>
+        <div className="mcal-title-group">
+          <span className="mcal-month-name">{monthName}</span>
+          <span className="mcal-year">{year}</span>
+        </div>
         <div className="mcal-nav">
           <button className="mcal-nav-btn" onClick={prevMonth} aria-label="Previous month">‹</button>
-          <button className="mcal-month-label" onClick={goToday}>{monthLabel}</button>
+          <button className="mcal-today-btn" onClick={goToday}>Today</button>
           <button className="mcal-nav-btn" onClick={nextMonth} aria-label="Next month">›</button>
         </div>
         <div className="mcal-view-tabs">
-          <button className="mcal-view-tab active">Month</button>
+          <button className="mcal-view-tab mcal-view-tab--active">Month</button>
           <button className="mcal-view-tab">Week</button>
         </div>
       </div>
 
-      {/* Day headers */}
       <div className="mcal-grid">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
           <div key={d} className="mcal-day-hdr">{d}</div>
         ))}
 
@@ -197,8 +220,8 @@ function MasterCalendar({ allShows, artists, crew, selectedArtists, onOpenShow }
             key={dateStr}
             className={[
               'mcal-cell',
-              isCurrentMonth ? '' : 'mcal-cell--out',
-              isToday ? 'mcal-cell--today' : '',
+              !isCurrentMonth ? 'mcal-cell--out'   : '',
+              isToday         ? 'mcal-cell--today'  : '',
             ].filter(Boolean).join(' ')}
           >
             <span className="mcal-day-num">{date.getDate()}</span>
@@ -221,7 +244,6 @@ function MasterCalendar({ allShows, artists, crew, selectedArtists, onOpenShow }
       {popover && (
         <QuickViewPopover
           show={popover.show}
-          crew={crew}
           artists={artists}
           onClose={() => setPopover(null)}
           onOpenShow={onOpenShow}
@@ -231,7 +253,7 @@ function MasterCalendar({ allShows, artists, crew, selectedArtists, onOpenShow }
   );
 }
 
-// ── Up Next ───────────────────────────────────────────────────────────────────
+// ── Up Next ────────────────────────────────────────────────────────────────────
 function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
   const today = todayStr();
   const rows = allShows
@@ -244,7 +266,7 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
     <div className="upnext">
       <div className="upnext-header">
         <h2 className="upnext-title">Up Next</h2>
-        <button className="upnext-more-btn">Next →</button>
+        <span className="upnext-badge">Next 7</span>
       </div>
 
       {rows.length === 0 && (
@@ -255,10 +277,9 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
         const artist = artists.find((a) => a.id === show.artistId);
         const date   = new Date(show.date + 'T12:00:00');
         const day    = date.getDate();
-        const mon    = date.toLocaleString('default', { month: 'short' });
-        const wday   = date.toLocaleString('default', { weekday: 'short' });
-        const missing = isMissingCrew(show);
-        const noInv   = isNoInvoice(show);
+        const mon    = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+        const wday   = date.toLocaleString('default', { weekday: 'short' }).toUpperCase();
+        const time   = getShowTime(show);
 
         return (
           <div
@@ -276,20 +297,17 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
             <div className="upnext-info">
               {artist && (
                 <span className="upnext-artist" style={{ color: artist.color }}>
+                  <span className="upnext-artist-dot" style={{ background: artist.color }} />
                   {artist.name}
                 </span>
               )}
               <span className="upnext-name" dir="auto">{show.name}</span>
-              {show.venue && (
-                <span className="upnext-venue" dir="auto">{show.venue}</span>
-              )}
+              <span className="upnext-meta">
+                {time && <span>{time}</span>}
+                {time && show.venue && <span className="upnext-sep"> · </span>}
+                {show.venue && <span dir="auto">{show.venue}</span>}
+              </span>
             </div>
-            {(missing || noInv) && (
-              <div className="upnext-flags">
-                {missing && <span className="flag flag-danger">Missing crew</span>}
-                {noInv   && <span className="flag flag-warn">No invoice</span>}
-              </div>
-            )}
           </div>
         );
       })}
@@ -297,8 +315,8 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
   );
 }
 
-// ── Task Inbox — My Tasks only ────────────────────────────────────────────────
-function TaskInbox({ tasks, allShows, artists, onToggleTask }) {
+// ── My Tasks ───────────────────────────────────────────────────────────────────
+function MyTasks({ tasks, allShows, artists, onToggleTask }) {
   const today = todayStr();
 
   const myTasks = [...tasks]
@@ -311,79 +329,77 @@ function TaskInbox({ tasks, allShows, artists, onToggleTask }) {
     });
 
   return (
-    <div className="tinbox">
-      <h2 className="tinbox-title">Task Inbox</h2>
-      <div className="tinbox-col">
-        <div className="tinbox-col-hdr">
-          <span>My Tasks</span>
-          <span className="tinbox-count">{myTasks.length}</span>
+    <div className="mytasks">
+      <div className="mytasks-header">
+        <div className="mytasks-header-text">
+          <h2 className="mytasks-title">My Tasks</h2>
+          <p className="mytasks-sub">Assigned to you · across all productions</p>
         </div>
+        <span className="mytasks-count-badge">{myTasks.length}</span>
+      </div>
 
-        {myTasks.length === 0 && (
-          <p className="tinbox-empty">All clear.</p>
-        )}
+      <div className="mytasks-card">
+        {myTasks.length === 0 ? (
+          <p className="mytasks-empty">All clear.</p>
+        ) : (
+          <div className="mytasks-grid">
+            {myTasks.map((task) => {
+              const show   = task.showId ? allShows.find((s) => s.id === task.showId) : null;
+              const artist = show ? artists.find((a) => a.id === show?.artistId) : null;
+              const overdue = task.dueDate && task.dueDate < today;
 
-        {myTasks.map((task) => {
-          const show   = task.showId ? allShows.find((s) => s.id === task.showId) : null;
-          const artist = show ? artists.find((a) => a.id === show?.artistId) : null;
-          const overdue = task.dueDate && task.dueDate < today;
-
-          return (
-            <div key={task.id} className={`tinbox-row ${overdue ? 'tinbox-row--overdue' : ''}`}>
-              <input
-                type="checkbox"
-                className="tinbox-check"
-                checked={task.completed}
-                onChange={() => onToggleTask(task.id)}
-              />
-              <div className="tinbox-content">
-                <span className="tinbox-text" dir="auto">{task.text}</span>
-                <div className="tinbox-meta">
-                  {artist && (
-                    <span className="tinbox-artist" style={{ color: artist.color }}>
-                      {artist.name}
+              return (
+                <div key={task.id} className={`mytask-row${overdue ? ' mytask-row--overdue' : ''}`}>
+                  <button
+                    className={`mytask-check${task.completed ? ' mytask-check--done' : ''}`}
+                    onClick={() => onToggleTask(task.id, !task.completed)}
+                    aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                  >
+                    {task.completed && (
+                      <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                        <path d="M1 4.5L3.8 7.5L10 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                  <div className="mytask-content">
+                    <span className={`mytask-text${task.completed ? ' mytask-text--done' : ''}`} dir="auto">
+                      {task.text}
                     </span>
-                  )}
-                  {show && !artist && (
-                    <span className="tinbox-artist">{show.name}</span>
-                  )}
-                  {task.dueDate && (
-                    <span className={`tinbox-due ${overdue ? 'tinbox-due--overdue' : ''}`}>
-                      Due {task.dueDate}
-                    </span>
-                  )}
+                    <div className="mytask-meta">
+                      {artist && (
+                        <>
+                          <span className="mytask-artist-dot" style={{ background: artist.color }} />
+                          <span className="mytask-artist" style={{ color: artist.color }}>{artist.name}</span>
+                          {show && <span className="mytask-sep">·</span>}
+                        </>
+                      )}
+                      {show && (
+                        <span className="mytask-show" dir="auto">{show.name}</span>
+                      )}
+                      {task.dueDate && (
+                        <span className={`mytask-due${overdue ? ' mytask-due--overdue' : ''}`}>
+                          Due {task.dueDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ value, label, accent, warn }) {
-  return (
-    <div className={[
-      'dash-stat',
-      accent ? 'dash-stat--accent' : '',
-      warn   ? 'dash-stat--warn'   : '',
-    ].filter(Boolean).join(' ')}>
-      <span className="dash-stat-value">{value}</span>
-      <span className="dash-stat-label">{label}</span>
-    </div>
-  );
-}
-
-// ── Dashboard (root) ──────────────────────────────────────────────────────────
+// ── Dashboard root ─────────────────────────────────────────────────────────────
 export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask }) {
   const artists = withColor(rawArtists);
-  const [allShows, setAllShows]   = useState([]);
-  const [loadingShows, setLoading] = useState(true);
-  const [selectedArtists, setSelected] = useState([]); // [] = All
+  const [allShows, setAllShows]     = useState([]);
+  const [loadingShows, setLoading]  = useState(true);
+  const [selectedArtists, setSelected] = useState([]);
 
-  // Fetch all artists' shows in parallel
   useEffect(() => {
     if (!artists.length) { setAllShows([]); setLoading(false); return; }
     setLoading(true);
@@ -406,9 +422,8 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
     });
   }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const today  = todayStr();
-  const upcoming = allShows.filter((s) => !s.archived && toDateStr(s.date) >= today);
-  const needAttn = upcoming.filter((s) => isMissingCrew(s) || isNoInvoice(s));
+  const today     = todayStr();
+  const upcoming  = allShows.filter((s) => !s.archived && toDateStr(s.date) >= today);
   const openTasks = tasks.filter((t) => !t.completed);
 
   const toggleArtist = useCallback((id) => {
@@ -417,55 +432,86 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
     );
   }, []);
 
+  // Sub-line date label
+  const now  = new Date();
+  const dateLabel = now.toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
   return (
     <div className="dashboard">
-      {/* Header row */}
-      <div className="dash-head">
-        <div>
-          <h1 className="dash-today">Today.</h1>
-          <p className="dash-sub">
-            {new Date().toLocaleDateString('en-GB', {
-              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            })}
-          </p>
+
+      {/* ── Hero ── */}
+      <div className="dash-hero">
+        <div className="dash-eyebrow">
+          <span className="dash-eyebrow-dot" />
+          GLOBAL VIEW · AGENCY PRODUCER
         </div>
-        <span className="dash-context-label">GLOBAL VIEW · AGENCY PRODUCER</span>
+        <h1 className="dash-title">
+          Today<span className="dash-title-period">.</span>
+        </h1>
+        <div className="dash-subline">
+          <span>{dateLabel}</span>
+          <span className="dash-subline-rule" aria-hidden="true" />
+          <span>{artists.length} active artist{artists.length !== 1 ? 's' : ''}</span>
+          <span className="dash-subline-rule" aria-hidden="true" />
+          <span>{upcoming.length} show{upcoming.length !== 1 ? 's' : ''} this month</span>
+        </div>
       </div>
 
-      {/* Stat cards */}
+      {/* ── Stats ── */}
       <div className="dash-stats">
-        <StatCard value={upcoming.length} label="Upcoming Shows" accent />
-        <StatCard value={artists.length}  label="Active Artists" />
-        <StatCard
-          value={needAttn.length}
-          label="Need Attention"
-          warn={needAttn.length > 0}
-        />
-        <StatCard value={openTasks.length} label="Open Tasks" />
+        <div className="dash-stat">
+          <span className="dash-stat-value">{upcoming.length}</span>
+          <span className="dash-stat-label">
+            <span className="dash-stat-dot" />
+            Total Upcoming Shows
+          </span>
+        </div>
+        <div className="dash-stat">
+          <span className="dash-stat-value">{artists.length}</span>
+          <span className="dash-stat-label">
+            <span className="dash-stat-dot" />
+            Active Artists
+          </span>
+        </div>
+        <div className="dash-stat">
+          <span className="dash-stat-value">{openTasks.length}</span>
+          <span className="dash-stat-label">
+            <span className="dash-stat-dot" />
+            Open Tasks
+          </span>
+        </div>
       </div>
 
-      {/* Artist filter chips — shared by calendar + up-next */}
+      {/* ── Artist filter chips ── */}
       <div className="dash-filters">
         <button
-          className={`artist-chip ${selectedArtists.length === 0 ? 'artist-chip--active' : ''}`}
+          className={`artist-chip artist-chip--all${selectedArtists.length === 0 ? ' artist-chip--active' : ''}`}
           onClick={() => setSelected([])}
         >
           All artists
         </button>
-        {artists.map((a) => (
-          <button
-            key={a.id}
-            className={`artist-chip ${selectedArtists.includes(a.id) ? 'artist-chip--active' : ''}`}
-            style={{ '--chip-color': a.color, '--chip-soft': a.soft }}
-            onClick={() => toggleArtist(a.id)}
-          >
-            <span className="artist-chip-dot" />
-            {a.name}
-          </button>
-        ))}
+        {artists.map((a) => {
+          const count = allShows.filter(
+            (s) => !s.archived && s.artistId === a.id && toDateStr(s.date) >= today
+          ).length;
+          return (
+            <button
+              key={a.id}
+              className={`artist-chip${selectedArtists.includes(a.id) ? ' artist-chip--active' : ''}`}
+              style={{ '--chip-color': a.color, '--chip-soft': a.soft }}
+              onClick={() => toggleArtist(a.id)}
+            >
+              <span className="artist-chip-dot" />
+              {a.name}
+              <span className="artist-chip-count">{count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Body: calendar + up-next side by side */}
+      {/* ── Body ── */}
       {loadingShows ? (
         <div className="dash-loading">
           <div className="spinner" />
@@ -477,7 +523,6 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
             <MasterCalendar
               allShows={allShows}
               artists={artists}
-              crew={crew}
               selectedArtists={selectedArtists}
               onOpenShow={onOpenShow}
             />
@@ -489,7 +534,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
             />
           </div>
 
-          <TaskInbox
+          <MyTasks
             tasks={tasks}
             allShows={allShows}
             artists={artists}
