@@ -947,6 +947,26 @@ app.post('/api/admin/settings', (req, res) => {
   res.json({ ok: true, settings: updated });
 });
 
+// ── Admin: push a fresh Google token to the DATA_DIR volume ─────────────────
+// Lets the admin refresh Railway's Google credentials without a full re-deploy.
+// The token is written to DATA_DIR/gmail-token.json which getGoogleAuth() checks first.
+app.post('/api/admin/google-token', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const token = req.body;
+  if (!token || !token.access_token || !token.refresh_token) {
+    return res.status(400).json({ error: 'Body must be a Google token JSON with access_token and refresh_token' });
+  }
+  try {
+    const dest = path.join(DATA_DIR, 'gmail-token.json');
+    await fsp.writeFile(dest, JSON.stringify(token, null, 2), 'utf8');
+    console.log('[admin] Google token updated at', dest);
+    res.json({ ok: true, written: dest });
+  } catch (err) {
+    console.error('[admin] Failed to write Google token:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Admin: invitation management ─────────────────────────────────────────────
 app.get('/api/invitations', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });

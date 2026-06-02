@@ -12,7 +12,7 @@ const { google } = require('googleapis');
 
 const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { htmlToPdfBuffer } = require('../pdf');
-const { dataPath, cacheKey } = require('../utils/userData');
+const { dataPath, cacheKey, DATA_DIR } = require('../utils/userData');
 
 const execFileP = promisify(execFile);
 
@@ -33,13 +33,35 @@ const readFieldTemplates = (uid) => readJsonCached(cacheKey(uid, 'fieldTemplates
 const readTemplates      = (uid) => readJsonCached(cacheKey(uid, 'templates'),      dataPath(uid, 'templates.json'),       {});
 
 // ── Google auth (async-safe) ───────────────────────────────────────────────
+// Priority order for credentials / tokens:
+//   1. DATA_DIR volume file — allows live token updates on Railway without a re-deploy
+//   2. GMAIL_* env vars     — Railway's static env (may be stale after token expiry)
+//   3. server/data/ files   — local dev fallback
 async function getGoogleAuth() {
-  const creds  = process.env.GMAIL_CREDENTIALS
-    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
-    : JSON.parse(await fsp.readFile(CREDENTIALS_PATH, 'utf8'));
-  const tokens = process.env.GMAIL_TOKEN
-    ? JSON.parse(process.env.GMAIL_TOKEN)
-    : JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
+  const volumeCredsPath  = path.join(DATA_DIR, 'gmail-credentials.json');
+  const volumeTokenPath  = path.join(DATA_DIR, 'gmail-token.json');
+
+  let creds, tokens;
+
+  // Credentials: volume → env var → hardcoded path
+  if (fs.existsSync(volumeCredsPath)) {
+    creds = JSON.parse(await fsp.readFile(volumeCredsPath, 'utf8'));
+  } else if (process.env.GMAIL_CREDENTIALS) {
+    creds = JSON.parse(process.env.GMAIL_CREDENTIALS);
+  } else {
+    creds = JSON.parse(await fsp.readFile(CREDENTIALS_PATH, 'utf8'));
+  }
+
+  // Token: volume → env var → hardcoded path
+  // Volume token is preferred so Railway deployments can refresh without a re-deploy
+  if (fs.existsSync(volumeTokenPath)) {
+    tokens = JSON.parse(await fsp.readFile(volumeTokenPath, 'utf8'));
+  } else if (process.env.GMAIL_TOKEN) {
+    tokens = JSON.parse(process.env.GMAIL_TOKEN);
+  } else {
+    tokens = JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
+  }
+
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
   const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
   client.setCredentials(tokens);
