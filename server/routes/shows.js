@@ -424,7 +424,24 @@ router.put('/:id', async (req, res, next) => {
     const logFields = ['transportMode','transportDriver','transportTime','foodContactName','foodContactPhone','foodContactTime','soundCoordinated','lightingCoordinated','soundRentalNeeds','lightingRentalNeeds'];
     const changed = logFields.filter(f => req.body[f] !== undefined && req.body[f] !== shows[idx][f]);
     if (changed.length) console.log('[PUT show]', shows[idx].name, '— logistics changed:', changed.map(f => `${f}=${JSON.stringify(req.body[f])}`).join(', '));
-    shows[idx] = { ...shows[idx], ...req.body };
+
+    // Guard against the "slim show" data-loss pattern:
+    // GET /api/shows returns slimShow() which replaces base64 customField data with
+    // { data: null, _hasData: true }. If the client sends that back (e.g. from a quick
+    // toggle action on a ShowCard), a naive shallow merge would permanently null out the
+    // real file data. Restore it from the server record instead.
+    const incoming = { ...req.body };
+    if (incoming.customFields && shows[idx].customFields) {
+      const restored = { ...incoming.customFields };
+      for (const [k, v] of Object.entries(restored)) {
+        if (v && v._hasData && !v.data && shows[idx].customFields[k]?.data) {
+          restored[k] = shows[idx].customFields[k];
+        }
+      }
+      incoming.customFields = restored;
+    }
+
+    shows[idx] = { ...shows[idx], ...incoming };
     await writeShows(req.userId, shows);
     res.json(shows[idx]);
   } catch (err) { next(err); }
