@@ -65,6 +65,17 @@ async function getGoogleAuth() {
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
   const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
   client.setCredentials(tokens);
+
+  // When googleapis auto-refreshes the access_token, persist the new token to the
+  // DATA_DIR volume so the next cold start also works (avoids re-running push-google-token.js).
+  client.on('tokens', (newTokens) => {
+    const dest = path.join(DATA_DIR, 'gmail-token.json');
+    const merged = { ...tokens, ...newTokens };
+    fsp.writeFile(dest, JSON.stringify(merged, null, 2), 'utf8')
+      .then(() => console.log('[auth] Google token auto-refreshed and saved to volume'))
+      .catch((e) => console.warn('[auth] Could not save refreshed token:', e.message));
+  });
+
   return client;
 }
 
