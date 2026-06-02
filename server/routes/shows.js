@@ -68,13 +68,31 @@ async function getGoogleAuth() {
 
   // When googleapis auto-refreshes the access_token, persist the new token to the
   // DATA_DIR volume so the next cold start also works (avoids re-running push-google-token.js).
-  client.on('tokens', (newTokens) => {
+  const persistTokens = (newTokens) => {
     const dest = path.join(DATA_DIR, 'gmail-token.json');
     const merged = { ...tokens, ...newTokens };
     fsp.writeFile(dest, JSON.stringify(merged, null, 2), 'utf8')
       .then(() => console.log('[auth] Google token auto-refreshed and saved to volume'))
       .catch((e) => console.warn('[auth] Could not save refreshed token:', e.message));
-  });
+  };
+  client.on('tokens', persistTokens);
+
+  // On Railway (Node 20), OAuth2Client credential injection can silently fail to
+  // include the Authorization header. Pre-fetching the access_token forces the auth
+  // client to fully resolve its credentials before any Drive/Docs API call.
+  try {
+    const { token: freshToken } = await client.getAccessToken();
+    if (freshToken && freshToken !== tokens.access_token) {
+      // Token was refreshed — update the client with the fresh credentials
+      const refreshed = { ...tokens, access_token: freshToken };
+      client.setCredentials(refreshed);
+      console.log('[auth] Token pre-fetched and refreshed for this request');
+    } else {
+      console.log('[auth] Token pre-fetched OK (no refresh needed)');
+    }
+  } catch (e) {
+    console.warn('[auth] Pre-fetch getAccessToken failed:', e.message, '— proceeding with stored token');
+  }
 
   return client;
 }

@@ -986,6 +986,17 @@ app.get('/api/admin/google-status', async (req, res) => {
     const client = new googleLib.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
     client.setCredentials(tokens);
 
+    // Pre-fetch to force credential resolution (fixes Node 20 auth injection)
+    try {
+      const { token: freshToken } = await client.getAccessToken();
+      if (freshToken) {
+        client.setCredentials({ ...tokens, access_token: freshToken });
+        result.tokenInfo.prefetch = 'ok';
+      }
+    } catch (e) {
+      result.tokenInfo.prefetch_error = e.message;
+    }
+
     // Test: get user info
     const oauth2 = googleLib.oauth2({ version: 'v2', auth: client });
     const uinfo = await oauth2.userinfo.get();
