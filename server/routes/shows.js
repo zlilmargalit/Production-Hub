@@ -206,50 +206,124 @@ async function getOrCreateHapakoFolder(drive) {
   return created.data.id;
 }
 
-// Create a coordination-sheet Google Doc by copying the template, replacing
-// placeholders, and inserting the stage layout image. (Unchanged behaviour
-// from the previous version — just `await getGoogleAuth()` now.)
+// Create a coordination-sheet Google Doc from scratch using the Docs API,
+// building content that mirrors the coordination-sheet template structure
+// and inserting the stage layout image when provided.
 async function createBriefDoc(payload, imageUrl) {
-  const auth = await getGoogleAuth();
+  const auth  = await getGoogleAuth();
   const drive = google.drive({ version: 'v3', auth });
   const docs  = google.docs({ version: 'v1', auth });
 
   const title = `דף תיאום ${payload.eventName} ${payload.date}`;
-  const copyRes = await drive.files.copy({
-    fileId: TEMPLATE_DOC_ID,
-    requestBody: { name: title },
+
+  // ── 1. Create a blank document ────────────────────────────────────────────
+  const createRes = await docs.documents.create({ requestBody: { title } });
+  const docId = createRes.data.documentId;
+  console.log(`[brief] Created doc ${docId}`);
+
+  // ── 2. Build lines array ──────────────────────────────────────────────────
+  // { text: string, isHeader: boolean }
+  // Headers get bold + underline; every paragraph gets RTL direction.
+  const lines = [];
+  const addHeader = (text)     => lines.push({ text, isHeader: true });
+  const addLine   = (text)     => lines.push({ text, isHeader: false });
+  const addBlank  = ()         => lines.push({ text: '', isHeader: false });
+  const addIf     = (val, pfx) => { if (val) addLine(pfx ? `${pfx}: ${val}` : String(val)); };
+
+  // מופע
+  addHeader('מופע');
+  addLine([payload.eventName, payload.date].filter(Boolean).join('  '));
+  addIf(payload.venue,   'מקום');
+  addIf(payload.address, 'כתובת');
+  addBlank();
+
+  // על הבמה:
+  addHeader('על הבמה:');
+  addIf(payload.musicians);
+  addBlank();
+
+  // צוות טכני:
+  addHeader('צוות טכני:');
+  addIf(payload.technicalCrew);
+  addIf(payload.sound,    'סאונד');
+  addIf(payload.lighting, 'תאורה');
+  addIf(payload.backline, 'בקליין');
+  addBlank();
+
+  // הסעה:
+  addHeader('הסעה:');
+  addIf(payload.transportation);
+  addIf(payload.food, 'אוכל');
+  addBlank();
+
+  // לו״ז במקום:
+  addHeader('לו״ז במקום:');
+  addIf(payload.schedule);
+  addBlank();
+
+  // אנשי קשר:
+  addHeader('אנשי קשר:');
+  addIf(payload.contacts);
+  addBlank();
+
+  // פרטים נוספים: — anything without a dedicated section lands here
+  addHeader('פרטים נוספים:');
+  addIf(payload.additionalDetails);
+  addIf(payload.parking, 'חניה');
+  addIf(payload.notes);
+  if (payload.checkItems)   addLine(payload.checkItems);
+  if (payload.customFields) addLine(payload.customFields);
+
+  // ── 3. Assemble text + record header char ranges ──────────────────────────
+  // After docs.documents.create(), the body has a single \n at body index 1.
+  // insertText at index 1 places our text at body indices 1…fullText.length,
+  // where fullText[i] maps to body index (i + 1).
+  const headerRanges = [];
+  let charOffset = 0;
+
+  for (const line of lines) {
+    const len = line.text.length;
+    if (line.isHeader && len > 0) {
+      headerRanges.push({
+        startIndex: charOffset + 1,       // inclusive body index of first char
+        endIndex:   charOffset + len + 1, // exclusive (stops before the \n)
+      });
+    }
+    charOffset += len + 1; // +1 for the \n terminating this line
+  }
+
+  const fullText = lines.map((l) => l.text + '\n').join('');
+
+  // ── 4. Insert all text in one call ────────────────────────────────────────
+  await docs.documents.batchUpdate({
+    documentId: docId,
+    requestBody: { requests: [{ insertText: { location: { index: 1 }, text: fullText } }] },
   });
-  const docId = copyRes.data.id;
 
-  const replacements = {
-    '{{DATE}}':               payload.date             || '',
-    '{{VENUE}}':              payload.venue            || '',
-    '{{ADDRESS}}':            payload.address          || '',
-    '{{EVENT_NAME}}':         payload.eventName        || '',
-    '{{CREW_LIST}}':          payload.technicalCrew    || '',
-    '{{PARKING}}':            payload.parking          || '',
-    '{{SCHEDULE}}':           payload.schedule         || '',
-    '{{CONTACTS}}':           payload.contacts         || '',
-    '{{ADDITIONAL_DETAILS}}': payload.additionalDetails|| '',
-    '{{checkItems}}':         payload.checkItems       || '',
-    '{{customFields}}':       payload.customFields     || '',
-    '{{musicians}}':          payload.musicians        || '',
+  // ── 5. Apply RTL + bold/underline headers ─────────────────────────────────
+  const styleRequests = [];
 
-    '{{food}}':               payload.food             || '',
-    '{{notes}}':              payload.notes            || '',
-    '{{transportation}}':     payload.transportation   || '',
-    '{{sound}}':              payload.sound            || '',
-    '{{lighting}}':           payload.lighting         || '',
-    '{{backline}}':           payload.backline         || '',
-    // Strip the colon from the "פרטים נוספים:" heading if the template has one
-    'פרטים נוספים:':          'פרטים נוספים',
-  };
+  // RTL direction for every inserted paragraph
+  styleRequests.push({
+    updateParagraphStyle: {
+      range:          { startIndex: 1, endIndex: fullText.length + 1 },
+      paragraphStyle: { direction: 'RIGHT_TO_LEFT' },
+      fields:         'direction',
+    },
+  });
 
-  const replaceRequests = Object.entries(replacements).map(([find, replace]) => ({
-    replaceAllText: { containsText: { text: find, matchCase: true }, replaceText: replace },
-  }));
+  // Bold + underline for each section header
+  for (const { startIndex, endIndex } of headerRanges) {
+    styleRequests.push({
+      updateTextStyle: {
+        range:     { startIndex, endIndex },
+        textStyle: { bold: true, underline: true },
+        fields:    'bold,underline',
+      },
+    });
+  }
 
-  await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: replaceRequests } });
+  await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: styleRequests } });
 
   if (imageUrl) {
     // ── Step 1: trim trailing blank paragraphs ────────────────────────────────
@@ -680,13 +754,15 @@ router.post('/:id/brief', async (req, res) => {
 
     const [crew, fieldTemplates] = await Promise.all([readCrew(req.userId), readFieldTemplates(req.userId)]);
 
-    const hasEnvCreds = !!(process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN);
+    const hasEnvCreds    = !!(process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN);
+    const hasVolumeCreds = fs.existsSync(path.join(DATA_DIR, 'gmail-credentials.json')) &&
+                           fs.existsSync(path.join(DATA_DIR, 'gmail-token.json'));
     let hasFileCreds = false;
-    if (!hasEnvCreds) {
+    if (!hasEnvCreds && !hasVolumeCreds) {
       try { await fsp.access(CREDENTIALS_PATH); await fsp.access(TOKEN_PATH); hasFileCreds = true; }
       catch { /* no file creds */ }
     }
-    if (!hasEnvCreds && !hasFileCreds) {
+    if (!hasEnvCreds && !hasVolumeCreds && !hasFileCreds) {
       return res.status(503).json({ error: 'Google Drive credentials not configured.' });
     }
 
