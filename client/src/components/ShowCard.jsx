@@ -25,8 +25,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     .filter((m) => m.role === 'Musicians')
     .map((m) => m.name)
     .join(' | ');
+  const TECH_ROLES = ['סאונד', 'תאורה', 'הפקה'];
   const techCrewDisplay = assignedCrew.length > 0
-    ? assignedCrew.filter((m) => m.role !== 'Musicians').map((m) => `${m.role} – ${m.name}`).join(' | ')
+    ? assignedCrew.filter((m) => TECH_ROLES.includes(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ')
     : show.technicalCrew;
 
   const customDefs = (show.eventType && fieldTemplates?.[show.eventType]) || [];

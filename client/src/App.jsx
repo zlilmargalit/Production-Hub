@@ -589,14 +589,6 @@ function App({ demoMode = false }) {
               )}
             </>
           )}
-          <button
-            className="btn-theme-toggle"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? '☀' : '◑'}
-          </button>
           {/* Notification bell — join requests + assigned tasks */}
           {!demoMode && userRole !== 'admin' && (
             <NotificationBell
@@ -614,6 +606,14 @@ function App({ demoMode = false }) {
               onGoHome={() => setPage('home')}
             />
           )}
+          <button
+            className="btn-theme-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? '☀' : '◑'}
+          </button>
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
       </header>

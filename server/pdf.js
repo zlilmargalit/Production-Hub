@@ -74,7 +74,7 @@ async function htmlToPdfBuffer(html, options = {}) {
       // 'networkidle0' is more reliable than 'load' for self-contained HTML
       // that embeds images as data-URLs — no external network requests means
       // the idle condition is met immediately after the DOM is painted.
-      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
+      await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
       const buffer = await page.pdf({
         format: options.format || 'A4',
         printBackground: true,

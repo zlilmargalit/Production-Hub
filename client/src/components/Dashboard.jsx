@@ -445,7 +445,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
       <div className="dash-hero">
         <div className="dash-eyebrow">
           <span className="dash-eyebrow-dot" />
-          GLOBAL VIEW · AGENCY PRODUCER
+          PRODUCTION HUB · GLOBAL VIEW
         </div>
         <h1 className="dash-title">
           Today<span className="dash-title-period">.</span>

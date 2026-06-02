@@ -23,7 +23,8 @@ const TOKEN_PATH       = path.join(__dirname, '../data/gmail-token.json');
 const PDF_DIR = process.env.PDF_DIR !== undefined
   ? process.env.PDF_DIR
   : '/Users/zlilmargalit/Desktop/Production/דפי תיאום';
-const TEMPLATE_DOC_ID = process.env.TEMPLATE_DOC_ID || '1ZBXxhG14W91wBKdvW96Qu8-kQmIX2ZpNY58psVsqhDs';
+const TEMPLATE_DOC_ID   = process.env.TEMPLATE_DOC_ID || '1ZBXxhG14W91wBKdvW96Qu8-kQmIX2ZpNY58psVsqhDs';
+const TEMPLATE_DOCX_PATH = path.join(__dirname, '../data/brief-template.docx');
 
 // ── Per-user cached file readers ────────────────────────────────────────────
 const readShows  = (uid) => readJsonCached(cacheKey(uid, 'shows'),          dataPath(uid, 'shows.json'),           []);
@@ -206,356 +207,76 @@ async function getOrCreateHapakoFolder(drive) {
   return created.data.id;
 }
 
-// Create a coordination-sheet Google Doc from scratch using the Docs API,
-// building content that mirrors the coordination-sheet template structure
-// and inserting the stage layout image when provided.
-async function createBriefDoc(payload, imageUrl) {
+// Create a coordination-sheet Google Doc by filling the DOCX template and
+// uploading it to Drive (Drive auto-converts DOCX → Google Doc on upload).
+async function createBriefDoc(payload) {
+  const AdmZip = require('adm-zip');
   const auth  = await getGoogleAuth();
   const drive = google.drive({ version: 'v3', auth });
-  const docs  = google.docs({ version: 'v1', auth });
 
+  // ── 1. Load template + fill placeholders ─────────────────────────────────
+  const zip = new AdmZip(TEMPLATE_DOCX_PATH);
+  let docXml = zip.readAsText('word/document.xml');
+
+  // XML-encode text; split multi-line values into proper OOXML line-break runs
+  const toDocx = (text) => {
+    if (!text) return '';
+    const x = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lines = String(text).split('\n');
+    if (lines.length === 1) return x(text);
+    return lines.map((l, i) => i === 0
+      ? x(l)
+      : `</w:t></w:r><w:r><w:br/></w:r><w:r><w:t xml:space="preserve">${x(l)}`
+    ).join('');
+  };
+
+  const map = {
+    '{{EVENT_NAME}}':         toDocx(payload.eventName),
+    '{{DATE}}':               toDocx(payload.date),
+    '{{VENUE}}':              toDocx(payload.venue),
+    '{{ADDRESS}}':            toDocx(payload.address),
+    '{{TECHNICA_CREW}}':      toDocx(payload.technicalCrew),
+    '{{TRANSPORTATION}}':     toDocx(payload.transportation),
+    '{{SCHEDULE}}':           toDocx(payload.schedule),
+    '{{CONTACTS}}':           toDocx(payload.contacts),
+    '{{ADDITIONAL_DETAILS}}': toDocx(payload.additionalDetails),
+  };
+  for (const [ph, val] of Object.entries(map)) {
+    docXml = docXml.split(ph).join(val);
+  }
+
+  zip.updateFile('word/document.xml', Buffer.from(docXml, 'utf8'));
+  const docxBuffer = zip.toBuffer();
+
+  // ── 2. Upload DOCX → Drive auto-converts to Google Doc ───────────────────
   const title = `דף תיאום ${payload.eventName} ${payload.date}`;
 
-  // ── 1. Create a blank document ────────────────────────────────────────────
-  const createRes = await docs.documents.create({ requestBody: { title } });
-  const docId = createRes.data.documentId;
-  console.log(`[brief] Created doc ${docId}`);
-
-  // ── 2. Build lines array ──────────────────────────────────────────────────
-  // { text: string, isHeader: boolean }
-  // Headers get bold + underline; every paragraph gets RTL direction.
-  const lines = [];
-  const addHeader = (text)     => lines.push({ text, isHeader: true });
-  const addLine   = (text)     => lines.push({ text, isHeader: false });
-  const addBlank  = ()         => lines.push({ text: '', isHeader: false });
-  const addIf     = (val, pfx) => { if (val) addLine(pfx ? `${pfx}: ${val}` : String(val)); };
-
-  // מופע
-  addHeader('מופע');
-  addLine([payload.eventName, payload.date].filter(Boolean).join('  '));
-  addIf(payload.venue,   'מקום');
-  addIf(payload.address, 'כתובת');
-  addBlank();
-
-  // על הבמה:
-  addHeader('על הבמה:');
-  addIf(payload.musicians);
-  addBlank();
-
-  // צוות טכני:
-  addHeader('צוות טכני:');
-  addIf(payload.technicalCrew);
-  addIf(payload.sound,    'סאונד');
-  addIf(payload.lighting, 'תאורה');
-  addIf(payload.backline, 'בקליין');
-  addBlank();
-
-  // הסעה:
-  addHeader('הסעה:');
-  addIf(payload.transportation);
-  addIf(payload.food, 'אוכל');
-  addBlank();
-
-  // לו״ז במקום:
-  addHeader('לו״ז במקום:');
-  addIf(payload.schedule);
-  addBlank();
-
-  // אנשי קשר:
-  addHeader('אנשי קשר:');
-  addIf(payload.contacts);
-  addBlank();
-
-  // פרטים נוספים: — anything without a dedicated section lands here
-  addHeader('פרטים נוספים:');
-  addIf(payload.additionalDetails);
-  addIf(payload.parking, 'חניה');
-  addIf(payload.notes);
-  if (payload.checkItems)   addLine(payload.checkItems);
-  if (payload.customFields) addLine(payload.customFields);
-
-  // ── 3. Assemble text + record header char ranges ──────────────────────────
-  // After docs.documents.create(), the body has a single \n at body index 1.
-  // insertText at index 1 places our text at body indices 1…fullText.length,
-  // where fullText[i] maps to body index (i + 1).
-  const headerRanges = [];
-  let charOffset = 0;
-
-  for (const line of lines) {
-    const len = line.text.length;
-    if (line.isHeader && len > 0) {
-      headerRanges.push({
-        startIndex: charOffset + 1,       // inclusive body index of first char
-        endIndex:   charOffset + len + 1, // exclusive (stops before the \n)
-      });
-    }
-    charOffset += len + 1; // +1 for the \n terminating this line
-  }
-
-  const fullText = lines.map((l) => l.text + '\n').join('');
-
-  // ── 4. Insert all text in one call ────────────────────────────────────────
-  await docs.documents.batchUpdate({
-    documentId: docId,
-    requestBody: { requests: [{ insertText: { location: { index: 1 }, text: fullText } }] },
-  });
-
-  // ── 5. Apply RTL + bold/underline headers ─────────────────────────────────
-  const styleRequests = [];
-
-  // RTL direction for every inserted paragraph
-  styleRequests.push({
-    updateParagraphStyle: {
-      range:          { startIndex: 1, endIndex: fullText.length + 1 },
-      paragraphStyle: { direction: 'RIGHT_TO_LEFT' },
-      fields:         'direction',
+  const uploadRes = await drive.files.create({
+    requestBody: {
+      name:     title,
+      mimeType: 'application/vnd.google-apps.document',
     },
+    media: {
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      body:     Readable.from(docxBuffer),
+    },
+    fields: 'id',
   });
+  const docId = uploadRes.data.id;
+  console.log(`[brief] Uploaded DOCX as Google Doc ${docId}`);
 
-  // Bold + underline for each section header
-  for (const { startIndex, endIndex } of headerRanges) {
-    styleRequests.push({
-      updateTextStyle: {
-        range:     { startIndex, endIndex },
-        textStyle: { bold: true, underline: true },
-        fields:    'bold,underline',
-      },
-    });
-  }
-
-  await docs.documents.batchUpdate({ documentId: docId, requestBody: { requests: styleRequests } });
-
-  if (imageUrl) {
-    // ── Step 1: trim trailing blank paragraphs ────────────────────────────────
-    try {
-      const preDoc = (await docs.documents.get({ documentId: docId })).data;
-      const bodyEls = preDoc.body?.content || [];
-      const trailingEmpties = [];
-      const lastParaIdx = [...bodyEls].reverse().findIndex(el => el.paragraph);
-      const skipEndIdx  = lastParaIdx >= 0 ? bodyEls.length - 1 - lastParaIdx : -1;
-      for (let i = bodyEls.length - 1; i >= 0; i--) {
-        const el = bodyEls[i];
-        if (!el.paragraph) break;
-        if (i === skipEndIdx) continue;
-        const hasContent = (el.paragraph.elements || []).some(e =>
-          e.inlineObjectElement || (e.textRun?.content || '').trim()
-        );
-        if (!hasContent) trailingEmpties.push({ startIndex: el.startIndex, endIndex: el.endIndex });
-        else break;
-      }
-      if (trailingEmpties.length > 0) {
-        trailingEmpties.sort((a, b) => b.startIndex - a.startIndex);
-        await docs.documents.batchUpdate({
-          documentId: docId,
-          requestBody: { requests: trailingEmpties.map(r => ({ deleteContentRange: { range: r } })) },
-        });
-        console.log(`[brief] Cleared ${trailingEmpties.length} trailing blank paragraphs`);
-      }
-    } catch (e) {
-      console.warn('[brief] Trailing blank removal skipped (non-fatal):', e.message);
-    }
-
-    // ── Step 2: measure page geometry, find last body-text Y, insert at correct size ──
-    try {
-      const toPT = (dim) => {
-        if (!dim) return null;
-        const { magnitude: v, unit } = dim;
-        if (unit === 'MM')   return v * 2.8346;
-        if (unit === 'INCH') return v * 72;
-        return v;
-      };
-      const countPdfPages = (buf) => {
-        const s = Buffer.from(buf).toString('latin1');
-        return Math.max(1, (s.match(/\/Type\s*\/Page[^s]/g) || []).length);
-      };
-
-      // ── Page geometry from document style ──
-      const docMeta = (await docs.documents.get({ documentId: docId })).data;
-      const ds = docMeta.documentStyle || {};
-      const pageW   = toPT(ds.pageSize?.width)  || 595.28;
-      const pageH   = toPT(ds.pageSize?.height) || 841.89;
-      const marginB = toPT(ds.marginBottom) || 72;
-      const marginL = toPT(ds.marginLeft)   || 72;
-      const marginR = toPT(ds.marginRight)  || 72;
-      const usableW = pageW - marginL - marginR;
-
-      // ── Export text-only PDF; collect all Tm Y values ──
-      const pdfBuf = Buffer.from(
-        (await drive.files.export(
-          { fileId: docId, mimeType: 'application/pdf' },
-          { responseType: 'arraybuffer' }
-        )).data
-      );
-      const pdfStr = pdfBuf.toString('latin1');
-
-      const tmRe = /([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+Tm/g;
-      const ySet = new Set();
-      let mp;
-      while ((mp = tmRe.exec(pdfStr)) !== null) {
-        const y = parseFloat(mp[6]);
-        if (y > marginB && y < pageH) ySet.add(Math.round(y));
-      }
-
-      // Sort descending (highest Y = top of page first).
-      // Detect the first large gap (> 100 pt) — text below the gap is an isolated
-      // element (footer / floating text box) and should be excluded.
-      // "lastTextY" = the lowest BODY-text baseline above any such gap.
-      const yVals = [...ySet].sort((a, b) => b - a);
-      let lastTextY = null;
-      if (yVals.length > 0) {
-        lastTextY = yVals[yVals.length - 1]; // absolute minimum as fallback
-        for (let i = 0; i < yVals.length - 1; i++) {
-          if (yVals[i] - yVals[i + 1] > 100) {
-            lastTextY = yVals[i]; // lowest body-text Y, above the gap
-            break;
-          }
-        }
-      }
-      if (lastTextY === null) {
-        lastTextY = pageH * 0.55; // fallback: assume content fills top 45%
-        console.log('[brief] No text Y found; using fallback lastTextY');
-      }
-      console.log(`[brief] lastTextY=${Math.round(lastTextY)}pt  usableW=${Math.round(usableW)}pt`);
-
-      // ── Available space below last body-text line ──
-      // Reserve OVERHEAD pt for the terminal newline paragraph + rounding safety.
-      const available = lastTextY - marginB;
-      const OVERHEAD = 30; // terminal newline paragraph height (~15pt) + safety buffer
-      const maxH = Math.max(40, available - OVERHEAD);
-
-      // ── Fetch actual image AR from Drive so sizing is exact ──
-      let imgAR = null;
-      const driveIdMatch = imageUrl.match(/[?&]id=([^&]+)/);
-      if (driveIdMatch?.[1]) {
-        try {
-          const imgMeta = (await drive.files.get({
-            fileId: driveIdMatch[1],
-            fields: 'imageMediaMetadata',
-          })).data;
-          const { width: iW, height: iH } = imgMeta.imageMediaMetadata || {};
-          if (iW && iH) { imgAR = iW / iH; console.log(`[brief] image AR=${imgAR.toFixed(2)}`); }
-        } catch (_) { /* non-fatal */ }
-      }
-
-      // ── Compute display size within (usableW × maxH), maintaining AR ──
-      let displayH, displayW;
-      if (imgAR) {
-        if (usableW / imgAR <= maxH) {
-          // width-constrained
-          displayW = Math.round(usableW);
-          displayH = Math.round(usableW / imgAR);
-        } else {
-          // height-constrained
-          displayH = maxH;
-          displayW = Math.min(Math.round(maxH * imgAR), Math.round(usableW));
-        }
-      } else {
-        // Unknown AR — give it the full bounding box and let Docs scale it
-        displayH = maxH;
-        displayW = Math.round(usableW);
-      }
-      displayH = Math.max(displayH, 40);
-      displayW = Math.max(displayW, 40);
-
-      // ── Vertical centering: distribute remaining space equally above & below ──
-      const spaceAbove = Math.max(8, Math.round((available - OVERHEAD - displayH) / 2));
-      console.log(`[brief] available=${Math.round(available)}pt displayH=${displayH}pt spaceAbove=${spaceAbove}pt`);
-
-      // ── Insert at computed size (single call — no loop) ──
-      const insertResp = await docs.documents.batchUpdate({
-        documentId: docId,
-        requestBody: { requests: [{ insertInlineImage: {
-          uri: imageUrl,
-          endOfSegmentLocation: { segmentId: '' },
-          objectSize: {
-            width:  { magnitude: displayW, unit: 'PT' },
-            height: { magnitude: displayH, unit: 'PT' },
-          },
-        }}] },
-      });
-      const insertedObjId = insertResp.data.replies?.[0]?.insertInlineImage?.objectId || null;
-      console.log(`[brief] Inserted image ${displayW}×${displayH}pt objId=${insertedObjId}`);
-
-      // ── Find image paragraph position ──
-      const postInsertDoc = (await docs.documents.get({ documentId: docId })).data;
-      let imgParaStart = -1, imgParaEnd = -1;
-      for (const el of [...(postInsertDoc.body?.content || [])].reverse()) {
-        if (el.paragraph && (el.paragraph.elements || []).some(e => e.inlineObjectElement)) {
-          imgParaStart = el.startIndex;
-          imgParaEnd   = el.endIndex;
-          break;
-        }
-      }
-
-      // ── Safety check: if still > 1 page, delete & reinsert at 75% size ──
-      // (updateInlineObjectProperties is rejected by the API, so we do delete+reinsert)
-      if (imgParaStart !== -1) {
-        const pageCount = countPdfPages(Buffer.from(
-          (await drive.files.export(
-            { fileId: docId, mimeType: 'application/pdf' },
-            { responseType: 'arraybuffer' }
-          )).data
-        ));
-        if (pageCount > 1) {
-          const sh = Math.max(40, Math.round(displayH * 0.75));
-          const sw = Math.max(40, Math.round(displayW * 0.75));
-          // Delete just the image character (not the paragraph mark — safe)
-          await docs.documents.batchUpdate({
-            documentId: docId,
-            requestBody: { requests: [{ deleteContentRange: {
-              range: { startIndex: imgParaStart, endIndex: imgParaStart + 1 },
-            }}] },
-          });
-          // Re-insert into the now-empty paragraph at the same position
-          await docs.documents.batchUpdate({
-            documentId: docId,
-            requestBody: { requests: [{ insertInlineImage: {
-              uri: imageUrl,
-              location: { index: imgParaStart },
-              objectSize: {
-                width:  { magnitude: sw, unit: 'PT' },
-                height: { magnitude: sh, unit: 'PT' },
-              },
-            }}] },
-          });
-          displayH = sh;
-          displayW = sw;
-          console.log(`[brief] Safety shrink → ${sw}×${sh}pt`);
-        }
-      }
-      if (imgParaStart !== -1) {
-        await docs.documents.batchUpdate({
-          documentId: docId,
-          requestBody: { requests: [{
-            updateParagraphStyle: {
-              range: { startIndex: imgParaStart, endIndex: imgParaEnd },
-              paragraphStyle: {
-                alignment: 'CENTER',
-                spaceAbove: { magnitude: spaceAbove, unit: 'PT' },
-                spaceBelow: { magnitude: 0, unit: 'PT' },
-              },
-              fields: 'alignment,spaceAbove,spaceBelow',
-            },
-          }] },
-        });
-        console.log(`[brief] Centered: spaceAbove=${spaceAbove}pt`);
-      }
-    } catch (e) {
-      console.error('[brief] Image insertion failed (non-fatal):', e.message);
-    }
-  }
-
+  // ── 3. Move to הפקות folder ──────────────────────────────────────────────
   try {
     const folderId = await getOrCreateHapakoFolder(drive);
     const fileInfo = await drive.files.get({ fileId: docId, fields: 'parents' });
     await drive.files.update({
       fileId: docId,
-      addParents: folderId,
+      addParents:    folderId,
       removeParents: (fileInfo.data.parents || []).join(','),
       fields: 'id,parents',
     });
   } catch (e) {
-    console.error('[brief] Failed to move to הפקות folder:', e.message);
+    console.error('[brief] Failed to move to הפקות folder (non-fatal):', e.message);
   }
 
   return `https://docs.google.com/document/d/${docId}/edit`;
@@ -771,7 +492,7 @@ router.post('/:id/brief', async (req, res) => {
     const customDefs = (show.eventType && fieldTemplates[show.eventType]) || [];
 
     const assignedCrew = (show.crewIds || []).map((id) => crew.find((m) => m.id === id)).filter(Boolean);
-    const techCrew  = assignedCrew.filter((m) => m.role !== 'נגן').map((m) => `${m.role} – ${m.name}`).join(' | ') || show.technicalCrew || '';
+    const techCrew  = assignedCrew.filter((m) => ['סאונד', 'תאורה', 'הפקה'].includes(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ') || show.technicalCrew || '';
     const musicians = assignedCrew.filter((m) => m.role === 'נגן').map((m) => m.name).join(', ');
 
     const checkItems = [
@@ -824,29 +545,10 @@ router.post('/:id/brief', async (req, res) => {
     briefJobs.set(jobId, { status: 'processing', createdAt: Date.now() });
     res.json({ jobId, status: 'processing' });
 
-    // ── Background: image uploads + Google Doc creation ───────────────────
+    // ── Background: fill DOCX template + upload to Drive ─────────────────
     (async () => {
       try {
-        const imageUploadUrls = {};
-        for (const def of customDefs) {
-          if (def.type !== 'image' && def.type !== 'file') continue;
-          if (show.pdfFields?.['cf_' + def.id] === false) continue;
-          const val = show.customFields?.[def.id];
-          if (!val) continue;
-          const dataUrl  = typeof val === 'string' ? val : val.data;
-          const origName = typeof val === 'object' ? (val.name || def.label) : def.label;
-          if (!dataUrl) continue;
-          try {
-            const isPdf = (typeof val === 'object' && val.isPdf) || dataUrl.startsWith('data:application/pdf');
-            const uploadUrl = isPdf ? await pdfDataUrlToPng(dataUrl) : dataUrl;
-            if (!uploadUrl) continue;
-            imageUploadUrls[def.id] = await uploadDataUrlToDrive(uploadUrl, origName.replace(/\.pdf$/i, '.png'));
-          } catch (e) {
-            console.error('[brief] Drive upload failed for', def.label, e.message);
-          }
-        }
-        const firstImageUrl = Object.values(imageUploadUrls)[0] || '';
-        const docUrl = await createBriefDoc({ ...basePayload, stageLayoutImageUrl: firstImageUrl }, firstImageUrl);
+        const docUrl = await createBriefDoc(basePayload);
         briefJobs.set(jobId, { status: 'done', docUrl });
         console.log(`[brief] Job ${jobId} done: ${docUrl}`);
       } catch (err) {
@@ -1054,7 +756,7 @@ ${imageSectionHtml}
 
     const dateStr = formatShowDate(show.date);
     const safeName = show.name.replace(/[/\\:*?"<>|]/g, '_');
-    const filename = `אמדורסקי ${safeName}${dateStr ? ' ' + dateStr : ''}.pdf`;
+    const filename = `דף תיאום - ${safeName}${dateStr ? ' ' + dateStr : ''}.pdf`;
 
     // Render to a Buffer using the cached Puppeteer browser.
     const pdfBuffer = await htmlToPdfBuffer(html);
@@ -1066,6 +768,7 @@ ${imageSectionHtml}
       return res.end(pdfBuffer);
     }
 
+    await fsp.mkdir(PDF_DIR, { recursive: true });
     const outputPath = path.join(PDF_DIR, filename);
     await fsp.writeFile(outputPath, pdfBuffer);
     res.json({ success: true, filename, path: outputPath });

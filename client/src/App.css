@@ -6372,7 +6372,7 @@ body {
 .dashboard {
   max-width: 1320px;
   margin: 0 auto;
-  padding: 48px 40px 96px;
+  padding: 0 40px 96px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -6411,7 +6411,7 @@ body {
 }
 .dash-title {
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
-  font-size: clamp(3.5rem, 8vw, 6rem);
+  font-size: clamp(4.5rem, 9vw, 7rem);
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.05em;
@@ -6449,7 +6449,7 @@ body {
 .dash-stat {
   background: var(--surface-2);
   border: 1.5px solid var(--text);
-  border-radius: 6px;
+  border-radius: 0;
   padding: 24px 26px;
   display: flex;
   flex-direction: column;
@@ -6572,7 +6572,7 @@ body {
   background: var(--surface);
   border: 1.5px solid var(--text);
   box-shadow: 5px 5px 0 var(--text);
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
 }
 .mcal-topbar {
@@ -6945,7 +6945,7 @@ body {
   background: var(--surface);
   border: 1.5px solid var(--text);
   box-shadow: 5px 5px 0 var(--text);
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
 }
 .upnext-header {
@@ -7110,7 +7110,7 @@ body {
   background: var(--surface);
   border: 1.5px solid var(--text);
   box-shadow: 5px 5px 0 var(--text);
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
 }
 .mytasks-empty {
@@ -7209,9 +7209,10 @@ body {
 .ws-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   height: 46px;
-  padding: 0 14px;
+  padding: 0 20px;
+  min-width: 190px;
   border: 1.5px solid var(--text);
   background: var(--surface-2);
   border-radius: 999px;
@@ -7277,11 +7278,11 @@ body {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 288px;
+  width: 300px;
   background: var(--surface);
   border: 1.5px solid var(--text);
   box-shadow: 6px 6px 0 var(--text);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   z-index: 600;
 }

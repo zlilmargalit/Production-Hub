@@ -7,6 +7,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "adm-zip": "^0.5.17",
     "chokidar": "^3.6.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
@@ -15,9 +16,9 @@
     "googleapis": "^172.0.0",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
+    "pdf-parse": "^1.1.1",
     "puppeteer-core": "^25.1.0",
     "uuid": "^9.0.0",
-    "pdf-parse": "^1.1.1",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   }
