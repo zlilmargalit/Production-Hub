@@ -199,7 +199,9 @@ function verifyCredentials(username, password) {
   const AUTH_USER     = process.env.AUTH_USER || 'admin';
   const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
 
-  if (username === AUTH_USER && password === AUTH_PASSWORD) {
+  const pwOk = AUTH_PASSWORD &&
+    crypto.timingSafeEqual(Buffer.from(password || ''), Buffer.from(AUTH_PASSWORD));
+  if (username === AUTH_USER && pwOk) {
     return { userId: 'admin', username: AUTH_USER, role: 'admin' };
   }
 
@@ -257,7 +259,9 @@ function getAuthUser(req) {
         const p = decoded.slice(idx + 1);
         const AUTH_USER     = process.env.AUTH_USER || 'admin';
         const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
-        if (u === AUTH_USER && p === AUTH_PASSWORD) {
+        const basicPwOk = AUTH_PASSWORD &&
+          crypto.timingSafeEqual(Buffer.from(p || ''), Buffer.from(AUTH_PASSWORD));
+        if (u === AUTH_USER && basicPwOk) {
           return { userId: 'admin', username: AUTH_USER, role: 'admin' };
         }
       }

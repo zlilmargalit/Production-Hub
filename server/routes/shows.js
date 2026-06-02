@@ -16,6 +16,9 @@ const { dataPath, cacheKey, DATA_DIR } = require('../utils/userData');
 
 const execFileP = promisify(execFile);
 
+// Crew roles that represent musicians — covers English and legacy Hebrew values.
+const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
+
 // ── Static paths (Google credentials remain global) ─────────────────────────
 const CREDENTIALS_PATH = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH       = path.join(__dirname, '../data/gmail-token.json');
@@ -314,21 +317,31 @@ function showFieldInPdf(show, key) {
   return !show.pdfFields || show.pdfFields[key] !== false;
 }
 
-// ── slimShow: strip base64 payloads for the list endpoint ────────────────────
+// ── slimShow: strip heavy payloads for the list endpoint ─────────────────────
 // Cuts payload 90%+ when stage-layout images are attached.
 // Full data lives on disk and is returned by GET /:id (used for editing, PDF, brief).
+// Also drops large free-text fields that are only needed in the detail view.
+const SLIM_OMIT_FIELDS = new Set(['notes', 'additionalDetails']);
 function slimShow(show) {
-  if (!show.customFields) return show;
-  const slim = {};
-  for (const [k, v] of Object.entries(show.customFields)) {
-    const src = typeof v === 'string' ? v : v?.data;
-    if (typeof src === 'string' && src.startsWith('data:')) {
-      slim[k] = typeof v === 'object' ? { ...v, data: null, _hasData: true } : { _hasData: true };
-    } else {
-      slim[k] = v;
-    }
+  const result = { ...show };
+  // Strip large free-text fields not needed in card/list view
+  for (const f of SLIM_OMIT_FIELDS) {
+    if (result[f] && result[f].length > 200) delete result[f];
   }
-  return { ...show, customFields: slim };
+  // Replace base64 customField data with a sentinel
+  if (result.customFields) {
+    const slim = {};
+    for (const [k, v] of Object.entries(result.customFields)) {
+      const src = typeof v === 'string' ? v : v?.data;
+      if (typeof src === 'string' && src.startsWith('data:')) {
+        slim[k] = typeof v === 'object' ? { ...v, data: null, _hasData: true } : { _hasData: true };
+      } else {
+        slim[k] = v;
+      }
+    }
+    result.customFields = slim;
+  }
+  return result;
 }
 
 // ── Team-member field filter ─────────────────────────────────────────────────
@@ -343,7 +356,7 @@ const RUBRIC_FIELDS = {
 };
 
 function filterShowForTeamMember(show, visibleRubrics) {
-  const allowed = new Set(['id', 'name', 'date', 'venue', 'eventType', 'type', 'crewIds', 'createdAt']);
+  const allowed = new Set(['id', 'name', 'date', 'venue', 'eventType', 'type', 'crewIds', 'createdAt', 'customFields']);
   for (const rubric of visibleRubrics) {
     for (const field of RUBRIC_FIELDS[rubric] || []) allowed.add(field);
   }
@@ -530,7 +543,7 @@ router.post('/:id/brief', async (req, res) => {
 
     const assignedCrew = (show.crewIds || []).map((id) => crew.find((m) => m.id === id)).filter(Boolean);
     const techCrew  = assignedCrew.filter((m) => ['סאונד', 'תאורה', 'הפקה'].includes(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ') || show.technicalCrew || '';
-    const musicians = assignedCrew.filter((m) => m.role === 'נגן').map((m) => m.name).join(', ');
+    const musicians = assignedCrew.filter((m) => MUSICIAN_ROLES.has(m.role)).map((m) => m.name).join(', ');
 
     const checkItems = [
       { key: 'check_mirror',       label: 'מראת גוף',   value: show.mirror },
@@ -615,11 +628,11 @@ router.post('/:id/pdf', async (req, res) => {
       .map((id) => crew.find((m) => m.id === id))
       .filter(Boolean);
     const musicians = assignedCrew
-      .filter((m) => m.role === 'נגן')
+      .filter((m) => MUSICIAN_ROLES.has(m.role))
       .map((m) => m.name)
       .join(', ');
     const techCrewText = assignedCrew
-      .filter((m) => m.role !== 'נגן')
+      .filter((m) => !MUSICIAN_ROLES.has(m.role))
       .map((m) => `${m.role} – ${m.name}`)
       .join(' | ');
 
@@ -816,3 +829,4 @@ ${imageSectionHtml}
 });
 
 module.exports = router;
+module.exports.slimShow = slimShow;

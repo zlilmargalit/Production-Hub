@@ -6,13 +6,12 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
-const { DATA_DIR } = require('../utils/userData');
+const { dataPath, cacheKey } = require('../utils/userData');
 
-const SHOWS_FILE = path.join(DATA_DIR, 'shows.json');
 const DEFAULT_XLSX = path.join(__dirname, '../../אסף אמדורסקי לוח הופעות.xlsx');
 
-const readShows  = () => readJsonCached('shows', SHOWS_FILE, []);
-const writeShows = (shows) => writeJsonAndCache('shows', SHOWS_FILE, shows);
+const readShows  = (uid) => readJsonCached(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), []);
+const writeShows = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), shows);
 
 const pathExists = (p) => fsp.access(p).then(() => true).catch(() => false);
 
@@ -169,12 +168,13 @@ function findNewShows(xlsxPath, existingShows) {
 
 // POST /api/import/preview — returns what would be added without saving
 router.post('/preview', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const xlsxPath = req.body.path || DEFAULT_XLSX;
   if (!(await pathExists(xlsxPath))) {
     return res.status(404).json({ error: 'Excel file not found', path: xlsxPath });
   }
   try {
-    const existing = await readShows();
+    const existing = await readShows(req.userId);
     const newShows = findNewShows(xlsxPath, existing);
     res.json({
       count: newShows.length,
@@ -187,6 +187,7 @@ router.post('/preview', async (req, res) => {
 
 // POST /api/import/sync — checks Gmail first (if configured), then syncs from local xlsx
 router.post('/sync', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
   let gmailAdded = 0;
   try {
     const { checkGmail } = require('../gmail-poll');
@@ -201,9 +202,9 @@ router.post('/sync', async (req, res) => {
     return res.json({ added: gmailAdded });
   }
   try {
-    const existing = await readShows();
+    const existing = await readShows(req.userId);
     const newShows = findNewShows(xlsxPath, existing);
-    if (newShows.length > 0) await writeShows([...existing, ...newShows]);
+    if (newShows.length > 0) await writeShows(req.userId, [...existing, ...newShows]);
     res.json({ added: newShows.length + gmailAdded, shows: newShows });
   } catch (err) {
     res.status(500).json({ error: err.message });

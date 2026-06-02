@@ -382,10 +382,13 @@ router.post('/push/subscribe', async (req, res) => {
 });
 
 // DELETE /api/automations/push/unsubscribe
+// Body: { endpoint: string } — remove only the specific device subscription.
 router.delete('/push/unsubscribe', async (req, res) => {
   try {
+    const { endpoint } = req.body || {};
+    if (!endpoint) return res.status(400).json({ error: 'endpoint required' });
     const list     = await readPushList(req.userId);
-    const filtered = list.filter((s) => s.userId !== req.userId);
+    const filtered = list.filter((s) => s.endpoint !== endpoint);
     await writePushList(req.userId, filtered);
     res.json({ ok: true });
   } catch (err) {

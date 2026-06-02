@@ -185,16 +185,26 @@ function PermPanel({ user, perms, onSave, onClose }) {
 }
 
 // ── Expandable user details ────────────────────────────────────────────────────
-function UserExpanded({ user, shows, activityLog, onUpdateShow }) {
+function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
   const [section, setSection] = useState('tasks');
   const today = new Date().toISOString().slice(0, 10);
 
-  // Assigned open tasks across all shows
-  const assignedTasks = shows.flatMap(s =>
-    (s.tasks || [])
-      .filter(t => !t.completed && (t.assignedToUserId === user.id || t.assignedTo === user.id))
-      .map(t => ({ ...t, showName: s.name, showId: s.id, showObj: s }))
-  );
+  // Assigned open tasks — prefer the global tasks array (keyed by assigneeId);
+  // fall back to legacy show.tasks for backward compat with older data.
+  const showMap = Object.fromEntries(shows.map(s => [s.id, s]));
+  const assignedTasks = tasks.length > 0
+    ? tasks
+        .filter(t => !t.completed && t.assigneeId === user.id)
+        .map(t => ({
+          ...t,
+          showName: showMap[t.showId]?.name || '',
+          showObj:  showMap[t.showId] || null,
+        }))
+    : shows.flatMap(s =>
+        (s.tasks || [])
+          .filter(t => !t.completed && (t.assignedToUserId === user.id || t.assignedTo === user.id))
+          .map(t => ({ ...t, showName: s.name, showId: s.id, showObj: s }))
+      );
 
   // Upcoming shows (next 5 where user is assigned)
   const upcomingShows = shows
@@ -519,6 +529,7 @@ function TabMembers({ users, artists, shows, activityLog,
                     <UserExpanded
                       user={u}
                       shows={shows}
+                      tasks={tasks}
                       activityLog={activityLog}
                       onUpdateShow={onUpdateShow}
                     />
@@ -842,7 +853,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
 // ────────────────────────────────────────────────────────────────────────────
 //  Main TeamPanel
 // ────────────────────────────────────────────────────────────────────────────
-function TeamPanel({ artists, shows = [], onUpdateShow }) {
+function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
   const [tab,              setTab]              = useState('members');
   const [users,            setUsers]            = useState([]);
   const [userArtistAccess, setUserArtistAccess] = useState({});

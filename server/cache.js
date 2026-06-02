@@ -10,7 +10,7 @@ const fsp = require('fs').promises;
 // stdTTL=0 → entries never expire by time; we manage invalidation explicitly.
 // useClones=false → returns the same object reference (faster, but callers
 // must NOT mutate cached objects in place. All our writes replace the array.)
-const cache = new NodeCache({ stdTTL: 0, useClones: false });
+const cache = new NodeCache({ stdTTL: 0, useClones: true });
 
 // Read a JSON file through the cache. If the key is hot we skip disk entirely.
 async function readJsonCached(key, filePath, fallback = []) {

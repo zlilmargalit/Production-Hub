@@ -44,7 +44,8 @@ function App({ demoMode = false }) {
   const [newArtistModal, setNewArtistModal] = useState(false);
   // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
   // without being re-created whenever the artist changes.
-  const currentArtistRef = useRef(null);
+  const currentArtistRef    = useRef(null);
+  const switchAbortRef      = useRef(null);  // AbortController for in-flight artist switch fetches
 
   // Sync theme attribute to <html> and persist
   useEffect(() => {
@@ -190,12 +191,13 @@ function App({ demoMode = false }) {
 
   const saveEventTypes = useCallback(async (types) => {
     if (demoMode) { setEventTypes(types); return; }
-    await fetch(`/api/event-types${artistQS()}`, {
+    const res = await fetch(`/api/event-types${artistQS()}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(types),
     });
-    setEventTypes(types);
+    if (res.ok) setEventTypes(types);
+    else console.error('[saveEventTypes] PUT failed', res.status);
   }, [demoMode]);
 
   const createShow = useCallback(async (data) => {
@@ -209,6 +211,11 @@ function App({ demoMode = false }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('[createShow] POST failed', res.status, err);
+      return null;
+    }
     const created = await res.json();
     setShows((prev) => [...prev, created]);
     return created;
@@ -296,6 +303,11 @@ function App({ demoMode = false }) {
 
   // ── Artist switching ──────────────────────────────────────────────────────
   const switchToArtist = useCallback(async (artist) => {
+    // Cancel any previous in-flight switch to avoid stale data races
+    if (switchAbortRef.current) switchAbortRef.current.abort();
+    const ac = new AbortController();
+    switchAbortRef.current = ac;
+
     currentArtistRef.current = artist?.id || null;
     setCurrentArtist(artist);
     // Clear stale data so the UI doesn't briefly show the previous artist's content
@@ -306,7 +318,7 @@ function App({ demoMode = false }) {
         fetchTasks(),
       ]);
     } catch (err) {
-      console.error('[artist-switch]', err.message);
+      if (err.name !== 'AbortError') console.error('[artist-switch]', err.message);
     }
   }, [fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
 
@@ -408,11 +420,16 @@ function App({ demoMode = false }) {
   }, []);
 
   const deleteTask = useCallback(async (id) => {
-    const task = tasks.find((t) => t.id === id);
-    if (task?.assignedToMe) return; // cannot delete tasks assigned from team
-    await fetch(`/api/tasks/${id}${artistQS()}`, { method: 'DELETE' });
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  }, [tasks]);
+    // Use functional updater to avoid stale closure on tasks array
+    setTasks((prev) => {
+      const task = prev.find((t) => t.id === id);
+      if (task?.assignedToMe) return prev; // cannot delete tasks assigned from team
+      fetch(`/api/tasks/${id}${artistQS()}`, { method: 'DELETE' }).catch(
+        (err) => console.error('[deleteTask]', err)
+      );
+      return prev.filter((t) => t.id !== id);
+    });
+  }, []);
 
   const openEdit = useCallback(async (show) => {
     const qs = currentArtistRef.current
@@ -681,7 +698,7 @@ function App({ demoMode = false }) {
         ) : page === 'teams' ? (
           <TeamsPage />
         ) : page === 'team' && userRole === 'admin' ? (
-          <TeamPanel artists={artists} shows={shows} onUpdateShow={updateShow} />
+          <TeamPanel artists={artists} shows={shows} tasks={tasks} onUpdateShow={updateShow} />
         ) : page === 'tasks' ? (
           <GlobalTaskPanel
             tasks={tasks}
@@ -1236,6 +1253,7 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
   const avatarInputRef = useRef(null);
 
   // ── Change Password ───────────────────────────────────────────────────────
+  const [pwOpen,        setPwOpen]        = useState(false);
   const [pwCurrent,     setPwCurrent]     = useState('');
   const [pwNew,         setPwNew]         = useState('');
   const [pwConfirm,     setPwConfirm]     = useState('');

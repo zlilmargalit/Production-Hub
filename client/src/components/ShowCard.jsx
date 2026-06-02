@@ -21,8 +21,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const [calMsg, setCalMsg] = useState(null);
 
   const assignedCrew = (crew || []).filter((m) => (show.crewIds || []).includes(m.id));
+  const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
   const musicians = assignedCrew
-    .filter((m) => m.role === 'Musicians')
+    .filter((m) => MUSICIAN_ROLES.has(m.role))
     .map((m) => m.name)
     .join(' | ');
   const TECH_ROLES = ['סאונד', 'תאורה', 'הפקה'];
@@ -58,6 +59,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const createBrief = async () => {
     setBriefStatus('loading');
     setBriefError(null);
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
       const res  = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
@@ -67,16 +69,10 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
         return;
       }
-      // Server returns immediately with a jobId — poll until done
+      // Server processes asynchronously — poll status until done or timeout (2 min)
       const { jobId } = data;
-      let attempts = 0;
-      const poll = async () => {
-        if (++attempts > 60) { // 2-minute timeout
-          setBriefStatus('error');
-          setBriefError('Timed out — check Google Drive in a few minutes');
-          setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
-          return;
-        }
+      await delay(3000); // wait before first check
+      for (let attempt = 0; attempt < 60; attempt++) {
         try {
           const sr = await fetch(`/api/shows/${show.id}/brief/${jobId}${qs}`);
           const sd = await sr.json().catch(() => ({}));
@@ -84,20 +80,23 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             setBriefStatus('sent');
             if (sd.docUrl) window.open(sd.docUrl, '_blank');
             setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 3000);
-          } else if (sd.status === 'error') {
+            return;
+          }
+          if (sd.status === 'error') {
             setBriefStatus('error');
             setBriefError(sd.error || 'Brief creation failed');
             setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
-          } else {
-            setTimeout(poll, 2000); // still processing — poll again
+            return;
           }
         } catch {
-          setBriefStatus('error');
-          setBriefError('Network error while checking status');
-          setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+          // transient network error — keep polling
         }
-      };
-      setTimeout(poll, 3000); // first poll after 3s
+        await delay(2000);
+      }
+      // timed out
+      setBriefStatus('error');
+      setBriefError('Timed out — check Google Drive in a few minutes');
+      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
     } catch (e) {
       setBriefStatus('error');
       setBriefError(e.message || 'Network error');
@@ -207,11 +206,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
           </div>
 
-          {assignedCrew.filter((m) => m.role !== 'Musicians').length > 0 && (
+          {assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).length > 0 && (
             <div className="detail-full">
               <strong>Crew</strong>
               <div className="crew-chips">
-                {assignedCrew.filter((m) => m.role !== 'Musicians').map((m) => (
+                {assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).map((m) => (
                   <div key={m.id} className="crew-chip">
                     <span className="crew-chip-avatar" style={{ background: colorFor(m.id) }}>{initialsFor(m.name)}</span>
                     <span className="crew-chip-name">{m.name}</span>

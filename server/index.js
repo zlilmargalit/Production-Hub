@@ -22,7 +22,9 @@ const loginPage  = require('./login-page');
 const invitePage = require('./invite-page');
 
 const artistsRouter       = require('./routes/artists');
-const showsRouter         = require('./routes/shows');
+const showsRouterModule   = require('./routes/shows');
+const showsRouter         = showsRouterModule;
+const slimShow            = showsRouterModule.slimShow;
 const documentsRouter     = require('./routes/documents');
 const crewRouter          = require('./routes/crew');
 const templatesRouter     = require('./routes/templates');
@@ -178,7 +180,10 @@ if (AUTH_PASSWORD === 'change-me-please' && process.env.NODE_ENV === 'production
 }
 
 app.set('trust proxy', 1);
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: false }));
 
@@ -500,38 +505,6 @@ app.use((req, res, next) => {
   res.redirect('/login');
 });
 
-// ── Temp debug: read artist shows directly from disk (admin only) ─────────────
-app.get('/api/debug/artist-shows', async (req, res) => {
-  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const artistId = req.query.artistId;
-  if (!artistId) return res.status(400).json({ error: 'artistId required' });
-  const filePath = path.join(DATA_DIR, 'artists', artistId, 'shows.json');
-  const artistsFile = path.join(DATA_DIR, 'artists.json');
-  try {
-    // Check artists.json — if artist is missing here, middleware won't scope requests
-    let artistsJson = [];
-    try { artistsJson = JSON.parse(await fsp.readFile(artistsFile, 'utf8')); } catch {}
-    const artistInList = artistsJson.some((a) => a.id === artistId);
-
-    const raw = await fsp.readFile(filePath, 'utf8');
-    const shows = JSON.parse(raw);
-    const logisticsFields = ['transportMode','transportDriver','transportTime','foodContactName','foodContactPhone','foodContactTime','soundCoordinated','lightingCoordinated'];
-    const summary = shows.map((s) => {
-      const lf = {};
-      for (const f of logisticsFields) if (s[f]) lf[f] = s[f];
-      return { id: s.id, name: s.name, date: s.date, logistics: lf };
-    });
-    res.json({
-      artistInArtistsJson: artistInList,
-      artistsJsonCount: artistsJson.length,
-      filePath,
-      totalShows: shows.length,
-      shows: summary,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message, filePath });
-  }
-});
 
 // ── Who-am-I (after auth gate) ───────────────────────────────────────────────
 const ADMIN_PROFILE_PATH = () => path.join(DATA_DIR, 'admin-profile.json');
@@ -831,35 +804,43 @@ app.get('/api/teams', async (req, res) => {
     []
   ).catch(() => []);
 
-  // Named-group results
-  const result = await Promise.all(myTeams.map(async (team) => {
-    const artistsData = await Promise.all((team.sharedArtists || []).map(async ({ artistId, visibleRubrics = [] }) => {
-      const artist = adminArtists.find((a) => a.id === artistId) || { id: artistId, name: '—' };
-      const uid    = artistScopedId('admin', artistId);
-      const shows  = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []).catch(() => []);
-      return { artistId, artistName: artist.name, visibleRubrics, shows };
-    }));
-    return { id: team.id, name: team.name, artistsData };
+  // Collect all unique artist IDs and preload their shows in parallel (prevents N+1 cold misses)
+  const allArtistIds = new Set([
+    ...myTeams.flatMap((t) => (t.sharedArtists || []).map((a) => a.artistId)),
+    ...directIds,
+  ]);
+  const showsByArtist = new Map();
+  await Promise.all([...allArtistIds].map(async (artistId) => {
+    const uid = artistScopedId('admin', artistId);
+    const raw = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []).catch(() => []);
+    showsByArtist.set(artistId, raw.map(slimShow));
   }));
+
+  // Named-group results
+  const result = myTeams.map((team) => {
+    const artistsData = (team.sharedArtists || []).map(({ artistId, visibleRubrics = [] }) => {
+      const artist = adminArtists.find((a) => a.id === artistId) || { id: artistId, name: '—' };
+      return { artistId, artistName: artist.name, visibleRubrics, shows: showsByArtist.get(artistId) || [] };
+    });
+    return { id: team.id, name: team.name, artistsData };
+  });
 
   // Direct-access artists (from userArtistAccess) not already covered by a named group
   if (directIds.length > 0) {
     const covered   = new Set(result.flatMap((t) => (t.artistsData || []).map((a) => a.artistId)));
     const remaining = directIds.filter((id) => !covered.has(id));
     if (remaining.length > 0) {
-      const directData = await Promise.all(remaining.map(async (artistId) => {
+      const directData = remaining.map((artistId) => {
         const artist  = adminArtists.find((a) => a.id === artistId) || { id: artistId, name: '—' };
-        const uid     = artistScopedId('admin', artistId);
-        const shows   = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []).catch(() => []);
         const access  = accessMap[artistId] || {};
         return {
           artistId,
           artistName:     artist.name,
           role:           access.role           || 'viewer',
           visibleRubrics: access.visibleRubrics || [],
-          shows,
+          shows:          showsByArtist.get(artistId) || [],
         };
-      }));
+      });
       result.push({ id: '__direct__', name: null, artistsData: directData });
     }
   }
@@ -912,8 +893,11 @@ app.post('/api/admin/restore-data', async (req, res) => {
     let written = 0;
     for (const [relPath, content] of Object.entries(files)) {
       // Sanitise path — no traversal outside DATA_DIR
-      const safe = relPath.replace(/\.\.\//g, '').replace(/^\//, '');
-      const dest = path.join(DATA_DIR, safe);
+      const dest = path.resolve(DATA_DIR, relPath);
+      if (!dest.startsWith(path.resolve(DATA_DIR) + path.sep) &&
+          dest !== path.resolve(DATA_DIR)) {
+        return res.status(400).json({ error: `Illegal path: ${relPath}` });
+      }
       await fsp.mkdir(path.dirname(dest), { recursive: true });
       await fsp.writeFile(dest, typeof content === 'string' ? content : JSON.stringify(content, null, 2), 'utf8');
       written++;
@@ -1302,9 +1286,19 @@ app.patch('/api/team/show/:artistId/:showId', async (req, res) => {
   const access     = accessMap[artistId];
   if (!access) return res.status(403).json({ error: 'No access to this artist' });
 
-  // Fields a team member may write — always allow backline fields; respect editRubrics for others
-  const ALWAYS_EDITABLE = new Set(['checklist', 'setlist', 'techFiles']);
-  const editableRubrics = new Set(access.editRubrics || []);
+  // Fields a team member may write — always allow backline fields; expand rubrics to field names
+  const ALWAYS_EDITABLE  = new Set(['checklist', 'setlist', 'techFiles', 'customFields']);
+  const RUBRIC_TO_FIELDS = {
+    schedule:  ['schedule'],
+    logistics: ['transportation', 'parking', 'food', 'contacts'],
+    technical: ['lightingCoordinated', 'soundCoordinated', 'rentalNeeds', 'rentalSupplier'],
+    notes:     ['notes'],
+    budget:    ['budget'],
+  };
+  const editableFields = new Set(ALWAYS_EDITABLE);
+  for (const rubric of (access.editRubrics || [])) {
+    for (const field of RUBRIC_TO_FIELDS[rubric] || []) editableFields.add(field);
+  }
 
   const uid   = artistScopedId('admin', artistId);
   const shows = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []);
@@ -1313,7 +1307,7 @@ app.patch('/api/team/show/:artistId/:showId', async (req, res) => {
 
   const patch = {};
   for (const [key, val] of Object.entries(req.body || {})) {
-    if (ALWAYS_EDITABLE.has(key) || editableRubrics.has(key)) patch[key] = val;
+    if (editableFields.has(key)) patch[key] = val;
   }
 
   const updated = { ...shows[idx], ...patch };

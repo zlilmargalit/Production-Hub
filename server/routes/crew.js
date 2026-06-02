@@ -38,7 +38,7 @@ router.delete('/:id', async (req, res, next) => {
   try {
     const crew = await readCrew(req.userId);
     await writeCrew(req.userId, crew.filter((m) => m.id !== req.params.id));
-    invalidate(cacheKey(req.userId, 'shows'));
+    invalidate(cacheKey(req.userId, 'crew'));
     res.status(204).send();
   } catch (err) { next(err); }
 });

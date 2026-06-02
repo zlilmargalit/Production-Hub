@@ -14,17 +14,39 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
+// Maps rubric names to the actual show field names that store their data.
+// Rubric names like 'logistics' and 'technical' don't correspond to a single
+// show field — they're grouping concepts covering multiple sub-fields.
+const RUBRIC_FIELDS = {
+  schedule:  ['schedule'],
+  logistics: ['transportation', 'parking', 'food', 'contacts'],
+  technical: ['lightingCoordinated', 'soundCoordinated', 'rentalNeeds', 'rentalSupplier'],
+  notes:     ['notes'],
+  budget:    ['budget'],
+};
+
+function rubricText(show, rubric) {
+  const fields = RUBRIC_FIELDS[rubric] || [rubric];
+  const parts = fields
+    .map((f) => {
+      const v = show[f];
+      if (v == null || v === '') return null;
+      if (typeof v === 'string') return v.trim() || null;
+      if (typeof v === 'object') {
+        const s = Object.values(v).filter(Boolean).join(' · ');
+        return s || null;
+      }
+      return String(v);
+    })
+    .filter(Boolean);
+  return parts.join(' | ');
+}
+
 // ── Compact read-only show row ─────────────────────────────────────────────
 function TeamShowRow({ show, visibleRubrics }) {
   const [open, setOpen] = useState(false);
 
-  const hasDetail = visibleRubrics.some((r) => {
-    const val = show[r];
-    if (!val) return false;
-    if (typeof val === 'string') return val.trim().length > 0;
-    if (typeof val === 'object') return Object.keys(val).length > 0;
-    return true;
-  });
+  const hasDetail = visibleRubrics.some((r) => rubricText(show, r).length > 0);
 
   return (
     <div className="tsp-show-row">
@@ -46,10 +68,8 @@ function TeamShowRow({ show, visibleRubrics }) {
       {open && hasDetail && (
         <div className="tsp-show-detail">
           {visibleRubrics.map((r) => {
-            const val = show[r];
-            if (!val) return null;
-            const text = typeof val === 'string' ? val : typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
-            if (!text.trim()) return null;
+            const text = rubricText(show, r);
+            if (!text) return null;
             return (
               <div key={r} className="tsp-rubric-block">
                 <span className="tsp-rubric-label">{RUBRIC_LABELS[r] || r}</span>
