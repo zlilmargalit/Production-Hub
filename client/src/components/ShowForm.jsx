@@ -210,7 +210,17 @@ function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit,
 
             <div className="form-group span-2">
               <label>Contacts</label>
-              <input dir="auto" name="contacts" value={form.contacts} onChange={set} placeholder="Name — Phone" />
+              <textarea
+                dir="auto"
+                name="contacts"
+                value={form.contacts}
+                onChange={set}
+                placeholder="Name — Phone"
+                rows={3}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+                }}
+              />
             </div>
 
             <div className="form-group span-2">

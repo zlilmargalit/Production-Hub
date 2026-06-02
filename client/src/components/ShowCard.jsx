@@ -202,7 +202,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <Field label="Technical Crew" value={techCrewDisplay} inPdf={isPdfOn('technicalCrew')} onTogglePdf={() => togglePdf('technicalCrew')} />
             {musicians && <Field label="Musicians" value={musicians} inPdf={isPdfOn('musicians')} onTogglePdf={() => togglePdf('musicians')} />}
             <Field label="Transportation" value={show.transportation} inPdf={isPdfOn('transportation')} onTogglePdf={() => togglePdf('transportation')} />
-            <Field label="Contacts" value={show.contacts} inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
+            <Field label="Contacts" value={show.contacts} multiline inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
 
           </div>
 
@@ -449,7 +449,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   );
 }
 
-function Field({ label, value, inPdf, onTogglePdf }) {
+function Field({ label, value, inPdf, onTogglePdf, multiline }) {
   return (
     <div className="detail-field">
       <div className="field-label-row">
@@ -461,7 +461,11 @@ function Field({ label, value, inPdf, onTogglePdf }) {
           </label>
         )}
       </div>
-      <span className="field-value" dir="auto">{value || '—'}</span>
+      <span
+        className="field-value"
+        dir="auto"
+        style={multiline ? { whiteSpace: 'pre-line' } : undefined}
+      >{value || '—'}</span>
     </div>
   );
 }
