@@ -6370,9 +6370,6 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .dashboard {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: 0 40px 96px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -6411,9 +6408,9 @@ body {
 }
 .dash-title {
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
-  font-size: clamp(4.5rem, 9vw, 7rem);
+  font-size: clamp(3.5rem, 8vw, 6rem);
   font-weight: 800;
-  line-height: 0.9;
+  line-height: 0.92;
   letter-spacing: -0.05em;
   color: var(--text);
   margin: 0 0 14px;
@@ -6439,48 +6436,44 @@ body {
   flex-shrink: 0;
 }
 
-/* ── Stat strip ──────────────────────────────────────────────────────────── */
+/* ── Stat strip (matches Teams tm-stats-bar) ─────────────────────────────── */
 .dash-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
   margin-bottom: 30px;
+  background: var(--surface);
 }
 .dash-stat {
-  background: var(--surface-2);
-  border: 1.5px solid var(--text);
-  border-radius: 0;
-  padding: 24px 26px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  box-shadow: 4px 4px 0 var(--surface-sunk);
+  align-items: center;
+  justify-content: center;
+  padding: 14px 12px;
+  border-right: 1px solid var(--border);
+  gap: 2px;
 }
+.dash-stat:last-child { border-right: none; }
+.dash-stat:first-child { background: var(--accent-soft); }
 .dash-stat-value {
   font-family: 'Bricolage Grotesque', sans-serif;
-  font-size: 3.1rem;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
-.dash-stat-label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-family: 'Assistant', sans-serif;
-  font-size: 0.72rem;
+  font-size: 1.45rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-3);
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
 }
-.dash-stat-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
+.dash-stat:first-child .dash-stat-value { color: var(--accent); }
+.dash-stat-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 /* ── Artist filter chips ─────────────────────────────────────────────────── */
@@ -7411,18 +7404,16 @@ body {
   .dash-body { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
-  .dash-stats { grid-template-columns: repeat(2, 1fr); }
-  .dashboard  { padding: 24px 20px 56px; }
   .mytasks-grid { grid-template-columns: 1fr; }
   .mytask-row { border-right: none; }
   .mytask-row:nth-last-child(-n+2) { border-bottom: 1px solid var(--border-light); }
   .mytask-row:last-child { border-bottom: none; }
 }
 @media (max-width: 600px) {
-  .dash-stats  { grid-template-columns: 1fr; gap: 10px; }
+  .dash-stats  { flex-wrap: wrap; }
+  .dash-stat   { min-width: 33%; flex: 1 1 33%; }
   .mcal-cell        { height: 68px; }
   .mcal-grid        { grid-auto-rows: 68px; }
-  .dashboard   { padding: 20px 16px 48px; }
   .ws-trigger  { height: 40px; padding: 0 10px; }
   .ws-trigger-eyebrow { display: none; }
 }

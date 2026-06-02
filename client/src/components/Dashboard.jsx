@@ -443,10 +443,6 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
 
       {/* ── Hero ── */}
       <div className="dash-hero">
-        <div className="dash-eyebrow">
-          <span className="dash-eyebrow-dot" />
-          PRODUCTION HUB · GLOBAL VIEW
-        </div>
         <h1 className="dash-title">
           Today<span className="dash-title-period">.</span>
         </h1>
@@ -463,24 +459,15 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
       <div className="dash-stats">
         <div className="dash-stat">
           <span className="dash-stat-value">{upcoming.length}</span>
-          <span className="dash-stat-label">
-            <span className="dash-stat-dot" />
-            Total Upcoming Shows
-          </span>
+          <span className="dash-stat-label">Total Upcoming Shows</span>
         </div>
         <div className="dash-stat">
           <span className="dash-stat-value">{artists.length}</span>
-          <span className="dash-stat-label">
-            <span className="dash-stat-dot" />
-            Active Artists
-          </span>
+          <span className="dash-stat-label">Active Artists</span>
         </div>
         <div className="dash-stat">
           <span className="dash-stat-value">{openTasks.length}</span>
-          <span className="dash-stat-label">
-            <span className="dash-stat-dot" />
-            Open Tasks
-          </span>
+          <span className="dash-stat-label">Open Tasks</span>
         </div>
       </div>
 
