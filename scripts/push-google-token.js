@@ -1,6 +1,6 @@
 /**
  * push-google-token.js
- * Pushes the current local Google token to Railway's persistent volume
+ * Pushes the local Google credentials + token to Railway's persistent volume
  * so the brief/Drive integration works without a full re-deploy.
  *
  * Usage:
@@ -32,6 +32,14 @@ if (!AUTH_USER || !AUTH_PASS) {
   process.exit(1);
 }
 
+// ── Read local credentials ─────────────────────────────────────────────────
+const credsPath = path.join(__dirname, '../server/data/gmail-credentials.json');
+if (!fs.existsSync(credsPath)) {
+  console.error('ERROR: server/data/gmail-credentials.json not found');
+  process.exit(1);
+}
+const creds = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+
 // ── Read local token ───────────────────────────────────────────────────────
 const tokenPath = path.join(__dirname, '../server/data/gmail-token.json');
 if (!fs.existsSync(tokenPath)) {
@@ -60,7 +68,7 @@ function request(options, body) {
 (async () => {
   const host = RAILWAY_URL.replace('https://', '');
 
-  // ── Step 1: Login (form POST to /login, follows redirect) ────────────
+  // ── Step 1: Login ──────────────────────────────────────────────────────
   console.log(`Logging in to ${RAILWAY_URL} as ${AUTH_USER}...`);
   const params   = `username=${encodeURIComponent(AUTH_USER)}&password=${encodeURIComponent(AUTH_PASS)}`;
   const loginRes = await request({
@@ -68,7 +76,6 @@ function request(options, body) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(params) },
   }, params);
 
-  // /login responds with 302 redirect on success and sets the session cookie there
   if (loginRes.status !== 302 && loginRes.status !== 200) {
     console.error('Login failed:', loginRes.status, loginRes.body.slice(0, 200));
     process.exit(1);
@@ -81,10 +88,28 @@ function request(options, body) {
   }
   console.log('Logged in.');
 
-  // ── Step 2: Push token ────────────────────────────────────────────────
+  // ── Step 2: Push credentials ───────────────────────────────────────────
+  console.log('Pushing Google credentials to Railway volume...');
+  const credsBody = JSON.stringify(creds);
+  const credsRes  = await request({
+    hostname: host, path: '/api/admin/google-credentials', method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(credsBody),
+      'Cookie': cookies,
+    },
+  }, credsBody);
+
+  if (credsRes.status !== 200) {
+    console.error('Credentials push failed:', credsRes.status, credsRes.body);
+    process.exit(1);
+  }
+  console.log('Credentials pushed:', JSON.parse(credsRes.body).written);
+
+  // ── Step 3: Push token ─────────────────────────────────────────────────
   console.log('Pushing fresh Google token to Railway volume...');
   const tokenBody = JSON.stringify(token);
-  const pushRes = await request({
+  const pushRes   = await request({
     hostname: host, path: '/api/admin/google-token', method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -94,11 +119,9 @@ function request(options, body) {
   }, tokenBody);
 
   if (pushRes.status !== 200) {
-    console.error('Push failed:', pushRes.status, pushRes.body);
+    console.error('Token push failed:', pushRes.status, pushRes.body);
     process.exit(1);
   }
-
-  const result = JSON.parse(pushRes.body);
-  console.log('Token pushed successfully:', result.written);
-  console.log('The brief should now work on Railway.');
+  console.log('Token pushed:', JSON.parse(pushRes.body).written);
+  console.log('Done. The brief should now work on Railway.');
 })();

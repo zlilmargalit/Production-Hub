@@ -1015,8 +1015,6 @@ app.get('/api/admin/google-status', async (req, res) => {
 });
 
 // ── Admin: push a fresh Google token to the DATA_DIR volume ─────────────────
-// Lets the admin refresh Railway's Google credentials without a full re-deploy.
-// The token is written to DATA_DIR/gmail-token.json which getGoogleAuth() checks first.
 app.post('/api/admin/google-token', async (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const token = req.body;
@@ -1030,6 +1028,25 @@ app.post('/api/admin/google-token', async (req, res) => {
     res.json({ ok: true, written: dest });
   } catch (err) {
     console.error('[admin] Failed to write Google token:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: push Google OAuth credentials (client_id/secret) to the volume ───
+// Must be pushed alongside the token so getGoogleAuth() uses a matching pair.
+app.post('/api/admin/google-credentials', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const creds = req.body;
+  if (!creds || (!creds.installed && !creds.web)) {
+    return res.status(400).json({ error: 'Body must be a Google credentials JSON with installed or web key' });
+  }
+  try {
+    const dest = path.join(DATA_DIR, 'gmail-credentials.json');
+    await fsp.writeFile(dest, JSON.stringify(creds, null, 2), 'utf8');
+    console.log('[admin] Google credentials updated at', dest);
+    res.json({ ok: true, written: dest });
+  } catch (err) {
+    console.error('[admin] Failed to write Google credentials:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
