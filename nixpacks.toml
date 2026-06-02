@@ -7,11 +7,13 @@ cmds = [
   "npm install --prefix server",
   "npm install --prefix client"
 ]
+dependsOn = ["setup"]
 
 [phases.build]
 cmds = [
   "npm run build --prefix client"
 ]
+dependsOn = ["install"]
 
 [start]
 cmd = "node server/index.js"
