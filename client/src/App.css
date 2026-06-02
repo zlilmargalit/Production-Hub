@@ -5895,8 +5895,8 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
   transition: border-color 0.15s;
+  /* overflow must NOT be hidden — the three-dot dropdown overflows the card boundary */
 }
 .tm-member-card:hover { border-color: var(--border-strong); }
 .tm-member-card.expanded { border-color: var(--accent); }
@@ -5909,6 +5909,10 @@ body {
   padding: 12px 14px;
   cursor: pointer;
   user-select: none;
+  border-radius: 10px 10px 0 0; /* top corners match card when collapsed */
+}
+.tm-member-card:not(.expanded) .tm-member-row {
+  border-radius: 10px; /* full round when card is closed */
 }
 .tm-member-row:hover { background: var(--surface-sunk); }
 
