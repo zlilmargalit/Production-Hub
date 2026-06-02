@@ -12,6 +12,7 @@ import SetlistCalculator from './components/SetlistCalculator';
 import TechSpecParser    from './components/TechSpecParser';
 import AutomationsPage  from './components/automations/AutomationsPage';
 import BacklinerDashboard from './components/backliner/BacklinerDashboard';
+import Dashboard from './components/Dashboard';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -23,7 +24,7 @@ function App({ demoMode = false }) {
   const [editingShow, setEditingShow] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState('shows');
+  const [page, setPage] = useState('home');
   const [syncStatus, setSyncStatus] = useState(null);
   const [applyStatus, setApplyStatus] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('ph-theme') || 'light');
@@ -429,33 +430,43 @@ function App({ demoMode = false }) {
     setEditingShow(null);
   }, []);
 
+  // ── Open a show from the Dashboard (switches artist context first) ──────────
+  const openShowFromDashboard = useCallback(async (show) => {
+    const artist = artists.find((a) => a.id === show.artistId);
+    if (artist && artist.id !== currentArtistRef.current) {
+      await switchToArtist(artist);
+    }
+    setPage('shows');
+  }, [artists, switchToArtist]);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="app">
       {demoMode && <DemoBanner />}
 
       <header className="app-header">
-        {/* Brand (always left) */}
-        <div className="header-brand">
-          {/* Spot Pool mark — three semicircular arcs + floor line + orange subject dot */}
-          {/* Spot Pool mark — sweep=1 arcs upward from the floor line */}
+        {/* Brand — always left; clicking goes to Home */}
+        <div
+          className="header-brand"
+          onClick={() => setPage('home')}
+          style={{ cursor: 'pointer' }}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && setPage('home')}
+          aria-label="Go to home"
+        >
           <svg width="36" height="28" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg" aria-hidden="true">
-            {/* Outer arc — radius 44, ends at x=6 and x=94 */}
             <path d="M 6 62 A 44 44 0 0 1 94 62" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4"/>
-            {/* Middle arc — radius 29 */}
             <path d="M 21 62 A 29 29 0 0 1 79 62" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" opacity="0.65"/>
-            {/* Inner arc — radius 15 */}
             <path d="M 35 62 A 15 15 0 0 1 65 62" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.9"/>
-            {/* Floor line */}
             <line x1="2" y1="62" x2="98" y2="62" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
-            {/* Subject dot */}
             <circle cx="50" cy="62" r="5" fill="#F08D39"/>
           </svg>
           <h1>Production Hub</h1>
         </div>
 
-        {/* Nav tabs (centre on desktop, wraps to second row on mobile) */}
-        <nav className="page-nav">
+        {/* Nav: home mode shows nothing; artist mode shows all tabs */}
+        <nav className="page-nav">{page === 'home' ? null : (<>
           <button
             className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
             onClick={() => setPage('shows')}
@@ -531,7 +542,7 @@ function App({ demoMode = false }) {
               />
             </span>
           )}
-        </nav>
+        </>)}</nav>
 
         {/* Action buttons (right — admin tools hidden on mobile) */}
         <div className="header-right">
@@ -616,6 +627,14 @@ function App({ demoMode = false }) {
               Retry
             </button>
           </div>
+        ) : page === 'home' ? (
+          <Dashboard
+            artists={artists}
+            tasks={tasks}
+            crew={crew}
+            onOpenShow={openShowFromDashboard}
+            onToggleTask={toggleTask}
+          />
         ) : page === 'shows' ? (
           <ShowList
             shows={shows}
