@@ -947,6 +947,62 @@ app.post('/api/admin/settings', (req, res) => {
   res.json({ ok: true, settings: updated });
 });
 
+// ── Admin: Google Drive diagnostic ───────────────────────────────────────────
+app.get('/api/admin/google-status', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { google: googleLib } = require('googleapis');
+  const volumeCredsPath = path.join(DATA_DIR, 'gmail-credentials.json');
+  const volumeTokenPath = path.join(DATA_DIR, 'gmail-token.json');
+  const staticCredsPath = path.join(__dirname, 'data/gmail-credentials.json');
+  const staticTokenPath = path.join(__dirname, 'data/gmail-token.json');
+
+  const result = {
+    DATA_DIR,
+    sources: {
+      creds: fs.existsSync(volumeCredsPath) ? 'volume' : process.env.GMAIL_CREDENTIALS ? 'env_var' : fs.existsSync(staticCredsPath) ? 'static_file' : 'MISSING',
+      token: fs.existsSync(volumeTokenPath) ? 'volume' : process.env.GMAIL_TOKEN ? 'env_var' : fs.existsSync(staticTokenPath) ? 'static_file' : 'MISSING',
+    },
+    tokenInfo: null, driveTest: null, error: null,
+  };
+
+  try {
+    let creds, tokens;
+    if (fs.existsSync(volumeCredsPath))      creds  = JSON.parse(fs.readFileSync(volumeCredsPath, 'utf8'));
+    else if (process.env.GMAIL_CREDENTIALS)  creds  = JSON.parse(process.env.GMAIL_CREDENTIALS);
+    else                                      creds  = JSON.parse(fs.readFileSync(staticCredsPath, 'utf8'));
+    if (fs.existsSync(volumeTokenPath))      tokens = JSON.parse(fs.readFileSync(volumeTokenPath, 'utf8'));
+    else if (process.env.GMAIL_TOKEN)        tokens = JSON.parse(process.env.GMAIL_TOKEN);
+    else                                      tokens = JSON.parse(fs.readFileSync(staticTokenPath, 'utf8'));
+
+    result.tokenInfo = {
+      has_access_token:  !!tokens.access_token,
+      has_refresh_token: !!tokens.refresh_token,
+      scope:             tokens.scope || null,
+      expiry_date:       tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+      expired:           tokens.expiry_date ? tokens.expiry_date < Date.now() : 'unknown',
+    };
+
+    const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
+    const client = new googleLib.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+    client.setCredentials(tokens);
+
+    // Test: get user info
+    const oauth2 = googleLib.oauth2({ version: 'v2', auth: client });
+    const uinfo = await oauth2.userinfo.get();
+    result.tokenInfo.email = uinfo.data.email;
+
+    // Test: access the template doc
+    const TMPL = process.env.TEMPLATE_DOC_ID || '1ZBXxhG14W91wBKdvW96Qu8-kQmIX2ZpNY58psVsqhDs';
+    const drive = googleLib.drive({ version: 'v3', auth: client });
+    const meta  = await drive.files.get({ fileId: TMPL, fields: 'id,name,owners' });
+    result.driveTest = { ok: true, fileName: meta.data.name, templateId: TMPL };
+  } catch (err) {
+    result.error = err.message;
+  }
+
+  res.json(result);
+});
+
 // ── Admin: push a fresh Google token to the DATA_DIR volume ─────────────────
 // Lets the admin refresh Railway's Google credentials without a full re-deploy.
 // The token is written to DATA_DIR/gmail-token.json which getGoogleAuth() checks first.
