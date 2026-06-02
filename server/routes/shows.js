@@ -224,56 +224,6 @@ function mergeRunsInXml(xml) {
   return xml.replace(re, (match) => match.replace(new RegExp(rb, 'g'), ''));
 }
 
-// Build an OOXML table for schedule lines in "HH:MM - description" format.
-// The table has two columns: description (right, wide) and time (left, bold blue).
-// Returns the <w:tbl>...</w:tbl> XML string, or null if scheduleText is empty.
-function buildScheduleOoxml(scheduleText) {
-  if (!scheduleText || !scheduleText.trim()) return null;
-  const lines = scheduleText.split('\n').map((l) => l.trim()).filter(Boolean);
-  if (!lines.length) return null;
-
-  const x  = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const font = '<w:rFonts w:ascii="Assistant" w:hAnsi="Assistant" w:cs="Assistant"/>';
-  const sz   = '<w:sz w:val="22"/><w:szCs w:val="22"/>';
-  const nb   = (side) => `<w:${side} w:val="none" w:sz="0" w:space="0" w:color="auto"/>`;
-  const sep  = '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="E5E7EB"/>';
-
-  const rows = lines.map((line) => {
-    const m    = line.match(/^(\d{1,2}:\d{2})\s*[-–]\s*(.+)$/);
-    const time = m ? m[1] : '';
-    const desc = m ? m[2] : line;
-
-    return `<w:tr>` +
-      // Cell 1 — description (visually RIGHT in RTL, wider)
-      `<w:tc><w:tcPr><w:tcW w:w="7000" w:type="dxa"/>` +
-      `<w:tcBorders>${nb('top')}${nb('left')}${sep}${nb('right')}</w:tcBorders>` +
-      `<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tcMar>` +
-      `</w:tcPr>` +
-      `<w:p><w:pPr><w:jc w:val="right"/></w:pPr>` +
-      `<w:r><w:rPr>${font}${sz}</w:rPr><w:t xml:space="preserve">${x(desc)}</w:t></w:r>` +
-      `</w:p></w:tc>` +
-      // Cell 2 — time (visually LEFT in RTL, narrower, bold blue)
-      `<w:tc><w:tcPr><w:tcW w:w="1800" w:type="dxa"/>` +
-      `<w:tcBorders>${nb('top')}${nb('left')}${sep}${nb('right')}</w:tcBorders>` +
-      `<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/></w:tcMar>` +
-      `</w:tcPr>` +
-      `<w:p><w:pPr><w:jc w:val="left"/></w:pPr>` +
-      `<w:r><w:rPr>${font}<w:b/><w:color w:val="1D4ED8"/>${sz}</w:rPr><w:t>${x(time)}</w:t></w:r>` +
-      `</w:p></w:tc>` +
-      `</w:tr>`;
-  }).join('');
-
-  return `<w:tbl>` +
-    `<w:tblPr>` +
-    `<w:tblW w:w="8800" w:type="dxa"/>` +
-    `<w:tblBorders>${nb('top')}${nb('left')}${nb('bottom')}${nb('right')}${nb('insideH')}${nb('insideV')}</w:tblBorders>` +
-    `<w:tblLayout w:type="fixed"/>` +
-    `</w:tblPr>` +
-    `<w:tblGrid><w:gridCol w:w="7000"/><w:gridCol w:w="1800"/></w:tblGrid>` +
-    rows +
-    `</w:tbl>`;
-}
-
 // Create a coordination-sheet Google Doc by filling the DOCX template and
 // uploading it to Drive (Drive auto-converts DOCX → Google Doc on upload).
 async function createBriefDoc(payload) {
@@ -300,13 +250,6 @@ async function createBriefDoc(payload) {
     ).join('');
   };
 
-  // Replace {{SCHEDULE}} paragraph with a proper OOXML table (or remove it)
-  const scheduleOoxml = buildScheduleOoxml(payload.schedule);
-  docXml = docXml.replace(
-    /<w:p\b[^>]*>(?:(?!<\/w:p>)[\s\S])*?\{\{SCHEDULE\}\}[\s\S]*?<\/w:p>/,
-    scheduleOoxml || ''
-  );
-
   const map = {
     '{{EVENT_NAME}}':         toDocx(payload.eventName),
     '{{DATE}}':               toDocx(payload.date),
@@ -314,6 +257,7 @@ async function createBriefDoc(payload) {
     '{{ADDRESS}}':            toDocx(payload.address),
     '{{TECHNICA_CREW}}':      toDocx(payload.technicalCrew),
     '{{TRANSPORTATION}}':     toDocx(payload.transportation),
+    '{{SCHEDULE}}':           toDocx(payload.schedule),
     '{{CONTACTS}}':           toDocx(payload.contacts),
     '{{ADDITIONAL_DETAILS}}': toDocx(payload.additionalDetails),
   };
