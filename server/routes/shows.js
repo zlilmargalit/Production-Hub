@@ -20,9 +20,14 @@ const execFileP = promisify(execFile);
 const CREDENTIALS_PATH = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH       = path.join(__dirname, '../data/gmail-token.json');
 
+// On macOS (local), default to saving PDFs to the production folder.
+// On Railway/Linux (no PDF_DIR env var), default to '' so the PDF is
+// streamed back as a download instead of trying to write to a Mac path.
 const PDF_DIR = process.env.PDF_DIR !== undefined
   ? process.env.PDF_DIR
-  : '/Users/zlilmargalit/Desktop/Production/דפי תיאום';
+  : process.platform === 'darwin'
+    ? '/Users/zlilmargalit/Desktop/Production/דפי תיאום'
+    : '';
 const TEMPLATE_DOC_ID   = process.env.TEMPLATE_DOC_ID || '1ZBXxhG14W91wBKdvW96Qu8-kQmIX2ZpNY58psVsqhDs';
 const TEMPLATE_DOCX_PATH = path.join(__dirname, '../data/brief-template.docx');
 

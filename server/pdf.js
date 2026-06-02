@@ -14,16 +14,37 @@ const CHROME_PATH = process.env.CHROME_PATH || (() => {
   if (process.platform === 'darwin') {
     return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   }
-  // On Railway / Nix the package is called 'chromium', not 'google-chrome'.
-  // Resolve the actual binary path at start-up via PATH lookup.
+  // On Railway / Nix: chromium is installed via nixpacks.toml.
+  // Strategy:
+  //   1. `which <bin>` → validate the path actually exists on disk
+  //   2. Try known absolute paths (nixpacks nix store / system)
+  //   3. Last resort: try executing `<bin> --version` to confirm it's runnable in PATH
+  const fss = require('fs');
   const { execSync } = require('child_process');
+
   for (const bin of ['chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome']) {
+    // 1. which → absolute path that exists
     try {
-      const p = execSync(`which ${bin}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-      if (p) { console.log(`[pdf] Found Chrome at: ${p}`); return p; }
-    } catch { /* try next */ }
+      const p = execSync(`which ${bin}`, { encoding: 'utf8', stdio: 'pipe' }).trim();
+      if (p && fss.existsSync(p)) { console.log(`[pdf] Found Chrome via which: ${p}`); return p; }
+    } catch {}
+    // 3. Binary runnable directly in PATH (existsSync('chromium') would fail, but spawn works)
+    try {
+      execSync(`${bin} --version`, { encoding: 'utf8', stdio: 'pipe' });
+      console.log(`[pdf] Chrome runnable in PATH as: ${bin}`);
+      return bin;
+    } catch {}
   }
-  console.log('[pdf] Chrome not found via which, falling back to "chromium" in PATH');
+  // 2. Known absolute paths for nixpacks / common Linux installs
+  for (const abs of [
+    '/nix/var/nix/profiles/default/bin/chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/local/bin/chromium',
+  ]) {
+    if (fss.existsSync(abs)) { console.log(`[pdf] Found Chrome at absolute path: ${abs}`); return abs; }
+  }
+  console.warn('[pdf] Chrome not found — set CHROME_PATH env var on Railway. Attempting "chromium".');
   return 'chromium';
 })();
 

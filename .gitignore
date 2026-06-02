@@ -16,3 +16,5 @@ server/data/artists/
 # macOS metadata
 .DS_Store
 **/.DS_Store
+# Allow DOCX templates to be tracked
+!server/data/*.docx
