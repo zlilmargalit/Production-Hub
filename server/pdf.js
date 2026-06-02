@@ -65,25 +65,35 @@ function getBrowser() {
 // Render an HTML string to a PDF Buffer. Format/margins match the previous
 // Chrome --print-to-pdf defaults so the visual output is unchanged.
 async function htmlToPdfBuffer(html, options = {}) {
-  const browser = await getBrowser();
-  const page = await browser.newPage();
-  try {
-    // Use 'load' so the browser fully decodes base64 image data-URLs before
-    // we take the PDF snapshot. 'domcontentloaded' fires too early — images
-    // haven't been painted yet, so they appear blank in the output.
-    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
-    const buffer = await page.pdf({
-      format: options.format || 'A4',
-      printBackground: true,
-      margin: options.margin || { top: '0', right: '0', bottom: '0', left: '0' },
-      preferCSSPageSize: true,
-      ...options.pdf,
-    });
-    return buffer;
-  } finally {
-    // Close the page (not the browser) so resources are reclaimed but the
-    // browser process is reused for the next request.
-    await page.close().catch(() => {});
+  // Two attempts: on the first failure (stale singleton browser) we close the
+  // browser, clear the promise, and retry once with a fresh launch.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+    try {
+      // 'networkidle0' is more reliable than 'load' for self-contained HTML
+      // that embeds images as data-URLs — no external network requests means
+      // the idle condition is met immediately after the DOM is painted.
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
+      const buffer = await page.pdf({
+        format: options.format || 'A4',
+        printBackground: true,
+        margin: options.margin || { top: '0', right: '0', bottom: '0', left: '0' },
+        preferCSSPageSize: true,
+        ...options.pdf,
+      });
+      return buffer;
+    } catch (err) {
+      await page.close().catch(() => {});
+      if (attempt === 0) {
+        // Stale browser — force a fresh launch on the next attempt.
+        console.warn('[pdf] setContent failed (attempt 1), recycling browser:', err.message);
+        browserPromise = null;
+        try { await browser.close(); } catch {}
+      } else {
+        throw err;
+      }
+    }
   }
 }
 
