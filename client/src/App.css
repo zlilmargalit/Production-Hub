@@ -6330,34 +6330,54 @@ body {
   justify-content: flex-end;
 }
 
-/* ── Artist access block (inside expanded) ────────────────────────────────── */
-.tm-artist-access {
-  padding: 12px 14px;
+/* ── Expanded settings: two-column (artist access + permissions) ─────────── */
+.tm-expanded-settings {
+  display: flex;
+  gap: 0;
   border-top: 1px solid var(--border-light);
   background: var(--surface-2);
 }
-.tm-artist-access-label {
-  font-size: 0.75rem;
+.tm-settings-col {
+  flex: 1;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tm-settings-col + .tm-settings-col {
+  border-left: 1px solid var(--border-light);
+}
+.tm-settings-col-label {
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
+.tm-settings-col-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+/* Artist access rows (reused inside the new column layout) */
 .tm-artist-access-rows {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 10px;
 }
 .tm-artist-access-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.tm-save-access-btn {
-  margin-top: 4px;
+/* Inline permissions (right column) */
+.tm-inline-perms {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

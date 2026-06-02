@@ -72,7 +72,7 @@ function toObjectAccess(rawAccess) {
 }
 
 // ── Three-dot dropdown menu ───────────────────────────────────────────────────
-function DotMenu({ onEditPerms, onRemove }) {
+function DotMenu({ onRemove }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -94,9 +94,6 @@ function DotMenu({ onEditPerms, onRemove }) {
       </button>
       {open && (
         <div className="tm-dots-dropdown">
-          <button className="tm-dots-item" onClick={() => { onEditPerms(); setOpen(false); }}>
-            Edit Permissions
-          </button>
           <button className="tm-dots-item tm-dots-item--danger" onClick={() => { onRemove(); setOpen(false); }}>
             Remove from team
           </button>
@@ -106,11 +103,14 @@ function DotMenu({ onEditPerms, onRemove }) {
   );
 }
 
-// ── Inline permissions editor ─────────────────────────────────────────────────
-function PermPanel({ user, perms, onSave, onClose }) {
+// ── Inline permissions editor (shown directly in the expanded card) ───────────
+function InlinePermissions({ userId, perms, onSave }) {
   const [local, setLocal] = useState(perms || { viewRubrics: [], editRubrics: [] });
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
+
+  // Sync when switching between expanded users
+  useEffect(() => { setLocal(perms || { viewRubrics: [], editRubrics: [] }); }, [userId, perms]);
 
   const toggle = (permType, rubric, checked) => {
     let view = [...(local.viewRubrics || [])];
@@ -135,18 +135,14 @@ function PermPanel({ user, perms, onSave, onClose }) {
 
   const save = async () => {
     setSaving(true);
-    await onSave(user.id, local);
+    await onSave(userId, local);
     setSaving(false);
     setSaved(true);
-    setTimeout(() => { setSaved(false); onClose(); }, 1200);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
-    <div className="tm-perm-panel" onClick={e => e.stopPropagation()}>
-      <div className="tm-perm-panel-header">
-        <span className="tm-perm-panel-title">Permissions — {user.username}</span>
-        <button className="tm-perm-close" onClick={onClose} aria-label="Close">✕</button>
-      </div>
+    <div className="tm-inline-perms">
       <div className="tm-perm-grid">
         {ALL_RUBRICS.map(rubric => (
           <div key={rubric} className="tm-perm-rubric-row">
@@ -156,27 +152,23 @@ function PermPanel({ user, perms, onSave, onClose }) {
             </div>
             <div className="tm-perm-rubric-checks">
               <label className="tm-perm-check-label">
-                <input
-                  type="checkbox"
+                <input type="checkbox"
                   checked={(local.viewRubrics || []).includes(rubric)}
                   onChange={e => toggle('view', rubric, e.target.checked)}
-                />
-                View
+                /> View
               </label>
               <label className="tm-perm-check-label">
-                <input
-                  type="checkbox"
+                <input type="checkbox"
                   checked={(local.editRubrics || []).includes(rubric)}
                   onChange={e => toggle('edit', rubric, e.target.checked)}
-                />
-                Edit
+                /> Edit
               </label>
             </div>
           </div>
         ))}
       </div>
       <div className="tm-perm-footer">
-        <button className="btn-primary" onClick={save} disabled={saving}>
+        <button className="btn-action" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
         </button>
       </div>
@@ -351,7 +343,6 @@ function TabMembers({ users, artists, shows, activityLog,
   const [uAccess,     setUAccess]     = useState(() => toObjectAccess(userArtistAccess));
   const [localPerms,  setLocalPerms]  = useState(userPermissions || {});
   const [expandedId,  setExpandedId]  = useState(null);
-  const [permUserId,  setPermUserId]  = useState(null);
   const [accessSaving,setAccessSaving]= useState(false);
   const [accessMsg,   setAccessMsg]   = useState('');
   const [emailEditing,setEmailEditing]= useState(null);
@@ -419,7 +410,6 @@ function TabMembers({ users, artists, shows, activityLog,
         <div className="tm-member-list">
           {users.map(u => {
             const isExpanded = expandedId === u.id;
-            const isPermOpen = permUserId === u.id;
             const permitted  = Object.keys(uAccess[u.id] || {});
 
             return (
@@ -481,51 +471,58 @@ function TabMembers({ users, artists, shows, activityLog,
                     {fmtRelative(lastSeen[u.id])}
                   </span>
 
-                  <DotMenu
-                    onEditPerms={() => { setPermUserId(prev => prev === u.id ? null : u.id); setExpandedId(null); }}
-                    onRemove={() => onDeleteUser(u)}
-                  />
+                  <DotMenu onRemove={() => onDeleteUser(u)} />
                 </div>
 
-                {/* ── Artist access (in expanded section) ── */}
-                {isExpanded && !isPermOpen && (
+                {/* ── Expanded: Access + Permissions side by side, then tabs ── */}
+                {isExpanded && (
                   <>
-                    {artists.length > 0 && (
-                      <div className="tm-artist-access" onClick={e => e.stopPropagation()}>
-                        <span className="tm-artist-access-label">Artist access:</span>
-                        <div className="tm-artist-access-rows">
-                          {artists.map(a => {
-                            const checked    = (uAccess[u.id] || {})[a.id] !== undefined;
-                            const artistRole = (uAccess[u.id]?.[a.id]?.role) || 'viewer';
-                            return (
-                              <div key={a.id} className="tm-artist-access-row">
-                                <label className="team-artist-check">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={e => toggleArtist(u.id, a.id, e.target.checked)}
-                                  />
-                                  <span dir="auto">{a.name}</span>
-                                </label>
-                                {checked && (
-                                  <select
-                                    className="team-role-select"
-                                    value={artistRole}
-                                    onChange={e => setArtistRole(u.id, a.id, e.target.value)}
-                                  >
-                                    {ARTIST_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                                  </select>
-                                )}
-                              </div>
-                            );
-                          })}
+                    <div className="tm-expanded-settings" onClick={e => e.stopPropagation()}>
+                      {/* Left column: artist access */}
+                      {artists.length > 0 && (
+                        <div className="tm-settings-col">
+                          <span className="tm-settings-col-label">Artist Access</span>
+                          <div className="tm-artist-access-rows">
+                            {artists.map(a => {
+                              const checked    = (uAccess[u.id] || {})[a.id] !== undefined;
+                              const artistRole = (uAccess[u.id]?.[a.id]?.role) || 'viewer';
+                              return (
+                                <div key={a.id} className="tm-artist-access-row">
+                                  <label className="team-artist-check">
+                                    <input type="checkbox" checked={checked}
+                                      onChange={e => toggleArtist(u.id, a.id, e.target.checked)} />
+                                    <span dir="auto">{a.name}</span>
+                                  </label>
+                                  {checked && (
+                                    <select className="team-role-select" value={artistRole}
+                                      onChange={e => setArtistRole(u.id, a.id, e.target.value)}>
+                                      {ARTIST_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="tm-settings-col-footer">
+                            <button className="btn-action" onClick={saveAccess} disabled={accessSaving}>
+                              {accessSaving ? 'Saving…' : 'Save'}
+                            </button>
+                            {accessMsg && <span className={`team-save-msg ${accessMsg === 'Saved' ? 'ok' : 'err'}`}>{accessMsg}</span>}
+                          </div>
                         </div>
-                        <button className="btn-action tm-save-access-btn" onClick={saveAccess} disabled={accessSaving}>
-                          {accessSaving ? 'Saving…' : 'Save access'}
-                        </button>
-                        {accessMsg && <span className={`team-save-msg ${accessMsg === 'Saved' ? 'ok' : 'err'}`}>{accessMsg}</span>}
+                      )}
+
+                      {/* Right column: content permissions */}
+                      <div className="tm-settings-col">
+                        <span className="tm-settings-col-label">Content Permissions</span>
+                        <InlinePermissions
+                          userId={u.id}
+                          perms={localPerms[u.id] || { viewRubrics: [], editRubrics: [] }}
+                          onSave={savePerms}
+                        />
                       </div>
-                    )}
+                    </div>
+
                     <UserExpanded
                       user={u}
                       shows={shows}
@@ -534,16 +531,6 @@ function TabMembers({ users, artists, shows, activityLog,
                       onUpdateShow={onUpdateShow}
                     />
                   </>
-                )}
-
-                {/* ── Permissions panel ── */}
-                {isPermOpen && (
-                  <PermPanel
-                    user={u}
-                    perms={localPerms[u.id] || { viewRubrics: [], editRubrics: [] }}
-                    onSave={savePerms}
-                    onClose={() => setPermUserId(null)}
-                  />
                 )}
               </div>
             );
