@@ -63,38 +63,37 @@ async function getGoogleAuth() {
   }
 
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
-  const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  client.setCredentials(tokens);
 
-  // When googleapis auto-refreshes the access_token, persist the new token to the
-  // DATA_DIR volume so the next cold start also works (avoids re-running push-google-token.js).
-  const persistTokens = (newTokens) => {
+  // Step 1: use a full OAuth2 client (with refresh_token) only to obtain a fresh access_token.
+  // When credentials include expiry_date + refresh_token, googleapis on Node 20 can silently
+  // fail to inject the Authorization header. Fetching the token explicitly avoids that path.
+  const refreshClient = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+  refreshClient.setCredentials(tokens);
+
+  // Persist any new token issued during the refresh to the volume.
+  refreshClient.on('tokens', (newTokens) => {
     const dest = path.join(DATA_DIR, 'gmail-token.json');
     const merged = { ...tokens, ...newTokens };
     fsp.writeFile(dest, JSON.stringify(merged, null, 2), 'utf8')
       .then(() => console.log('[auth] Google token auto-refreshed and saved to volume'))
       .catch((e) => console.warn('[auth] Could not save refreshed token:', e.message));
-  };
-  client.on('tokens', persistTokens);
+  });
 
-  // On Railway (Node 20), OAuth2Client credential injection can silently fail to
-  // include the Authorization header. Pre-fetching the access_token forces the auth
-  // client to fully resolve its credentials before any Drive/Docs API call.
+  let accessToken = tokens.access_token;
   try {
-    const { token: freshToken } = await client.getAccessToken();
-    if (freshToken && freshToken !== tokens.access_token) {
-      // Token was refreshed — update the client with the fresh credentials
-      const refreshed = { ...tokens, access_token: freshToken };
-      client.setCredentials(refreshed);
-      console.log('[auth] Token pre-fetched and refreshed for this request');
-    } else {
-      console.log('[auth] Token pre-fetched OK (no refresh needed)');
-    }
+    const result = await refreshClient.getAccessToken();
+    if (result.token) accessToken = result.token;
+    console.log('[auth] access_token resolved OK');
   } catch (e) {
-    console.warn('[auth] Pre-fetch getAccessToken failed:', e.message, '— proceeding with stored token');
+    console.warn('[auth] getAccessToken failed, using stored token:', e.message);
   }
 
-  return client;
+  // Step 2: return a static client with ONLY the access_token.
+  // No expiry_date, no refresh_token → googleapis skips its token-refresh machinery
+  // entirely and injects the Bearer header reliably on every Node.js version.
+  const staticClient = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+  staticClient.setCredentials({ access_token: accessToken });
+  return staticClient;
 }
 
 // Upload a data-URL to Google Drive, make it publicly readable, return a direct view URL.
