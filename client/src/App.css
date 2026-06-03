@@ -520,19 +520,21 @@ body {
 /* ── Segmented Control (.seg) ─────────────────────────────────────────── */
 .seg {
   display: inline-flex;
-  border: 1.5px solid var(--text);
-  border-radius: 6px;
+  border: 1px solid var(--text);
+  border-radius: 0;
   overflow: hidden;
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: 3px 3px 0 var(--text);
 }
 .seg-btn {
-  padding: 8px 16px;
-  font-family: 'Assistant', 'Bricolage Grotesque', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  padding: 11px 22px;
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-2);
-  border-right: 1.5px solid var(--text);
+  border-right: 1px solid var(--text);
   background: none;
   cursor: pointer;
   display: inline-flex;
@@ -540,18 +542,19 @@ body {
   gap: 7px;
   transition: background 0.12s, color 0.12s;
   white-space: nowrap;
+  border-radius: 0;
 }
 .seg-btn:last-child { border-right: none; }
 .seg-btn:hover { background: var(--surface-sunk); color: var(--text); }
-.seg-btn.active { background: var(--accent); color: #fff; }
-.seg-btn.active .seg-count { background: rgba(255,255,255,0.25); color: #fff; }
+.seg-btn.active { background: var(--text); color: var(--surface); }
+.seg-btn.active .seg-count { background: rgba(255,255,255,0.18); color: var(--surface); }
 .seg-count {
   font-size: 0.68rem;
   font-weight: 700;
   background: var(--surface-sunk);
   color: var(--text-3);
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: 0;
   font-variant-numeric: tabular-nums;
 }
 
