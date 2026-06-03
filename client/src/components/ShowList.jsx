@@ -94,7 +94,7 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
 
   const today = new Date();
   const now = today.toISOString().slice(0, 10);
-  const isArchived = (s) => s.invoice || s.archived;
+  const isArchived = (s) => s.archived;
 
   // Count shows whose date falls in the current calendar month
   const thisMonthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
