@@ -1272,7 +1272,7 @@ app.post('/api/team/notify', async (req, res) => {
 // ── Admin: patch user email / role / workspaceRole / assignedShowIds ─────────
 app.patch('/api/users/:id', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { email, role, workspaceRole, assignedShowIds } = req.body || {};
+  const { email, role, workspaceRole, assignedShowIds, artistId } = req.body || {};
   const users = loadUsers();
   const user  = users.find((u) => u.id === req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -1282,6 +1282,8 @@ app.patch('/api/users/:id', (req, res) => {
     user.workspaceRole = workspaceRole;
   }
   if (Array.isArray(assignedShowIds)) user.assignedShowIds = assignedShowIds;
+  // Bind user to a specific artist workspace (pass null to unbind)
+  if (artistId !== undefined) user.artistId = artistId || null;
   saveUsers(users);
   res.json({
     ok: true,
@@ -1289,6 +1291,7 @@ app.patch('/api/users/:id', (req, res) => {
       id: user.id, username: user.username, email: user.email,
       role: user.role, workspaceRole: user.workspaceRole || 'producer',
       assignedShowIds: user.assignedShowIds || [],
+      artistId: user.artistId || null,
     },
   });
 });

@@ -75,7 +75,7 @@ function toObjectAccess(rawAccess) {
 }
 
 // ── Three-dot dropdown menu ───────────────────────────────────────────────────
-function DotMenu({ onRemove }) {
+function DotMenu({ onRemove, onBind }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -97,6 +97,11 @@ function DotMenu({ onRemove }) {
       </button>
       {open && (
         <div className="tm-dots-dropdown">
+          {onBind && (
+            <button className="tm-dots-item" onClick={() => { onBind(); setOpen(false); }}>
+              Bind to this workspace
+            </button>
+          )}
           <button className="tm-dots-item tm-dots-item--danger" onClick={() => { onRemove(); setOpen(false); }}>
             Remove from team
           </button>
@@ -341,7 +346,8 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
 function TabMembers({ users, artists, shows, tasks = [], activityLog,
                       userArtistAccess, userPermissions,
                       onDeleteUser, onEditEmail,
-                      onSaveAccess, onSavePerms, onUpdateShow }) {
+                      onSaveAccess, onSavePerms, onUpdateShow,
+                      artistId, onBindUser }) {
 
   const [localPerms,  setLocalPerms]  = useState(userPermissions || {});
   const [expandedId,  setExpandedId]  = useState(null);
@@ -432,7 +438,12 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
                     {fmtRelative(lastSeen[u.id])}
                   </span>
 
-                  <DotMenu onRemove={() => onDeleteUser(u)} />
+                  <DotMenu
+                    onRemove={() => onDeleteUser(u)}
+                    onBind={artistId && u.artistId !== artistId && onBindUser
+                      ? () => onBindUser(u.id, artistId)
+                      : undefined}
+                  />
                 </div>
 
                 {/* ── Expanded: Access + Permissions side by side, then tabs ── */}
@@ -831,6 +842,18 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
 
   const savePerms = (perms) => { setUserPermissions(perms); };
 
+  const bindUserToWorkspace = async (userId, targetArtistId) => {
+    const r = await fetch(`/api/users/${userId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artistId: targetArtistId }),
+    });
+    if (r.ok) {
+      const { user: updated } = await r.json();
+      // After binding, user's artistId now matches — remove from view if qs is scoped
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, artistId: updated.artistId } : u));
+    }
+  };
+
   // ── Role counters for stats bar
   const count = (role) => users.filter(u => u.workspaceRole === role).length;
 
@@ -894,6 +917,8 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
               onSaveAccess={saveAccess}
               onSavePerms={savePerms}
               onUpdateShow={onUpdateShow}
+              artistId={artistId}
+              onBindUser={bindUserToWorkspace}
             />
           )}
           {tab === 'invite'   && <TabInvite artistId={artistId} />}
