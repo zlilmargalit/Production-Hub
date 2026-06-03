@@ -471,7 +471,7 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
 // ────────────────────────────────────────────────────────────────────────────
 //  Tab: Invite (unchanged)
 // ────────────────────────────────────────────────────────────────────────────
-function TabInvite() {
+function TabInvite({ artistId = null }) {
   const [link,        setLink]        = useState('');
   const [expires,     setExpires]     = useState('');
   const [generating,  setGenerating]  = useState(false);
@@ -501,7 +501,8 @@ function TabInvite() {
     setGenerating(true); setGenError(''); setLink('');
     try {
       const r = await fetch('/api/invitations/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artistId }),
       });
       const d = await r.json();
       if (!r.ok) { setGenError(d.error || 'Failed to generate invite link'); return; }
@@ -517,7 +518,7 @@ function TabInvite() {
     try {
       const r = await fetch('/api/team/join-request', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameInput.trim() }),
+        body: JSON.stringify({ username: usernameInput.trim(), artistId }),
       });
       const d = await r.json();
       if (!r.ok) { setReqMsg({ type: 'error', text: d.error || 'Failed' }); }
@@ -766,7 +767,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
 // ────────────────────────────────────────────────────────────────────────────
 //  Main TeamPanel
 // ────────────────────────────────────────────────────────────────────────────
-function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
+function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = null }) {
   const [tab,              setTab]              = useState('members');
   const [users,            setUsers]            = useState([]);
   const [userArtistAccess, setUserArtistAccess] = useState({});
@@ -775,10 +776,12 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
   const [loading,          setLoading]          = useState(true);
   const [selectedBackliner, setSelectedBackliner] = useState(null);
 
+  const qs = artistId ? `?artistId=${encodeURIComponent(artistId)}` : '';
+
   const reload = useCallback(async () => {
     setLoading(true);
     const [ur, sr, ar] = await Promise.all([
-      fetch('/api/users').then(r => r.ok ? r.json() : []),
+      fetch(`/api/users${qs}`).then(r => r.ok ? r.json() : []),
       fetch('/api/admin/settings').then(r => r.ok ? r.json() : null),
       fetch('/api/team/activity').then(r => r.ok ? r.json() : []),
     ]);
@@ -789,7 +792,7 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
     }
     setActivityLog(ar);
     setLoading(false);
-  }, []);
+  }, [qs]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -893,7 +896,7 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
               onUpdateShow={onUpdateShow}
             />
           )}
-          {tab === 'invite'   && <TabInvite />}
+          {tab === 'invite'   && <TabInvite artistId={artistId} />}
           {tab === 'activity' && <TabActivity activityLog={activityLog} loading={loading} />}
         </>
       )}

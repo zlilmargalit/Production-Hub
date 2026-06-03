@@ -424,7 +424,7 @@ app.post('/api/auth/register-invite', async (req, res) => {
       return res.status(409).type('html').send(invitePage({ token, username, error: 'Username already taken.' }));
     }
 
-    // Create guest user (lowest privilege), inherit workspaceRole from invite
+    // Create guest user (lowest privilege), inherit workspaceRole and artistId from invite
     const newUser = {
       id:            uuidv4(),
       username,
@@ -432,6 +432,7 @@ app.post('/api/auth/register-invite', async (req, res) => {
       passwordHash:  hashPassword(password),
       role:          'guest',
       workspaceRole: inv.workspaceRole || 'producer',
+      artistId:      inv.artistId || null,
       createdAt:     new Date().toISOString(),
     };
     users.push(newUser);
@@ -863,12 +864,15 @@ app.get('/api/teams', async (req, res) => {
 // ── Admin-only: user management ───────────────────────────────────────────────
 app.get('/api/users', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const users = loadUsers().map(({ id, username, email, role, workspaceRole, assignedShowIds, createdAt }) => ({
+  const { artistId } = req.query;
+  let users = loadUsers().map(({ id, username, email, role, workspaceRole, assignedShowIds, artistId: aid, createdAt }) => ({
     id, username, email: email || null, role,
     workspaceRole: workspaceRole || 'producer',
     assignedShowIds: assignedShowIds || [],
+    artistId: aid || null,
     createdAt,
   }));
+  if (artistId) users = users.filter(u => u.artistId === artistId);
   res.json(users);
 });
 
@@ -1050,12 +1054,13 @@ app.get('/api/invitations', (req, res) => {
 
 app.post('/api/invitations/generate', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { workspaceRole } = req.body || {};
+  const { workspaceRole, artistId } = req.body || {};
   const token      = uuidv4();
   const expiresAt  = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
   const invitation = {
     token, createdAt: new Date().toISOString(), expiresAt, usedBy: null,
     workspaceRole: workspaceRole === 'backliner' ? 'backliner' : 'producer',
+    artistId: artistId || null,
   };
   const invitations = loadInvitations();
   invitations.push(invitation);
@@ -1077,7 +1082,7 @@ app.delete('/api/invitations/:token', (req, res) => {
 // POST /api/team/join-request  — admin sends a request to a user by username
 app.post('/api/team/join-request', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { username } = req.body || {};
+  const { username, artistId } = req.body || {};
   if (!username?.trim()) return res.status(400).json({ error: 'username required' });
   const users = loadUsers();
   const target = users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
@@ -1092,6 +1097,7 @@ app.post('/api/team/join-request', (req, res) => {
     toUserId: target.id,
     toUsername: target.username,
     status: 'pending',
+    artistId: artistId || null,
     createdAt: new Date().toISOString(),
   };
   requests.push(req_);
@@ -1132,6 +1138,18 @@ app.post('/api/me/join-requests/:id/accept', async (req, res) => {
   r.status = 'accepted';
   r.respondedAt = new Date().toISOString();
   saveJoinRequests(requests);
+
+  // Stamp the user with the artist they joined through
+  if (r.artistId) {
+    try {
+      const allUsers = loadUsers();
+      const ui = allUsers.findIndex(u => u.id === req.userId);
+      if (ui >= 0 && !allUsers[ui].artistId) {
+        allUsers[ui].artistId = r.artistId;
+        saveUsers(allUsers);
+      }
+    } catch (e) { console.error('[accept join-request] artistId stamp failed:', e.message); }
+  }
 
   // Grant viewer access to all of the admin's current artists in team-settings
   try {
