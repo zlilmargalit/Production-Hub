@@ -382,7 +382,6 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
         <div className="tm-member-list">
           {users.map(u => {
             const isExpanded = expandedId === u.id;
-            const permitted  = Object.keys(uAccess[u.id] || {});
 
             return (
               <div key={u.id} className={`tm-member-card${isExpanded ? ' expanded' : ''}`}>
@@ -428,16 +427,6 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
                   <span className={`tm-role-badge tm-role--${u.workspaceRole || 'producer'}`}>
                     {ROLE_LABELS[u.workspaceRole] || u.workspaceRole || 'Producer'}
                   </span>
-
-                  {/* Artist access chips */}
-                  <div className="tm-artist-chips">
-                    {permitted.length === 0
-                      ? <span className="tm-no-artists">All artists</span>
-                      : artists.filter(a => permitted.includes(a.id)).map(a => (
-                          <span key={a.id} className="tm-artist-chip" dir="auto">{a.name}</span>
-                        ))
-                    }
-                  </div>
 
                   <span className="tm-last-seen" title={fmtDate(lastSeen[u.id])}>
                     {fmtRelative(lastSeen[u.id])}
