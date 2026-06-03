@@ -343,48 +343,17 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
                       onDeleteUser, onEditEmail,
                       onSaveAccess, onSavePerms, onUpdateShow }) {
 
-  const [uAccess,     setUAccess]     = useState(() => toObjectAccess(userArtistAccess));
   const [localPerms,  setLocalPerms]  = useState(userPermissions || {});
   const [expandedId,  setExpandedId]  = useState(null);
-  const [accessSaving, setAccessSaving] = useState(false);
-  const [accessError,  setAccessError]  = useState('');
-  const { show: accessSaved, flash: flashAccess } = useSavedPill();
   const [emailEditing,setEmailEditing]= useState(null);
   const [emailDraft,  setEmailDraft]  = useState('');
 
-  useEffect(() => { setUAccess(toObjectAccess(userArtistAccess)); }, [userArtistAccess]);
   useEffect(() => { setLocalPerms(userPermissions || {}); }, [userPermissions]);
 
   const lastSeen = {};
   for (const entry of activityLog) {
     if (!lastSeen[entry.userId]) lastSeen[entry.userId] = entry.timestamp;
   }
-
-  const toggleArtist = (userId, artistId, checked) => {
-    const cur = uAccess[userId] || {};
-    if (checked) {
-      setUAccess({ ...uAccess, [userId]: { ...cur, [artistId]: { role: 'viewer' } } });
-    } else {
-      const { [artistId]: _r, ...rest } = cur;
-      setUAccess({ ...uAccess, [userId]: rest });
-    }
-  };
-  const setArtistRole = (userId, artistId, role) => {
-    const cur = uAccess[userId] || {};
-    setUAccess({ ...uAccess, [userId]: { ...cur, [artistId]: { ...(cur[artistId] || {}), role } } });
-  };
-
-  const saveAccess = async () => {
-    setAccessSaving(true);
-    const r = await fetch('/api/admin/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userArtistAccess: uAccess }),
-    });
-    setAccessSaving(false);
-    if (r.ok) { flashAccess(); onSaveAccess(uAccess, localPerms); }
-    else { setAccessError('Error saving'); setTimeout(() => setAccessError(''), 3000); }
-  };
 
   const savePerms = async (userId, perms) => {
     const next = { ...localPerms, [userId]: perms };
@@ -481,42 +450,7 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
                 {isExpanded && (
                   <>
                     <div className="tm-expanded-settings" onClick={e => e.stopPropagation()}>
-                      {/* Left column: artist access */}
-                      {artists.length > 0 && (
-                        <div className="tm-settings-col">
-                          <span className="tm-settings-col-label">Artist Access</span>
-                          <div className="tm-artist-access-rows">
-                            {artists.map(a => {
-                              const checked    = (uAccess[u.id] || {})[a.id] !== undefined;
-                              const artistRole = (uAccess[u.id]?.[a.id]?.role) || 'viewer';
-                              return (
-                                <div key={a.id} className="tm-artist-access-row">
-                                  <label className="team-artist-check">
-                                    <input type="checkbox" checked={checked}
-                                      onChange={e => toggleArtist(u.id, a.id, e.target.checked)} />
-                                    <span dir="auto">{a.name}</span>
-                                  </label>
-                                  {checked && (
-                                    <select className="team-role-select" value={artistRole}
-                                      onChange={e => setArtistRole(u.id, a.id, e.target.value)}>
-                                      {ARTIST_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                                    </select>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="tm-settings-col-footer">
-                            <button className="btn-action" onClick={saveAccess} disabled={accessSaving}>
-                              {accessSaving ? 'Saving…' : 'Save'}
-                            </button>
-                            <SavedPill show={accessSaved} />
-                            {accessError && <span className="team-save-msg err">{accessError}</span>}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Right column: content permissions */}
+                      {/* Content permissions */}
                       <div className="tm-settings-col">
                         <span className="tm-settings-col-label">Content Permissions</span>
                         <InlinePermissions
