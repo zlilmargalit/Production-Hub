@@ -872,7 +872,7 @@ app.get('/api/users', (req, res) => {
     artistId: aid || null,
     createdAt,
   }));
-  if (artistId) users = users.filter(u => u.artistId === artistId);
+  if (artistId) users = users.filter(u => !u.artistId || u.artistId === artistId);
   res.json(users);
 });
 
