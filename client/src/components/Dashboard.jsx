@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import FilterChip from './ui/FilterChip';
+import SegmentedControl from './ui/SegmentedControl';
 
 // ── Artist colour palette (stable by index) ────────────────────────────────────
 const PALETTE = [
@@ -153,11 +155,18 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
 }
 
 // ── Master Calendar ────────────────────────────────────────────────────────────
+function sundayOfWeek(d) {
+  const day = d.getDay(); // 0=Sun
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+}
+
 function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
+  const [view, setView]   = useState('month');
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [weekStart, setWeekStart] = useState(() => sundayOfWeek(new Date()));
   const [popover, setPopover] = useState(null);
 
   const today = todayStr();
@@ -168,11 +177,10 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
     ? allShows
     : allShows.filter((s) => selectedArtists.includes(s.artistId));
 
-  // Week starts Monday
+  // Week starts Sunday (getDay() returns 0 for Sunday — no offset needed)
   const firstDay   = new Date(year, m, 1);
   const lastDay    = new Date(year, m + 1, 0);
-  const rawStart   = firstDay.getDay();             // 0=Sun
-  const startPad   = rawStart === 0 ? 6 : rawStart - 1; // Mon=0 … Sun=6
+  const startPad   = firstDay.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
   const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
 
   const cells = Array.from({ length: totalCells }, (_, i) => {
@@ -187,63 +195,114 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
     return { date, dateStr, isCurrentMonth, isToday, shows };
   });
 
-  const monthName = month.toLocaleString('default', { month: 'long' });
+  // Week view: 7 days starting from weekStart (Sunday)
+  const weekCells = Array.from({ length: 7 }, (_, i) => {
+    const date    = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+    const dateStr = localDateStr(date);
+    const isToday = dateStr === today;
+    const shows   = filtered
+      .filter((s) => toDateStr(s.date) === dateStr && !s.archived)
+      .sort((a, b) => getShowTime(a).localeCompare(getShowTime(b)));
+    return { date, dateStr, isToday, shows };
+  });
+
+  const displayedMonth = view === 'week'
+    ? weekStart.toLocaleString('default', { month: 'long' })
+    : month.toLocaleString('default', { month: 'long' });
+  const displayedYear = view === 'week' ? weekStart.getFullYear() : year;
 
   const prevMonth = () => setMonth(new Date(year, m - 1, 1));
   const nextMonth = () => setMonth(new Date(year, m + 1, 1));
-  const goToday   = () => {
+  const prevWeek  = () => setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() - 7));
+  const nextWeek  = () => setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7));
+
+  const handlePrev = view === 'week' ? prevWeek : prevMonth;
+  const handleNext = view === 'week' ? nextWeek : nextMonth;
+
+  const goToday = () => {
     const n = new Date();
     setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
+    setWeekStart(sundayOfWeek(n));
   };
 
   return (
     <div className="mcal">
       <div className="mcal-topbar">
         <div className="mcal-title-group">
-          <span className="mcal-month-name">{monthName}</span>
-          <span className="mcal-year">{year}</span>
+          <span className="mcal-month-name">{displayedMonth}</span>
+          <span className="mcal-year">{displayedYear}</span>
         </div>
         <div className="mcal-nav">
-          <button className="mcal-nav-btn" onClick={prevMonth} aria-label="Previous month">‹</button>
+          <button className="mcal-nav-btn" onClick={handlePrev} aria-label="Previous">‹</button>
           <button className="mcal-today-btn" onClick={goToday}>Today</button>
-          <button className="mcal-nav-btn" onClick={nextMonth} aria-label="Next month">›</button>
+          <button className="mcal-nav-btn" onClick={handleNext} aria-label="Next">›</button>
         </div>
-        <div className="mcal-view-tabs">
-          <button className="mcal-view-tab mcal-view-tab--active">Month</button>
-          <button className="mcal-view-tab">Week</button>
-        </div>
+        <SegmentedControl
+          items={[{ id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }]}
+          activeId={view}
+          onChange={setView}
+        />
       </div>
 
-      <div className="mcal-grid">
-        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-          <div key={d} className="mcal-day-hdr">{d}</div>
-        ))}
+      {view === 'month' ? (
+        <div className="mcal-grid">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            <div key={d} className="mcal-day-hdr">{d}</div>
+          ))}
 
-        {cells.map(({ date, dateStr, isCurrentMonth, isToday, shows }) => (
-          <div
-            key={dateStr}
-            className={[
-              'mcal-cell',
-              !isCurrentMonth ? 'mcal-cell--out'   : '',
-              isToday         ? 'mcal-cell--today'  : '',
-            ].filter(Boolean).join(' ')}
-          >
-            <span className="mcal-day-num">{date.getDate()}</span>
+          {cells.map(({ date, dateStr, isCurrentMonth, isToday, shows }) => (
+            <div
+              key={dateStr}
+              className={[
+                'mcal-cell',
+                !isCurrentMonth ? 'mcal-cell--out'   : '',
+                isToday         ? 'mcal-cell--today'  : '',
+              ].filter(Boolean).join(' ')}
+            >
+              <span className="mcal-day-num">{date.getDate()}</span>
 
-            {shows.slice(0, 2).map((show) => (
-              <EventPill
-                key={show.id}
-                show={show}
-                onClick={() => setPopover({ show })}
-              />
-            ))}
+              {shows.slice(0, 2).map((show) => (
+                <EventPill
+                  key={show.id}
+                  show={show}
+                  onClick={() => setPopover({ show })}
+                />
+              ))}
 
-            {shows.length > 2 && (
-              <span className="mcal-more">+{shows.length - 2} more</span>
-            )}
-          </div>
-        ))}
-      </div>
+              {shows.length > 2 && (
+                <span className="mcal-more">+{shows.length - 2} more</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mcal-week-grid">
+          {weekCells.map(({ date, dateStr, isToday, shows }) => (
+            <div
+              key={dateStr}
+              className={['mcal-week-col', isToday ? 'mcal-week-col--today' : ''].filter(Boolean).join(' ')}
+            >
+              <div className="mcal-week-col-hdr">
+                <span className="mcal-week-wday">
+                  {date.toLocaleString('default', { weekday: 'short' })}
+                </span>
+                <span className={`mcal-week-daynum${isToday ? ' mcal-week-daynum--today' : ''}`}>
+                  {date.getDate()}
+                </span>
+              </div>
+              <div className="mcal-week-col-body">
+                {shows.map((show) => (
+                  <EventPill
+                    key={show.id}
+                    show={show}
+                    onClick={() => setPopover({ show })}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {popover && (
         <QuickViewPopover
@@ -270,7 +329,6 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
     <div className="upnext">
       <div className="upnext-header">
         <h2 className="upnext-title">Up Next</h2>
-        <span className="upnext-badge">Next 7</span>
       </div>
 
       {rows.length === 0 && (
@@ -461,27 +519,26 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
 
       {/* ── Artist filter chips ── */}
       <div className="dash-filters">
-        <button
-          className={`artist-chip artist-chip--all${selectedArtists.length === 0 ? ' artist-chip--active' : ''}`}
-          onClick={() => setSelected([])}
+        <FilterChip
+          on={selectedArtists.length === 0}
+          onToggle={() => setSelected([])}
         >
           All artists
-        </button>
+        </FilterChip>
         {artists.map((a) => {
           const count = allShows.filter(
             (s) => !s.archived && s.artistId === a.id && toDateStr(s.date) >= today
           ).length;
           return (
-            <button
+            <FilterChip
               key={a.id}
-              className={`artist-chip${selectedArtists.includes(a.id) ? ' artist-chip--active' : ''}`}
-              style={{ '--chip-color': a.color, '--chip-soft': a.soft }}
-              onClick={() => toggleArtist(a.id)}
+              on={selectedArtists.includes(a.id)}
+              swatch={a.color}
+              count={count}
+              onToggle={() => toggleArtist(a.id)}
             >
-              <span className="artist-chip-dot" />
               {a.name}
-              <span className="artist-chip-count">{count}</span>
-            </button>
+            </FilterChip>
           );
         })}
       </div>

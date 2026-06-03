@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import ConfirmModal from './ConfirmModal';
 import { etColorIdx } from '../utils/etColor';
+import SegmentedControl from './ui/SegmentedControl';
+import IconButton from './ui/IconButton';
 const uuidv4 = () => crypto.randomUUID();
 
-// All crew role accents use the same brand orange for visual consistency
-const roleColor = () => '#F08D39';
+const ROLE_COLOR = '#F08D39'; // brand orange, same for all roles
 
 
 const BLANK_MEMBER = {
@@ -187,20 +188,14 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
       </div>
 
       <div className="crew-header">
-        <div className="crew-tab-bar">
-          <button
-            className={`crew-tab ${tab === 'members' ? 'active' : ''}`}
-            onClick={() => setTab('members')}
-          >
-            Members <span className="crew-count">{crew.length}</span>
-          </button>
-          <button
-            className={`crew-tab ${tab === 'templates' ? 'active' : ''}`}
-            onClick={() => setTab('templates')}
-          >
-            Event Types <span className="crew-count">{(eventTypes || []).length}</span>
-          </button>
-        </div>
+        <SegmentedControl
+          items={[
+            { id: 'members', label: 'Members', count: crew.length },
+            { id: 'templates', label: 'Event Types', count: (eventTypes || []).length },
+          ]}
+          activeId={tab}
+          onChange={setTab}
+        />
         {tab === 'members' && (
           <button className="btn-primary" onClick={openAdd}>+ Add Member</button>
         )}
@@ -216,7 +211,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
         ) : (
           <div className="crew-groups">
             {Object.entries(byRole).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([role, members]) => (
-              <div key={role} className="crew-group" style={{ '--role-color': roleColor(role) }}>
+              <div key={role} className="crew-group" style={{ '--role-color': ROLE_COLOR }}>
                 <h3 className="crew-group-title">
                   <button
                     className="crew-group-toggle"
@@ -256,8 +251,8 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                           {m.notes && <p className="crew-card-notes" dir="auto">{m.notes}</p>}
                         </div>
                         <div className="crew-card-actions">
-                          <button className="btn-icon" onClick={() => openEdit(m)} title="Edit">✎</button>
-                          <button className="btn-icon btn-danger" onClick={() => deleteMember(m.id)} title="Delete">✕</button>
+                          <IconButton onClick={() => openEdit(m)} title="Edit">✎</IconButton>
+                          <IconButton danger onClick={() => deleteMember(m.id)} title="Delete">✕</IconButton>
                         </div>
                       </div>
                     ))}
@@ -423,7 +418,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                   >
                     Fields{fieldDefs.length > 0 ? ` (${fieldDefs.length})` : ''}
                   </button>
-                  <button className="btn-icon btn-danger" onClick={() => deleteEventType(et)} title="Delete event type">✕</button>
+                  <IconButton danger onClick={() => deleteEventType(et)} title="Delete event type">✕</IconButton>
                 </div>
                 <span className="template-type" dir="rtl">{et}</span>
               </div>
@@ -558,82 +553,6 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
   );
 }
 
-function EventTypesTab({ eventTypes, onSave }) {
-  const [types, setTypes] = useState([...eventTypes]);
-  const [newType, setNewType] = useState('');
-  const [dirty, setDirty] = useState(false);
-
-  useEffect(() => {
-    if (!dirty) setTypes([...eventTypes]);
-  }, [eventTypes]);
-
-  const add = () => {
-    const t = newType.trim();
-    if (!t || types.includes(t)) return;
-    const next = [...types, t];
-    setTypes(next);
-    setNewType('');
-    setDirty(true);
-  };
-
-  const remove = (t) => {
-    setTypes((prev) => prev.filter((x) => x !== t));
-    setDirty(true);
-  };
-
-  const moveUp = (i) => {
-    if (i === 0) return;
-    setTypes((prev) => { const n = [...prev]; [n[i-1],n[i]]=[n[i],n[i-1]]; return n; });
-    setDirty(true);
-  };
-
-  const moveDown = (i) => {
-    setTypes((prev) => {
-      if (i === prev.length - 1) return prev;
-      const n = [...prev]; [n[i],n[i+1]]=[n[i+1],n[i]]; return n;
-    });
-    setDirty(true);
-  };
-
-  const save = () => { onSave(types); setDirty(false); };
-
-  return (
-    <div className="event-types-page">
-      <p className="templates-desc">
-        Add, remove, or reorder event types. These appear in the show form and crew templates.
-      </p>
-      <div className="event-types-list">
-        {types.map((t, i) => (
-          <div key={t} className="event-type-row">
-            <span className="event-type-name" dir="rtl">{t}</span>
-            <div className="event-type-actions">
-              <button className="btn-icon" onClick={() => moveUp(i)} disabled={i === 0}>↑</button>
-              <button className="btn-icon" onClick={() => moveDown(i)} disabled={i === types.length - 1}>↓</button>
-              <button className="btn-icon btn-danger" onClick={() => remove(t)} title="Remove">✕</button>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="event-type-add">
-        <input
-          dir="rtl"
-          className="task-input"
-          value={newType}
-          onChange={(e) => setNewType(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && add()}
-          placeholder="Type new event type and press Enter"
-        />
-        <button className="btn-primary btn-sm" onClick={add}>Add</button>
-      </div>
-      {dirty && (
-        <div className="event-types-save">
-          <button className="btn-primary" onClick={save}>Save Changes</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onSubmit, onClose }) {
   const [form, setForm] = useState(
     member
@@ -686,7 +605,7 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{member ? 'Edit Crew Member' : 'Add Crew Member'}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <IconButton onClick={onClose}>✕</IconButton>
         </div>
         <form onSubmit={handleSubmit} className="show-form">
           <div className="form-grid">

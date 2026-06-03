@@ -14,6 +14,18 @@ const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { htmlToPdfBuffer } = require('../pdf');
 const { dataPath, cacheKey, DATA_DIR } = require('../utils/userData');
 
+function scheduleToString(schedule) {
+  if (!schedule) return '';
+  if (Array.isArray(schedule)) {
+    return schedule
+      .filter((r) => r && (r.time || r.activity))
+      .map((r) => (r.time ? `${r.time} ${r.activity || ''}`.trim() : r.activity || ''))
+      .filter(Boolean)
+      .join('\n');
+  }
+  return String(schedule);
+}
+
 const execFileP = promisify(execFile);
 
 // Crew roles that represent musicians — covers English and legacy Hebrew values.
@@ -576,7 +588,7 @@ router.post('/:id/brief', async (req, res) => {
       technicalCrew:     inPdf('technicalCrew')     ? techCrew                       : '',
       musicians:         inPdf('musicians')         ? musicians                      : '',
       transportation:    inPdf('transportation')    ? (show.transportation    || '') : '',
-      schedule:          inPdf('schedule')          ? (show.schedule          || '') : '',
+      schedule:          inPdf('schedule')          ? scheduleToString(show.schedule) : '',
       contacts:          inPdf('contacts')          ? (show.contacts          || '') : '',
 
       additionalDetails: inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
@@ -786,7 +798,7 @@ ${inPdf('food') && show.food ? `<div class="row"><span class="label">אוכל:</
 ${inPdf('contacts') && show.contacts ? `<div class="row"><span class="label">אנשי קשר:</span><span class="value">${esc(show.contacts)}</span></div>` : ''}
 ${(show.pdfFields?.musicians !== false) && musicians ? `<div class="musicians"><span class="label">הרכב נגנים: </span>${esc(musicians)}</div>` : ''}
 
-${inPdf('schedule') && show.schedule ? `<h2>לוז</h2><div class="schedule">${nl2br(show.schedule)}</div>` : ''}
+${inPdf('schedule') && show.schedule ? `<h2>לוז</h2><div class="schedule">${nl2br(scheduleToString(show.schedule))}</div>` : ''}
 
 ${additionalSection}
 

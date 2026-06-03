@@ -2,6 +2,7 @@ import { useState } from 'react';
 import TaskManager from './TaskManager';
 import TechnicalManager from './TechnicalManager';
 import { etColorIdx } from '../utils/etColor';
+import { scheduleToString } from '../utils/schedule';
 
 // ── Module-level constants — not recreated on every render ──────────────────
 const CREW_PALETTE = ['#3852B4', '#5E7AC4', '#F08D39', '#C26C1F', '#1F2D6E', '#B07729', '#8F4F1A', '#7A8FE0'];
@@ -241,7 +242,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                 </div>
               </div>
               {calMsg && <p className={`cal-export-msg ${calStatus}`}>{calMsg}</p>}
-              <pre dir="auto">{show.schedule}</pre>
+              <pre dir="auto">{scheduleToString(show.schedule)}</pre>
             </div>
           )}
 

@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import BacklineChecklist from './backliner/BacklineChecklist';
 import TechnicalSetlist  from './backliner/TechnicalSetlist';
 import TechFiles         from './backliner/TechFiles';
+import MetricBox         from './ui/MetricBox';
+import SegmentedControl  from './ui/SegmentedControl';
+import SavedPill, { useSavedPill } from './ui/SavedPill';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const RUBRIC_LABELS = {
@@ -107,7 +110,7 @@ function DotMenu({ onRemove }) {
 function InlinePermissions({ userId, perms, onSave }) {
   const [local, setLocal] = useState(perms || { viewRubrics: [], editRubrics: [] });
   const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const { show: saved, flash } = useSavedPill();
 
   // Sync when switching between expanded users
   useEffect(() => { setLocal(perms || { viewRubrics: [], editRubrics: [] }); }, [userId, perms]);
@@ -137,8 +140,7 @@ function InlinePermissions({ userId, perms, onSave }) {
     setSaving(true);
     await onSave(userId, local);
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    flash();
   };
 
   return (
@@ -169,8 +171,9 @@ function InlinePermissions({ userId, perms, onSave }) {
       </div>
       <div className="tm-perm-footer">
         <button className="btn-action" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+          {saving ? 'Saving…' : 'Save'}
         </button>
+        <SavedPill show={saved} />
       </div>
     </div>
   );
@@ -335,7 +338,7 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
 }
 
 // ── Members tab ───────────────────────────────────────────────────────────────
-function TabMembers({ users, artists, shows, activityLog,
+function TabMembers({ users, artists, shows, tasks = [], activityLog,
                       userArtistAccess, userPermissions,
                       onDeleteUser, onEditEmail,
                       onSaveAccess, onSavePerms, onUpdateShow }) {
@@ -343,8 +346,9 @@ function TabMembers({ users, artists, shows, activityLog,
   const [uAccess,     setUAccess]     = useState(() => toObjectAccess(userArtistAccess));
   const [localPerms,  setLocalPerms]  = useState(userPermissions || {});
   const [expandedId,  setExpandedId]  = useState(null);
-  const [accessSaving,setAccessSaving]= useState(false);
-  const [accessMsg,   setAccessMsg]   = useState('');
+  const [accessSaving, setAccessSaving] = useState(false);
+  const [accessError,  setAccessError]  = useState('');
+  const { show: accessSaved, flash: flashAccess } = useSavedPill();
   const [emailEditing,setEmailEditing]= useState(null);
   const [emailDraft,  setEmailDraft]  = useState('');
 
@@ -377,10 +381,9 @@ function TabMembers({ users, artists, shows, activityLog,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userArtistAccess: uAccess }),
     });
-    setAccessMsg(r.ok ? 'Saved' : 'Error');
-    setTimeout(() => setAccessMsg(''), 3000);
     setAccessSaving(false);
-    if (r.ok) onSaveAccess(uAccess, localPerms);
+    if (r.ok) { flashAccess(); onSaveAccess(uAccess, localPerms); }
+    else { setAccessError('Error saving'); setTimeout(() => setAccessError(''), 3000); }
   };
 
   const savePerms = async (userId, perms) => {
@@ -507,7 +510,8 @@ function TabMembers({ users, artists, shows, activityLog,
                             <button className="btn-action" onClick={saveAccess} disabled={accessSaving}>
                               {accessSaving ? 'Saving…' : 'Save'}
                             </button>
-                            {accessMsg && <span className={`team-save-msg ${accessMsg === 'Saved' ? 'ok' : 'err'}`}>{accessMsg}</span>}
+                            <SavedPill show={accessSaved} />
+                            {accessError && <span className="team-save-msg err">{accessError}</span>}
                           </div>
                         </div>
                       )}
@@ -774,8 +778,8 @@ function BacklinerShowAccordion({ show, onUpdateShow }) {
 
 function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose }) {
   const [assignedIds, setAssignedIds] = useState(user.assignedShowIds || []);
-  const [saving,      setSaving]      = useState(false);
-  const [saveMsg,     setSaveMsg]     = useState('');
+  const [saving, setSaving] = useState(false);
+  const { show: saved, flash } = useSavedPill();
 
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = [...shows]
@@ -789,8 +793,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
   const save = async () => {
     setSaving(true);
     await onSaveUser(user.id, { assignedShowIds: assignedIds });
-    setSaveMsg('Saved');
-    setTimeout(() => setSaveMsg(''), 2500);
+    flash();
     setSaving(false);
   };
 
@@ -823,7 +826,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
           )}
           <div className="bkp-save-row">
             <button className="btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Assignments'}</button>
-            {saveMsg && <span className="bkp-save-msg">{saveMsg}</span>}
+            <SavedPill show={saved} />
           </div>
         </div>
         {assignedShows.length > 0 && (
@@ -933,37 +936,19 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
 
       {/* Stats bar */}
       <div className="tm-stats-bar">
-        <div className="tm-stat tm-stat--total">
-          <span className="tm-stat-num">{String(users.length).padStart(2, '0')}</span>
-          <span className="tm-stat-label">Total Members</span>
-        </div>
-        <div className="tm-stat">
-          <span className="tm-stat-num">{String(count('backliner')).padStart(2, '0')}</span>
-          <span className="tm-stat-label">Backliners</span>
-        </div>
-        <div className="tm-stat">
-          <span className="tm-stat-num">{String(count('sound')).padStart(2, '0')}</span>
-          <span className="tm-stat-label">Soundmen</span>
-        </div>
-        <div className="tm-stat">
-          <span className="tm-stat-num">{String(count('light')).padStart(2, '0')}</span>
-          <span className="tm-stat-label">Lighting</span>
-        </div>
+        <MetricBox value={users.length}         label="Total Members" />
+        <MetricBox value={count('backliner')}   label="Backliners" />
+        <MetricBox value={count('sound')}       label="Soundmen" />
+        <MetricBox value={count('light')}       label="Lighting" />
       </div>
 
       {/* Tab bar */}
-      <div className="team-tabs">
-        {TABS.map(({ key, label, badge }) => (
-          <button
-            key={key}
-            className={`team-tab-btn${tab === key ? ' active' : ''}`}
-            onClick={() => setTab(key)}
-          >
-            {label}
-            {badge > 0 && <span className="team-tab-badge">{badge}</span>}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        items={TABS.map(({ key, label, badge }) => ({ id: key, label, count: badge > 0 ? badge : undefined }))}
+        activeId={tab}
+        onChange={setTab}
+        className="team-seg"
+      />
 
       {loading ? (
         <div className="team-loading">Loading…</div>
@@ -974,6 +959,7 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow }) {
               users={users}
               artists={artists}
               shows={shows}
+              tasks={tasks}
               activityLog={activityLog}
               userArtistAccess={userArtistAccess}
               userPermissions={userPermissions}
