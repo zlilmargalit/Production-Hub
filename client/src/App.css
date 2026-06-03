@@ -6086,7 +6086,7 @@ body {
   gap: 14px;
   margin: 0 0 20px;
 }
-.team-seg { margin: 0 0 20px; }
+.team-seg { margin: 0 0 20px; align-self: flex-start; }
 
 /* ── Member card list ─────────────────────────────────────────────────────── */
 .tm-member-list {
