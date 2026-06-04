@@ -5,7 +5,33 @@ import SegmentedControl from './ui/SegmentedControl';
 import IconButton from './ui/IconButton';
 const uuidv4 = () => crypto.randomUUID();
 
-const ROLE_COLOR = '#F08D39'; // brand orange, same for all roles
+// ── Per-group color helpers ─────────────────────────────────────────────────
+const GROUP_PALETTE = ['#3852B4', '#C26C1F', '#4E7265', '#7C3A5E', '#1F2D6E', '#B07729'];
+const groupColorFor = (role) => {
+  const k = (role || '').toLowerCase();
+  if (k.includes('backline') || k.includes('בקלי')) return '#3852B4';
+  if (k.includes('production') || k.includes('הפקה')) return '#C26C1F';
+  if (k.includes('musician') || k.includes('sound') || k.includes('נגן') || k.includes('סאונד')) return '#4E7265';
+  if (k.includes('lighting') || k.includes('תאורה')) return '#7C3A5E';
+  return GROUP_PALETTE[(role || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % GROUP_PALETTE.length];
+};
+const initialsFor = (name) => (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
+function PhoneIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.5 1.18 2 2 0 012.44 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.18 6.18l.87-.87a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 15.29z"/>
+    </svg>
+  );
+}
+function MailIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  );
+}
 
 
 const BLANK_MEMBER = {
@@ -210,56 +236,88 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
           </div>
         ) : (
           <div className="crew-groups">
-            {Object.entries(byRole).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([role, members]) => (
-              <div key={role} className="crew-group" style={{ '--role-color': ROLE_COLOR }}>
-                <h3 className="crew-group-title">
-                  <button
-                    className="crew-group-toggle"
-                    onClick={() => toggleRole(role)}
-                    title={collapsedRoles.has(role) ? 'Expand' : 'Collapse'}
-                  >
-                    {collapsedRoles.has(role) ? '+' : '−'}
-                  </button>
-                  {ROLE_DISPLAY[role] || role}
-                  <span className="crew-group-count">{members.length}</span>
-                </h3>
-                {!collapsedRoles.has(role) && (
-                  <div className="crew-list">
-                    {members.map((m) => (
-                      <div key={m.id} className="crew-card">
-                        <div className="crew-card-info">
-                          <div className="crew-card-name">
-                            {m.name}
-                            {(() => {
-                              const active = tasks.filter((t) => !t.completed && t.assignedTo === m.id).length;
-                              return active > 0
-                                ? <span className="crew-task-badge" title={`${active} active task${active > 1 ? 's' : ''}`}>{active}</span>
-                                : null;
-                            })()}
-                          </div>
-                          <div className="crew-card-details">
-                            {m.phone && <a href={`tel:${m.phone}`} className="crew-detail-link">{m.phone}</a>}
-                            {m.email && <a href={`mailto:${m.email}`} className="crew-detail-link">{m.email}</a>}
-                          </div>
-                          {(m.eventTypes || []).length > 0 && (
-                            <div className="crew-event-types">
-                              {m.eventTypes.map((t) => (
-                                <span key={t} className="tag" dir="auto" data-et-idx={etColorIdx(t)}>{t}</span>
-                              ))}
+            {Object.entries(byRole).sort(([a], [b]) => a.localeCompare(b, 'en')).map(([role, members]) => {
+              const groupColor = groupColorFor(role);
+              return (
+                <div key={role} className="crew-group" style={{ '--role-color': groupColor }}>
+                  <h3 className="crew-group-title">
+                    <button
+                      className="crew-group-toggle"
+                      onClick={() => toggleRole(role)}
+                      title={collapsedRoles.has(role) ? 'Expand' : 'Collapse'}
+                    >
+                      {collapsedRoles.has(role) ? '+' : '−'}
+                    </button>
+                    <span className="crew-group-label">{ROLE_DISPLAY[role] || role}</span>
+                    <span className="crew-group-count">{members.length}</span>
+                  </h3>
+                  {!collapsedRoles.has(role) && (
+                    <div className="crew-list">
+                      {members.map((m) => {
+                        const activeTasks = tasks.filter((t) => !t.completed && t.assignedTo === m.id).length;
+                        return (
+                          <div key={m.id} className="crew-card">
+                            {/* Top row: avatar + name block */}
+                            <div className="crew-card-top">
+                              <div className="crew-avatar" style={{ background: groupColor }}>
+                                {initialsFor(m.name)}
+                              </div>
+                              <div className="crew-name-block">
+                                <div className="crew-member-name" dir="auto">
+                                  {m.name}
+                                  {activeTasks > 0 && (
+                                    <span className="crew-task-badge" title={`${activeTasks} active task${activeTasks > 1 ? 's' : ''}`}>{activeTasks}</span>
+                                  )}
+                                </div>
+                                <div className="crew-group-eyebrow" style={{ color: groupColor }}>
+                                  {ROLE_DISPLAY[role] || role}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                          {m.notes && <p className="crew-card-notes" dir="auto">{m.notes}</p>}
-                        </div>
-                        <div className="crew-card-actions">
-                          <IconButton onClick={() => openEdit(m)} title="Edit">✎</IconButton>
-                          <IconButton danger onClick={() => deleteMember(m.id)} title="Delete">✕</IconButton>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+
+                            {/* Contact rows */}
+                            {(m.phone || m.email) && (
+                              <div className="crew-contacts">
+                                {m.phone && (
+                                  <div className="crew-contact-row">
+                                    <span className="crew-contact-icon"><PhoneIcon /></span>
+                                    <a href={`tel:${m.phone}`} className="crew-contact-value">{m.phone}</a>
+                                  </div>
+                                )}
+                                {m.email && (
+                                  <div className="crew-contact-row">
+                                    <span className="crew-contact-icon"><MailIcon /></span>
+                                    <a href={`mailto:${m.email}`} className="crew-contact-value">{m.email}</a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Event-type tags */}
+                            {(m.eventTypes || []).length > 0 && (
+                              <div className="crew-tags-block">
+                                {m.eventTypes.map((t) => (
+                                  <span key={t} className="crew-tag" dir="auto">{t}</span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Notes (if present) */}
+                            {m.notes && <p className="crew-card-notes" dir="auto">{m.notes}</p>}
+
+                            {/* Actions (revealed on hover) */}
+                            <div className="crew-card-actions">
+                              <IconButton onClick={() => openEdit(m)} title="Edit">✎</IconButton>
+                              <IconButton danger onClick={() => deleteMember(m.id)} title="Delete">✕</IconButton>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )
       ) : (

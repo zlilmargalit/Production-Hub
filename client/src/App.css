@@ -3215,23 +3215,31 @@ body {
 
 .crew-groups { display: flex; flex-direction: column; gap: 40px; }
 
+/* ── Group header ── */
 .crew-group-title {
   font-family: inherit;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-2);
   margin-bottom: 14px;
-  padding-bottom: 0;
   border: none !important;
-  padding-left: 0 !important;
-  display: inline-flex;
+  padding: 0 !important;
+  display: flex;
   align-items: center;
   gap: 9px;
 }
+/* Hairline rule filling remaining width */
+.crew-group-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
 
-/* Clickable +/− toggle that replaces the old CSS dash */
+.crew-group-label { color: var(--text-2); }
+
 .crew-group-toggle {
   display: inline-flex;
   align-items: center;
@@ -3240,7 +3248,7 @@ body {
   height: 20px;
   background: none;
   border: 1.5px solid var(--role-color, var(--accent));
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--role-color, var(--accent));
   font-size: 1rem;
   font-weight: 700;
@@ -3260,61 +3268,122 @@ body {
   font-weight: 500;
   color: var(--text-3);
   letter-spacing: 0.04em;
-  margin-left: 2px;
 }
 
+/* ── Card grid ── */
 .crew-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
 }
 
+/* ── Option B card ── */
 .crew-card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px 22px;
+  border: 1px solid var(--text);
+  padding: 18px 18px 14px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 14px;
-  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  flex-direction: column;
+  gap: 12px;
   position: relative;
-  overflow: hidden;
-}
-.crew-card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; bottom: 0;
-  width: 3px;
-  background: var(--role-color, var(--accent));
-  opacity: 0.75;
+  transition: box-shadow 0.15s;
 }
 .crew-card:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 var(--text);
 }
-.crew-card:hover::before { opacity: 1; }
-.crew-card-info { flex: 1; min-width: 0; }
-.crew-card-name {
-  font-size: 0.9375rem;
-  font-weight: 500;
-  letter-spacing: -0.015em;
+
+/* Top row: avatar + name/label block */
+.crew-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.crew-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+.crew-name-block {
+  flex: 1;
+  min-width: 0;
+}
+.crew-member-name {
+  font-family: 'Assistant', 'Bricolage Grotesque', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--text);
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.crew-card-details { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
-.crew-detail-link {
-  font-size: 0.8125rem;
+.crew-group-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+/* Contact rows */
+.crew-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.crew-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+.crew-contact-icon {
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.crew-contact-value {
   color: var(--text-2);
   text-decoration: none;
   font-variant-numeric: tabular-nums;
 }
-.crew-detail-link:hover { color: var(--text); }
-.crew-event-types { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.crew-contact-value:hover { color: var(--text); text-decoration: underline; }
+
+/* Event-type tags block */
+.crew-tags-block {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.crew-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 2px 9px;
+  background: #F5EDD8;
+  color: #7A5A1E;
+  border: 1px solid #E5D0A0;
+}
+
 .crew-card-notes { font-size: 0.8125rem; color: var(--text-2); margin: 0; line-height: 1.5; }
+
+/* Actions — absolute top-right, revealed on hover */
 .crew-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   display: flex;
   gap: 2px;
   flex-shrink: 0;
