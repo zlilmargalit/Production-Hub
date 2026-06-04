@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Master Dashboard — Production Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   MASTER DASHBOARD — Production Hub · Nordic Minimalist
+   Standalone hi-fi mockup. Tokens lifted from App.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#F1EEE9; --surface:#FBF8F2; --surface-2:#FFFDF8; --surface-sunk:#EBE7E0;
+  --border:#DDD7CE; --border-light:#E7E2D9; --border-strong:#C8C1B5;
+  --text:#1A1714; --text-2:#6B6259; --text-3:#A39A91; --text-inverse:#FBF8F2;
+  --accent:#3852B4; --accent-hover:#2D4399; --accent-soft:#E8ECF7;
+  --accent-2:#5E7AC4; --navy:#1F2D6E; --navy-soft:#DCE1F0;
+  --amber:#F3BE7A; --amber-deep:#B07729; --amber-bg:#FBEFD9;
+  --orange:#F08D39; --orange-deep:#C26C1F; --orange-bg:#FCE3CC;
+  --clay:#C26C1F; --clay-bg:#FCE3CC;
+  --danger:#C0392B; --danger-bg:#F6E0DC;
+  --radius-sm:6px; --radius:10px; --radius-lg:14px; --radius-pill:999px;
+  --shadow:0 1px 2px rgba(60,40,20,.05);
+  --shadow-md:0 4px 20px -6px rgba(60,40,20,.10),0 2px 6px -3px rgba(60,40,20,.05);
+  --shadow-lg:0 24px 60px -20px rgba(40,30,15,.22),0 8px 24px -8px rgba(40,30,15,.10);
+  --header-bg:rgba(251,248,242,.88);
+
+  /* artist palette */
+  --a1:#3852B4; --a1-bg:#E8ECF7;   /* Noa Levine — deep indigo */
+  --a2:#F08D39; --a2-bg:#FCE3CC;   /* Cosmic Static — terracotta orange */
+  --a3:#C79A3F; --a3-bg:#F6EDD7;   /* Ruby Vale — muted mustard */
+  --a4:#4E7265; --a4-bg:#E6EDEA;   /* The Northern — forest teal */
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{margin:0;}
+body{
+  font-family:'Bricolage Grotesque','Assistant','Heebo',system-ui,-apple-system,sans-serif;
+  background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale; letter-spacing:-.005em; line-height:1.5;
+  text-rendering:optimizeLegibility;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+::selection{background:rgba(56,82,180,.16);}
+
+/* ─── HEADER ──────────────────────────────────────────────────────────────── */
+.app-header{
+  position:sticky; top:0; z-index:60; display:flex; align-items:center;
+  padding:0 40px; height:72px; background:var(--header-bg);
+  backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--text);
+}
+.brand{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.brand-mark{width:36px;height:26px;display:block;color:var(--text);}
+.brand-name{font-weight:800;font-size:1.5rem;letter-spacing:-.045em;line-height:1;font-variation-settings:"opsz" 32;}
+.app-nav{display:flex;align-items:center;gap:0;margin-left:48px;flex-wrap:nowrap;}
+.nav-link{
+  font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-2);text-decoration:none;padding:8px 2px;margin:0 14px;position:relative;transition:color .15s;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.nav-link:hover{color:var(--text);}
+.nav-link.active{color:var(--text);}
+.nav-link.active::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;background:var(--accent);}
+.nav-caret{font-size:.55rem;opacity:.55;}
+.nav-sep{width:1px;height:14px;background:var(--border);margin:0 6px;}
+.artist-switcher{
+  display:inline-flex;align-items:center;gap:7px;margin:0 14px;
+  font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text);
+}
+.artist-switcher .glob-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--accent);position:relative;}
+.artist-switcher .glob-dot::after{content:"";position:absolute;inset:2px;border-radius:50%;background:var(--accent);}
+.header-right{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.theme-toggle{
+  width:32px;height:32px;border-radius:var(--radius);border:1px solid var(--border-strong);
+  background:transparent;color:var(--text-2);display:flex;align-items:center;justify-content:center;font-size:.85rem;
+}
+.bell{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:var(--text-2);}
+.bell .dot{position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--danger);border:1.5px solid var(--surface);}
+.avatar{
+  width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;letter-spacing:.02em;
+}
+
+/* ─── MAIN ────────────────────────────────────────────────────────────────── */
+.app-main{max-width:1320px;margin:0 auto;padding:48px 40px 96px;}
+
+/* Editorial hero */
+.hero{position:relative;padding-bottom:28px;margin-bottom:30px;border-bottom:2px solid var(--text);}
+.hero-eyebrow{
+  font-size:.7rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  display:flex;align-items:center;gap:9px;margin-bottom:14px;
+}
+.hero-eyebrow .pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(56,82,180,.5);animation:pulse 2.4s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(56,82,180,.45);}70%{box-shadow:0 0 0 8px rgba(56,82,180,0);}100%{box-shadow:0 0 0 0 rgba(56,82,180,0);}}
+.hero-title{
+  font-family:'Bricolage Grotesque','Assistant',sans-serif;font-size:clamp(3.5rem,8vw,6rem);
+  font-weight:800;letter-spacing:-.05em;line-height:.9;margin:0;font-optical-sizing:auto;font-variation-settings:"opsz" 96;
+}
+.hero-title .dot{color:var(--accent);}
+.hero-sub{display:flex;align-items:center;gap:13px;margin-top:22px;font-size:.9rem;color:var(--text-2);flex-wrap:wrap;}
+.hero-sub b{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+.hero-sub .ln{display:inline-block;width:34px;height:1px;background:var(--text-3);}
+.hero-marquee{position:absolute;right:0;bottom:34px;max-width:30%;overflow:hidden;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);
+          mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);}
+.hero-marquee-track{display:inline-flex;align-items:center;gap:16px;font-size:.8rem;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-3);white-space:nowrap;animation:marquee 34s linear infinite;opacity:.6;}
+@keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+/* Stat strip */
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px;}
+.stat{border:1.5px solid var(--text);background:var(--surface-2);padding:18px 20px;display:flex;flex-direction:column;gap:8px;box-shadow:4px 4px 0 var(--surface-sunk);}
+.stat--dark{background:var(--text);border-color:var(--text);box-shadow:4px 4px 0 var(--accent);}
+.stat--dark .stat-num,.stat--dark .stat-label{color:var(--surface);}
+.stat--dark .stat-dot{background:var(--amber);}
+.stat--flag{box-shadow:4px 4px 0 var(--danger-bg);}
+.stat--flag .stat-num{color:var(--danger);}
+.stat--flag .stat-dot{background:var(--danger);}
+.stat-num{font-size:2.6rem;font-weight:800;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;}
+.stat-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);display:flex;align-items:center;gap:7px;}
+.stat-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+/* Dashboard grid */
+.dash{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:24px;align-items:start;}
+@media (max-width:1100px){.dash{grid-template-columns:1fr;}.stat-strip{grid-template-columns:repeat(2,1fr);}}
+
+/* Section heading */
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:16px;}
+.sec-title{font-family:'Bricolage Grotesque','Assistant',sans-serif;font-size:1.45rem;font-weight:800;letter-spacing:-.035em;}
+.sec-meta{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+
+/* ─── ARTIST FILTER CHIPS ─────────────────────────────────────────────────── */
+.filter-chips{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:18px;}
+.chip{
+  display:inline-flex;align-items:center;gap:8px;padding:8px 15px 8px 13px;border-radius:var(--radius-pill);
+  border:1.5px solid var(--border);background:var(--surface-2);color:var(--text-2);
+  font-size:.82rem;font-weight:600;letter-spacing:.005em;transition:.15s;white-space:nowrap;
+}
+.chip .swatch{width:10px;height:10px;border-radius:50%;background:var(--c);flex-shrink:0;}
+.chip:hover{border-color:var(--border-strong);color:var(--text);}
+.chip.off{opacity:.5;border-style:dashed;}
+.chip.off .swatch{background:var(--text-3);}
+.chip.is-all{border-color:var(--text);color:var(--text);background:var(--surface);font-weight:700;}
+.chip.is-all .swatch{background:var(--text);}
+.chip.is-all.off{background:var(--surface-2);}
+.chip-count{font-size:.68rem;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums;background:var(--surface-sunk);padding:1px 7px;border-radius:var(--radius-pill);}
+
+/* ─── CALENDAR ────────────────────────────────────────────────────────────── */
+.cal-card{border:1.5px solid var(--text);background:var(--surface);box-shadow:5px 5px 0 var(--text);position:relative;}
+.cal-top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1.5px solid var(--text);}
+.cal-month{display:flex;align-items:baseline;gap:12px;}
+.cal-month h3{font-family:'Bricolage Grotesque',sans-serif;font-size:1.55rem;font-weight:800;letter-spacing:-.03em;}
+.cal-month .yr{font-size:.95rem;font-weight:600;color:var(--text-3);font-variant-numeric:tabular-nums;}
+.cal-nav{display:flex;align-items:center;gap:6px;}
+.cal-arrow{width:34px;height:34px;border:1.5px solid var(--border);background:var(--surface-2);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-2);transition:.15s;font-size:1rem;}
+.cal-arrow:hover{border-color:var(--text);color:var(--text);}
+.cal-today-btn{padding:0 14px;height:34px;border:1.5px solid var(--border);background:var(--surface-2);border-radius:var(--radius-sm);font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-2);transition:.15s;}
+.cal-today-btn:hover{border-color:var(--text);color:var(--text);}
+.cal-viewtoggle{display:flex;border:1.5px solid var(--text);border-radius:0;overflow:hidden;}
+.cal-viewtoggle button{padding:8px 16px;font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-2);background:var(--surface-2);border-right:1.5px solid var(--text);transition:.15s;}
+.cal-viewtoggle button:last-child{border-right:none;}
+.cal-viewtoggle button.active{background:var(--accent);color:#fff;}
+
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);}
+.cal-dow div{padding:11px 12px;font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);border-right:1px solid var(--border-light);}
+.cal-dow div:last-child{border-right:none;}
+
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{
+  min-height:118px;border-right:1px solid var(--border-light);border-bottom:1px solid var(--border-light);
+  padding:8px 8px 10px;display:flex;flex-direction:column;gap:5px;position:relative;background:var(--surface);
+}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-grid > .cal-cell:nth-last-child(-n+7){border-bottom:none;}
+.cal-cell.out{background:var(--surface-sunk);}
+.cal-cell.out .cal-daynum{color:var(--text-3);opacity:.6;}
+.cal-cell.today{background:var(--accent-soft);}
+.cal-daynum{font-size:.85rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:space-between;}
+.cal-cell.today .cal-daynum .n{background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.78rem;}
+.cal-daynum .wk{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+
+/* event pill */
+.ev{
+  display:flex;align-items:center;gap:6px;padding:4px 8px 4px 7px;border-radius:var(--radius-sm);
+  background:var(--ev-bg);border-left:3px solid var(--ev-c);font-size:.72rem;font-weight:600;color:var(--text);
+  cursor:pointer;transition:.12s;line-height:1.25;text-align:left;width:100%;overflow:hidden;
+}
+.ev:hover{transform:translateX(1px);box-shadow:2px 2px 0 var(--ev-c);}
+.ev.selected{background:var(--ev-c);color:#fff;border-left-color:var(--ev-c);box-shadow:2px 2px 0 rgba(26,23,20,.25);}
+.ev .ev-time{font-variant-numeric:tabular-nums;font-weight:700;opacity:.85;flex-shrink:0;font-size:.66rem;}
+.ev .ev-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ev .ev-warn{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--danger);flex-shrink:0;}
+.ev.selected .ev-warn{background:#fff;}
+.ev-more{font-size:.66rem;font-weight:700;color:var(--text-3);padding:1px 4px;text-align:left;}
+
+/* Quick View popover */
+.qv{
+  position:absolute;z-index:50;width:296px;background:var(--surface-2);border:1.5px solid var(--text);
+  box-shadow:var(--shadow-lg);animation:qvin .14s ease;
+}
+@keyframes qvin{from{opacity:0;transform:translateY(-6px) scale(.98);}to{opacity:1;transform:none;}}
+.qv-band{height:7px;background:var(--ev-c);}
+.qv-body{padding:16px 18px 18px;}
+.qv-art{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ev-c);display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.qv-art .swatch{width:8px;height:8px;border-radius:50%;background:var(--ev-c);}
+.qv-title{font-family:'Bricolage Grotesque',sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:-.025em;line-height:1.05;margin-bottom:3px;}
+.qv-date{font-size:.78rem;color:var(--text-2);font-variant-numeric:tabular-nums;margin-bottom:14px;}
+.qv-rows{display:flex;flex-direction:column;gap:11px;padding-top:13px;border-top:1px solid var(--border);}
+.qv-row{display:flex;gap:12px;align-items:flex-start;}
+.qv-row .lbl{font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);width:74px;flex-shrink:0;padding-top:2px;}
+.qv-row .val{font-size:.84rem;color:var(--text);line-height:1.35;}
+.qv-row .val .vsub{display:block;font-size:.74rem;color:var(--text-2);margin-top:1px;}
+.qv-crew{display:flex;flex-direction:column;gap:6px;}
+.qv-crew .person{display:flex;align-items:center;gap:8px;}
+.qv-crew .pa{width:22px;height:22px;border-radius:50%;color:#fff;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.qv-crew .pn{font-size:.82rem;color:var(--text);font-weight:500;}
+.qv-crew .pr{font-size:.66rem;color:var(--text-3);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-left:auto;}
+.qv-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.qv-flag{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:700;color:var(--danger);letter-spacing:.02em;}
+.qv-flag .ic{width:14px;height:14px;}
+.qv-open{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:5px;}
+.qv-open:hover{color:var(--accent-hover);}
+.qv-close{position:absolute;top:12px;right:12px;width:24px;height:24px;border-radius:var(--radius-sm);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;opacity:.9;}
+.qv-close:hover{background:rgba(255,255,255,.2);}
+
+/* ─── SIDEBAR ─────────────────────────────────────────────────────────────── */
+.side{display:flex;flex-direction:column;gap:30px;}
+
+/* Up Next agenda */
+.agenda{display:flex;flex-direction:column;}
+.ag-item{display:flex;gap:14px;padding:15px 0;border-bottom:1px solid var(--border-light);position:relative;}
+.ag-item:last-child{border-bottom:none;}
+.ag-date{flex-shrink:0;width:46px;text-align:center;}
+.ag-date .d{font-family:'Bricolage Grotesque',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;}
+.ag-date .m{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-top:3px;}
+.ag-date .dow{font-size:.6rem;font-weight:600;color:var(--text-3);margin-top:2px;}
+.ag-bar{width:3px;border-radius:2px;background:var(--ev-c);flex-shrink:0;}
+.ag-body{flex:1;min-width:0;}
+.ag-art{font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ev-c);display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.ag-art .swatch{width:7px;height:7px;border-radius:50%;background:var(--ev-c);}
+.ag-name{font-size:.95rem;font-weight:700;letter-spacing:-.015em;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ag-meta{font-size:.76rem;color:var(--text-2);display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-variant-numeric:tabular-nums;}
+.ag-meta .sep{color:var(--border-strong);}
+.ag-flags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.flag{display:inline-flex;align-items:center;gap:5px;font-size:.66rem;font-weight:700;letter-spacing:.02em;padding:3px 9px;border-radius:var(--radius-pill);}
+.flag--danger{background:var(--danger-bg);color:var(--danger);}
+.flag--warn{background:var(--amber-bg);color:var(--amber-deep);}
+.flag .fdot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+/* shared card shell for sidebar blocks */
+.block{border:1.5px solid var(--text);background:var(--surface);box-shadow:5px 5px 0 var(--text);}
+.block-pad{padding:18px 20px 8px;}
+.block-pad-tight{padding:6px 20px 14px;}
+
+/* ─── TASK INBOX ──────────────────────────────────────────────────────────── */
+.inbox{margin-top:40px;}
+.inbox-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+@media (max-width:900px){.inbox-grid{grid-template-columns:1fr;}}
+.task-col{border:1.5px solid var(--text);background:var(--surface);box-shadow:5px 5px 0 var(--text);display:flex;flex-direction:column;}
+.task-col--flag{box-shadow:5px 5px 0 var(--danger);}
+.task-col-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:17px 22px;border-bottom:1.5px solid var(--text);}
+.task-col-head .h{display:flex;align-items:center;gap:10px;font-family:'Bricolage Grotesque',sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:-.02em;}
+.task-col-head .h .ic{width:18px;height:18px;color:var(--accent);}
+.task-col--flag .task-col-head .h .ic{color:var(--danger);}
+.task-col-head .cnt{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--text-3);background:var(--surface-sunk);padding:2px 9px;border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;}
+.task-col--flag .cnt{background:var(--danger-bg);color:var(--danger);}
+
+.task{display:flex;gap:13px;padding:15px 22px;border-bottom:1px solid var(--border-light);align-items:flex-start;}
+.task:last-child{border-bottom:none;}
+.task-check{
+  width:21px;height:21px;border:1.6px solid var(--border-strong);border-radius:var(--radius-sm);flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;transition:.12s;background:var(--surface-2);
+}
+.task-check:hover{border-color:var(--accent);}
+.task-check svg{width:13px;height:13px;color:#fff;opacity:0;transition:.12s;}
+.task.done .task-check{background:var(--accent);border-color:var(--accent);}
+.task.done .task-check svg{opacity:1;}
+.task-body{flex:1;min-width:0;}
+.task-text{font-size:.9rem;font-weight:500;color:var(--text);line-height:1.35;letter-spacing:-.01em;}
+.task.done .task-text{text-decoration:line-through;color:var(--text-3);}
+.task-meta{display:flex;align-items:center;gap:9px;margin-top:7px;flex-wrap:wrap;font-size:.72rem;color:var(--text-2);}
+.task-art{display:inline-flex;align-items:center;gap:5px;font-weight:600;}
+.task-art .swatch{width:8px;height:8px;border-radius:50%;background:var(--ev-c);}
+.task-due{font-variant-numeric:tabular-nums;}
+.task-due.late{color:var(--danger);font-weight:700;}
+.task-assignee{display:inline-flex;align-items:center;gap:6px;margin-left:auto;}
+.task-assignee .pa{width:20px;height:20px;border-radius:50%;color:#fff;font-size:.56rem;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.task-assignee .nm{font-weight:600;color:var(--text-2);}
+.overdue-pill{display:inline-flex;align-items:center;gap:5px;font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--danger);background:var(--danger-bg);padding:2px 8px;border-radius:var(--radius-pill);}
+
+.disclaimer{margin-top:44px;text-align:center;font-size:.72rem;color:var(--text-3);letter-spacing:.04em;}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M 6 62 A 44 44 0 0 1 94 62" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+      <path d="M 21 62 A 29 29 0 0 1 79 62" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none" opacity="0.65"/>
+      <path d="M 35 62 A 15 15 0 0 1 65 62" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.9"/>
+      <line x1="2" y1="62" x2="98" y2="62" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.35"/>
+      <circle cx="50" cy="62" r="5" fill="#F08D39"/>
+    </svg>
+    <span class="brand-name">Production Hub</span>
+  </div>
+  <nav class="app-nav">
+    <a class="nav-link active" href="#">Home</a>
+    <a class="nav-link" href="#">Shows</a>
+    <a class="nav-link" href="#">Crew &amp; Types</a>
+    <a class="nav-link" href="#">Tasks</a>
+    <a class="nav-link" href="#">Automations</a>
+    <a class="nav-link" href="#">Team</a>
+    <a class="nav-link" href="#">Tools <span class="nav-caret">▾</span></a>
+    <span class="nav-sep" aria-hidden="true"></span>
+    <span class="artist-switcher"><span class="glob-dot"></span>All Artists <span class="nav-caret">▾</span></span>
+  </nav>
+  <div class="header-right">
+    <button class="theme-toggle" title="Toggle theme" aria-label="Toggle theme">◑</button>
+    <button class="bell" title="Notifications" aria-label="Notifications">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="dot"></span>
+    </button>
+    <div class="avatar" title="Assaf Amdursky">AA</div>
+  </div>
+</header>
+
+<main class="app-main">
+  <!-- HERO -->
+  <section class="hero" data-screen-label="Master Dashboard">
+    <div class="hero-eyebrow"><span class="pulse"></span>Global View · Agency Producer</div>
+    <h1 class="hero-title">Today<span class="dot">.</span></h1>
+    <div class="hero-sub">
+      <span>Monday, June 1, 2026</span><span class="ln"></span>
+      <span><b>4</b> active artists</span><span class="ln"></span>
+      <span><b>14</b> shows this month</span><span class="ln"></span>
+      <span><b>3</b> need attention</span>
+    </div>
+    <div class="hero-marquee"><div class="hero-marquee-track">
+      <span>ALL ARTISTS · MASTER CALENDAR · ALL ARTISTS · MASTER CALENDAR · ALL ARTISTS · MASTER CALENDAR · </span>
+      <span>ALL ARTISTS · MASTER CALENDAR · ALL ARTISTS · MASTER CALENDAR · ALL ARTISTS · MASTER CALENDAR · </span>
+    </div></div>
+  </section>
+
+  <!-- STAT STRIP -->
+  <section class="stat-strip">
+    <div class="stat stat--dark"><span class="stat-num">14</span><span class="stat-label"><span class="stat-dot"></span>Upcoming shows</span></div>
+    <div class="stat"><span class="stat-num">4</span><span class="stat-label"><span class="stat-dot"></span>Active artists</span></div>
+    <div class="stat stat--flag"><span class="stat-num">3</span><span class="stat-label"><span class="stat-dot"></span>Red flags</span></div>
+    <div class="stat"><span class="stat-num">6</span><span class="stat-label"><span class="stat-dot"></span>Open tasks</span></div>
+  </section>
+
+  <!-- DASHBOARD GRID -->
+  <div class="dash">
+    <!-- LEFT: MASTER CALENDAR -->
+    <section>
+      <div class="sec-head">
+        <h2 class="sec-title">Master Calendar</h2>
+        <span class="sec-meta">All productions · color-coded by artist</span>
+      </div>
+
+      <div class="filter-chips" id="chips">
+        <button class="chip is-all" data-artist="all">All artists</button>
+        <button class="chip" data-artist="a1" style="--c:var(--a1)"><span class="swatch"></span>Noa Levine<span class="chip-count">5</span></button>
+        <button class="chip" data-artist="a2" style="--c:var(--a2)"><span class="swatch"></span>Cosmic Static<span class="chip-count">4</span></button>
+        <button class="chip" data-artist="a3" style="--c:var(--a3)"><span class="swatch"></span>Ruby Vale<span class="chip-count">3</span></button>
+        <button class="chip" data-artist="a4" style="--c:var(--a4)"><span class="swatch"></span>The Northern<span class="chip-count">2</span></button>
+      </div>
+
+      <div class="cal-card">
+        <div class="cal-top">
+          <div class="cal-month"><h3>June</h3><span class="yr">2026</span></div>
+          <div class="cal-nav">
+            <button class="cal-arrow" aria-label="Previous month">‹</button>
+            <button class="cal-today-btn">Today</button>
+            <button class="cal-arrow" aria-label="Next month">›</button>
+            <div class="cal-viewtoggle" style="margin-left:8px">
+              <button class="active">Month</button>
+              <button>Week</button>
+            </div>
+          </div>
+        </div>
+        <div class="cal-dow"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <!-- Quick View popover injected by JS -->
+      </div>
+    </section>
+
+    <!-- RIGHT: SIDEBAR -->
+    <aside class="side">
+      <section class="block">
+        <div class="block-pad">
+          <div class="sec-head" style="margin-bottom:4px">
+            <h2 class="sec-title" style="font-size:1.25rem">Up Next</h2>
+            <span class="sec-meta">Next 7</span>
+          </div>
+        </div>
+        <div class="block-pad-tight">
+          <div class="agenda" id="agenda"></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- UNIFIED TASK INBOX -->
+  <section class="inbox">
+    <div class="sec-head">
+      <h2 class="sec-title">Task Inbox</h2>
+      <span class="sec-meta">Across all productions</span>
+    </div>
+    <div class="inbox-grid">
+      <!-- MY TASKS -->
+      <div class="task-col">
+        <div class="task-col-head">
+          <div class="h">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            My Tasks
+          </div>
+          <span class="cnt">4</span>
+        </div>
+        <div id="myTasks"></div>
+      </div>
+
+      <!-- RED FLAGS / OVERDUE -->
+      <div class="task-col task-col--flag">
+        <div class="task-col-head">
+          <div class="h">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            Red Flags / Overdue
+          </div>
+          <span class="cnt">3</span>
+        </div>
+        <div id="flagTasks"></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="disclaimer">Visual mockup for design review — not connected to live data.</p>
+</main>
+
+<script>
+/* ── Data ──────────────────────────────────────────────────────────────── */
+const ARTISTS = {
+  a1:{name:'Noa Levine',    c:'var(--a1)', bg:'var(--a1-bg)', short:'NL'},
+  a2:{name:'Cosmic Static', c:'var(--a2)', bg:'var(--a2-bg)', short:'CS'},
+  a3:{name:'Ruby Vale',     c:'var(--a3)', bg:'var(--a3-bg)', short:'RV'},
+  a4:{name:'The Northern',  c:'var(--a4)', bg:'var(--a4-bg)', short:'TN'},
+};
+const PERSON_C = {AA:'#3852B4', RM:'#F08D39', YB:'#4E7265', DK:'#C79A3F', LS:'#8F4F1A', TG:'#5E7AC4'};
+
+// Events placed on June 2026 days. June 1 2026 = Monday.
+const EVENTS = [
+  {id:1,  day:2,  a:'a1', time:'20:00', name:'Barby Club',         venue:'Barby, Tel Aviv',        addr:'52 Kibbutz Galuyot Rd', loadIn:'15:30', crew:[['RM','Roni Maor','Backliner'],['YB','Yael Bar','FOH']], flag:null},
+  {id:2,  day:4,  a:'a2', time:'21:30', name:'Zappa Herzliya',     venue:'Zappa, Herzliya',        addr:'Maskit St 16',          loadIn:'17:00', crew:[['DK','Dana Katz','Backliner'],['LS','Liam Sade','Monitors']], flag:'crew'},
+  {id:3,  day:5,  a:'a3', time:'19:00', name:'Reading 3',          venue:'Reading 3, Tel Aviv',    addr:'Rokach Blvd',           loadIn:'14:00', crew:[['RM','Roni Maor','Backliner']], flag:'invoice'},
+  {id:4,  day:6,  a:'a4', time:'22:00', name:'Ozen Bar',           venue:'Ozen Bar, Tel Aviv',     addr:'King George 48',        loadIn:'18:30', crew:[['DK','Dana Katz','Backliner'],['YB','Yael Bar','FOH']], flag:null},
+  {id:5,  day:9,  a:'a1', time:'20:30', name:'Hangar 11',          venue:'Hangar 11, TLV Port',    addr:'Tel Aviv Port',         loadIn:'15:00', crew:[['RM','Roni Maor','Backliner'],['LS','Liam Sade','Monitors']], flag:null},
+  {id:6,  day:11, a:'a2', time:'21:00', name:'Haoman 17',          venue:'Haoman 17, Jerusalem',   addr:'Haoman St 17',          loadIn:'16:30', crew:[['DK','Dana Katz','Backliner']], flag:'crew'},
+  {id:7,  day:11, a:'a4', time:'19:30', name:'Yellow Submarine',   venue:'Yellow Submarine, J-m',  addr:'HaUman 13',             loadIn:'15:00', crew:[['YB','Yael Bar','FOH']], flag:null},
+  {id:8,  day:13, a:'a3', time:'20:00', name:'Theater Club',       venue:'Theater Club, Jaffa',    addr:'Jerusalem Blvd 16',     loadIn:'15:30', crew:[['RM','Roni Maor','Backliner'],['DK','Dana Katz','Monitors']], flag:null},
+  {id:9,  day:18, a:'a1', time:'20:00', name:'Caesarea Amph.',     venue:'Caesarea Amphitheater',  addr:'Caesarea National Park',loadIn:'14:30', crew:[['RM','Roni Maor','Backliner'],['YB','Yael Bar','FOH'],['LS','Liam Sade','Monitors']], flag:null, open:true},
+  {id:10, day:20, a:'a2', time:'21:30', name:'Live Park',          venue:'Live Park, Rishon',      addr:'Rishon LeZion',         loadIn:'16:00', crew:[['DK','Dana Katz','Backliner']], flag:'invoice'},
+  {id:11, day:21, a:'a3', time:'19:00', name:'Zappa Amphi',        venue:'Zappa Amph., Shuni',     addr:'Binyamina',             loadIn:'14:00', crew:[['RM','Roni Maor','Backliner']], flag:null},
+  {id:12, day:25, a:'a4', time:'20:30', name:'Barby Club',         venue:'Barby, Tel Aviv',        addr:'52 Kibbutz Galuyot Rd', loadIn:'16:00', crew:[['YB','Yael Bar','FOH']], flag:null},
+  {id:13, day:27, a:'a1', time:'21:00', name:'Menora Arena',       venue:'Menora Arena, TLV',      addr:'Yigal Alon 51',         loadIn:'13:00', crew:[['RM','Roni Maor','Backliner'],['YB','Yael Bar','FOH']], flag:null},
+  {id:14, day:28, a:'a2', time:'20:00', name:'Wine Festival',      venue:'Israel Museum, J-m',     addr:'Ruppin Blvd 11',        loadIn:'15:30', crew:[['DK','Dana Katz','Backliner']], flag:null},
+];
+
+const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const active = new Set(['a1','a2','a3','a4']);
+let selectedId = 9;
+
+/* ── Calendar render ───────────────────────────────────────────────────── */
+const grid = document.getElementById('calGrid');
+// First row leading cell = May 31 (Sun). June 1 = Mon (col 1).
+const cells = [];
+cells.push({day:31, out:true});                 // Sun May 31
+for(let d=1; d<=30; d++) cells.push({day:d, out:false});
+for(let d=1; d<=4; d++) cells.push({day:d, out:true, jul:true}); // Jul 1–4 to fill last row (35 cells)
+
+function eventsFor(day){
+  return EVENTS.filter(e=>e.day===day && active.has(e.a));
+}
+
+function renderCalendar(){
+  grid.innerHTML='';
+  cells.forEach((c,i)=>{
+    const cell=document.createElement('div');
+    cell.className='cal-cell'+(c.out?' out':'')+((!c.out && c.day===1)?' today':'');
+    const head=document.createElement('div');
+    head.className='cal-daynum';
+    const n=document.createElement('span');
+    n.className='n'; n.textContent=c.day;
+    head.appendChild(n);
+    if(!c.out && c.day===1){const wk=document.createElement('span');wk.className='wk';wk.textContent='Today';head.appendChild(wk);}
+    cell.appendChild(head);
+
+    if(!c.out){
+      const evs=eventsFor(c.day);
+      const shown=evs.slice(0,2);
+      shown.forEach(e=>{
+        const a=ARTISTS[e.a];
+        const btn=document.createElement('button');
+        btn.className='ev'+(e.id===selectedId?' selected':'');
+        btn.style.setProperty('--ev-c', a.c);
+        btn.style.setProperty('--ev-bg', a.bg);
+        btn.dataset.id=e.id;
+        btn.innerHTML='<span class="ev-time">'+e.time+'</span><span class="ev-name">'+a.name+'</span>'+(e.flag?'<span class="ev-warn"></span>':'');
+        btn.addEventListener('click',ev=>{ev.stopPropagation();selectEvent(e.id,cell);});
+        cell.appendChild(btn);
+      });
+      if(evs.length>shown.length){
+        const more=document.createElement('div');
+        more.className='ev-more'; more.textContent='+'+(evs.length-shown.length)+' more';
+        cell.appendChild(more);
+      }
+    }
+    grid.appendChild(cell);
+  });
+  // re-open popover if a selected event is visible
+  const sel=EVENTS.find(e=>e.id===selectedId);
+  if(sel && active.has(sel.a)){
+    const cellEl=findCellForDay(sel.day);
+    if(cellEl) openQuickView(sel, cellEl);
+  } else {
+    closeQuickView();
+  }
+}
+
+function findCellForDay(day){
+  const idx = cells.findIndex(c=>!c.out && c.day===day);
+  return idx>=0 ? grid.children[idx] : null;
+}
+
+/* ── Quick View popover ────────────────────────────────────────────────── */
+let qvEl=null;
+function closeQuickView(){ if(qvEl){qvEl.remove();qvEl=null;} }
+function selectEvent(id, cell){
+  if(selectedId===id){ selectedId=null; renderCalendar(); return; }
+  selectedId=id; renderCalendar();
+}
+function openQuickView(e, cell){
+  closeQuickView();
+  const a=ARTISTS[e.a];
+  qvEl=document.createElement('div');
+  qvEl.className='qv';
+  qvEl.style.setProperty('--ev-c', a.c);
+  const flagLabel = e.flag==='crew' ? 'Missing crew' : e.flag==='invoice' ? 'No invoice' : null;
+  qvEl.innerHTML =
+    '<div class="qv-band"></div>'+
+    '<button class="qv-close" aria-label="Close">✕</button>'+
+    '<div class="qv-body">'+
+      '<div class="qv-art"><span class="swatch"></span>'+a.name+'</div>'+
+      '<div class="qv-title">'+e.name+'</div>'+
+      '<div class="qv-date">June '+e.day+', 2026 · Doors '+e.time+'</div>'+
+      '<div class="qv-rows">'+
+        '<div class="qv-row"><span class="lbl">Load-in</span><span class="val">'+e.loadIn+' <span class="vsub">Crew call &amp; gear</span></span></div>'+
+        '<div class="qv-row"><span class="lbl">Venue</span><span class="val">'+e.venue+'<span class="vsub">'+e.addr+'</span></span></div>'+
+        '<div class="qv-row"><span class="lbl">Key crew</span><div class="val qv-crew">'+
+          e.crew.map(p=>'<div class="person"><span class="pa" style="background:'+(PERSON_C[p[0]]||'#6B6259')+'">'+p[0]+'</span><span class="pn">'+p[1]+'</span><span class="pr">'+p[2]+'</span></div>').join('')+
+        '</div></div>'+
+      '</div>'+
+      '<div class="qv-foot">'+
+        (flagLabel
+          ? '<span class="qv-flag"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'+flagLabel+'</span>'
+          : '<span class="qv-flag" style="color:var(--text-3)">Fully staffed</span>')+
+        '<span class="qv-open">Open show <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>'+
+      '</div>'+
+    '</div>';
+  cell.appendChild(qvEl);
+  qvEl.querySelector('.qv-close').addEventListener('click',ev=>{ev.stopPropagation();selectedId=null;renderCalendar();});
+  positionQuickView(cell);
+}
+function positionQuickView(cell){
+  if(!qvEl) return;
+  const card=document.querySelector('.cal-card');
+  const cr=cell.getBoundingClientRect();
+  const kr=card.getBoundingClientRect();
+  const w=296;
+  let left = cr.left - kr.left + cr.width + 8;          // to the right of the cell
+  if(left + w > card.clientWidth - 4) left = cr.left - kr.left - w - 8; // flip left
+  if(left < 4) left = 4;
+  let top = cr.top - kr.top - 6;
+  qvEl.style.left = left+'px';
+  qvEl.style.top  = top+'px';
+  // keep within card vertically
+  requestAnimationFrame(()=>{
+    if(!qvEl) return;
+    const h=qvEl.offsetHeight;
+    if(top + h > card.clientHeight - 4) qvEl.style.top = Math.max(4, card.clientHeight - h - 4)+'px';
+  });
+}
+window.addEventListener('resize',()=>{const s=EVENTS.find(e=>e.id===selectedId);if(s){const c=findCellForDay(s.day);if(c&&qvEl)positionQuickView(c);}});
+
+/* ── Filter chips ──────────────────────────────────────────────────────── */
+const chipBar=document.getElementById('chips');
+chipBar.addEventListener('click',e=>{
+  const chip=e.target.closest('.chip'); if(!chip) return;
+  const id=chip.dataset.artist;
+  if(id==='all'){
+    const allOn = active.size===4;
+    if(allOn){ active.clear(); } else { active.clear(); ['a1','a2','a3','a4'].forEach(x=>active.add(x)); }
+  } else {
+    if(active.has(id)) active.delete(id); else active.add(id);
+  }
+  syncChips(); renderCalendar(); renderAgenda();
+});
+function syncChips(){
+  [...chipBar.children].forEach(chip=>{
+    const id=chip.dataset.artist;
+    if(id==='all'){ chip.classList.toggle('off', active.size!==4); }
+    else chip.classList.toggle('off', !active.has(id));
+  });
+}
+
+/* ── Up Next agenda ────────────────────────────────────────────────────── */
+const agendaEl=document.getElementById('agenda');
+function renderAgenda(){
+  agendaEl.innerHTML='';
+  const upcoming=EVENTS.filter(e=>active.has(e.a)).sort((a,b)=>a.day-b.day).slice(0,7);
+  if(upcoming.length===0){ agendaEl.innerHTML='<p style="padding:24px 0;color:var(--text-3);font-size:.85rem">No shows for the selected artists.</p>'; return; }
+  upcoming.forEach(e=>{
+    const a=ARTISTS[e.a];
+    const dowIdx=new Date(2026,5,e.day).getDay();
+    const flags=[];
+    if(e.flag==='crew')    flags.push('<span class="flag flag--danger"><span class="fdot"></span>Missing crew</span>');
+    if(e.flag==='invoice') flags.push('<span class="flag flag--warn"><span class="fdot"></span>No invoice</span>');
+    const item=document.createElement('div');
+    item.className='ag-item';
+    item.style.setProperty('--ev-c', a.c);
+    item.innerHTML=
+      '<div class="ag-date"><div class="d">'+e.day+'</div><div class="m">Jun</div><div class="dow">'+DOW[dowIdx]+'</div></div>'+
+      '<div class="ag-bar"></div>'+
+      '<div class="ag-body">'+
+        '<div class="ag-art"><span class="swatch"></span>'+a.name+'</div>'+
+        '<div class="ag-name">'+e.name+'</div>'+
+        '<div class="ag-meta"><span>'+e.time+'</span><span class="sep">·</span><span>'+e.venue+'</span></div>'+
+        (flags.length?'<div class="ag-flags">'+flags.join('')+'</div>':'')+
+      '</div>';
+    agendaEl.appendChild(item);
+  });
+}
+
+/* ── Tasks ─────────────────────────────────────────────────────────────── */
+const MY_TASKS=[
+  {t:'Confirm load-in time with Caesarea Amphitheater ops', a:'a1', due:'Jun 4', late:false, done:false},
+  {t:'Send updated stage plot to Zappa Herzliya', a:'a2', due:'Jun 2', late:false, done:false},
+  {t:'Approve catering rider for Hangar 11', a:'a1', due:'Jun 6', late:false, done:true},
+  {t:'Book backliner for Live Park (Rishon)', a:'a2', due:'Jun 8', late:false, done:false},
+];
+const FLAG_TASKS=[
+  {t:'Upload signed contract — Reading 3', a:'a3', who:'DK', whoName:'Dana Katz', due:'May 28', overdue:'4d'},
+  {t:'Submit FOH input list — Haoman 17', a:'a2', who:'LS', whoName:'Liam Sade', due:'May 30', overdue:'2d'},
+  {t:'Confirm monitors crew — Ozen Bar', a:'a4', who:'YB', whoName:'Yael Bar', due:'May 31', overdue:'1d'},
+];
+function renderTasks(){
+  const my=document.getElementById('myTasks');
+  my.innerHTML='';
+  MY_TASKS.forEach((t,i)=>{
+    const a=ARTISTS[t.a];
+    const row=document.createElement('div');
+    row.className='task'+(t.done?' done':'');
+    row.style.setProperty('--ev-c', a.c);
+    row.innerHTML=
+      '<button class="task-check" aria-label="Toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'+
+      '<div class="task-body"><div class="task-text">'+t.t+'</div>'+
+      '<div class="task-meta"><span class="task-art"><span class="swatch"></span>'+a.name+'</span>'+
+      '<span class="task-due'+(t.late?' late':'')+'">Due '+t.due+'</span></div></div>';
+    row.querySelector('.task-check').addEventListener('click',()=>{MY_TASKS[i].done=!MY_TASKS[i].done;renderTasks();});
+    my.appendChild(row);
+  });
+  const fg=document.getElementById('flagTasks');
+  fg.innerHTML='';
+  FLAG_TASKS.forEach(t=>{
+    const a=ARTISTS[t.a];
+    const row=document.createElement('div');
+    row.className='task';
+    row.style.setProperty('--ev-c', a.c);
+    row.innerHTML=
+      '<button class="task-check" aria-label="Toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>'+
+      '<div class="task-body"><div class="task-text">'+t.t+'</div>'+
+      '<div class="task-meta"><span class="task-art"><span class="swatch"></span>'+a.name+'</span>'+
+      '<span class="overdue-pill">Overdue '+t.overdue+'</span>'+
+      '<span class="task-assignee"><span class="pa" style="background:'+(PERSON_C[t.who]||'#6B6259')+'">'+t.who+'</span><span class="nm">'+t.whoName+'</span></span></div></div>';
+    row.querySelector('.task-check').addEventListener('click',()=>row.classList.toggle('done'));
+    fg.appendChild(row);
+  });
+}
+
+/* close popover on outside click */
+document.addEventListener('click',e=>{
+  if(qvEl && !e.target.closest('.qv') && !e.target.closest('.ev')){ selectedId=null; renderCalendar(); }
+});
+
+/* init */
+syncChips();
+renderCalendar();
+renderAgenda();
+renderTasks();
+</script>
+</body>
+</html>

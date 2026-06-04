@@ -11,7 +11,8 @@ const groupColorFor = (role) => {
   const k = (role || '').toLowerCase();
   if (k.includes('backline') || k.includes('בקלי')) return '#3852B4';
   if (k.includes('production') || k.includes('הפקה')) return '#C26C1F';
-  if (k.includes('musician') || k.includes('sound') || k.includes('נגן') || k.includes('סאונד')) return '#4E7265';
+  if (k.includes('musician') || k.includes('נגן')) return '#4E7265';
+  if (k.includes('sound') || k.includes('סאונד')) return '#C38B86';
   if (k.includes('lighting') || k.includes('תאורה')) return '#7C3A5E';
   return GROUP_PALETTE[(role || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % GROUP_PALETTE.length];
 };

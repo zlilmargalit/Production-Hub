@@ -24,6 +24,18 @@ const BLANK = {
   crewIds: [], scheduleRows: [], customFields: {}, pdfFields: {},
 };
 
+// ── Group color for crew dot in chips ──────────────────────────────────────
+const _GROUP_PALETTE = ['#3852B4', '#C26C1F', '#4E7265', '#7C3A5E', '#1F2D6E', '#B07729'];
+function groupColorFor(role) {
+  const k = (role || '').toLowerCase();
+  if (k.includes('backline') || k.includes('בקלי')) return '#3852B4';
+  if (k.includes('production') || k.includes('הפקה')) return '#C26C1F';
+  if (k.includes('musician') || k.includes('נגן')) return '#4E7265';
+  if (k.includes('sound') || k.includes('סאונד')) return '#C38B86';
+  if (k.includes('lighting') || k.includes('תאורה')) return '#7C3A5E';
+  return _GROUP_PALETTE[(role || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % _GROUP_PALETTE.length];
+}
+
 function buildCrewText(crewIds, crew) {
   return crewIds
     .map((id) => crew.find((m) => m.id === id))
@@ -55,7 +67,8 @@ function sectionCount(sectionId, form) {
 export default function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit, onClose }) {
   const formRef = useRef(null);
   const sectionRefs = useRef({});
-  const schedTimeRefs = useRef([]);
+  const schedTimeRefs     = useRef([]);
+  const schedActivityRefs = useRef([]);
 
   const initialScheduleRows = show
     ? parseScheduleRows(show.schedule)
@@ -127,6 +140,33 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
     });
   const removeScheduleRow = (idx) =>
     setForm((f) => ({ ...f, scheduleRows: f.scheduleRows.filter((_, i) => i !== idx) }));
+
+  const schedKeyDown = (e, idx, col) => {
+    const total = form.scheduleRows.length;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (idx < total - 1) {
+        (col === 'time' ? schedTimeRefs : schedActivityRefs).current[idx + 1]?.focus();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (idx > 0) {
+        (col === 'time' ? schedTimeRefs : schedActivityRefs).current[idx - 1]?.focus();
+      }
+    } else if (e.key === 'ArrowRight' && col === 'time') {
+      const el = schedTimeRefs.current[idx];
+      if (el && el.selectionStart === el.value.length) {
+        e.preventDefault();
+        schedActivityRefs.current[idx]?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' && col === 'activity') {
+      const el = schedActivityRefs.current[idx];
+      if (el && el.selectionStart === 0) {
+        e.preventDefault();
+        schedTimeRefs.current[idx]?.focus();
+      }
+    }
+  };
 
   const setCustomField = (id, value) =>
     setForm((f) => ({ ...f, customFields: { ...f.customFields, [id]: value } }));
@@ -274,6 +314,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                       className="sf-inp sf-sched-time"
                       value={row.time}
                       onChange={(e) => updateScheduleRow(idx, 'time', e.target.value)}
+                      onKeyDown={(e) => schedKeyDown(e, idx, 'time')}
                       placeholder="00:00"
                       ref={(el) => { schedTimeRefs.current[idx] = el; }}
                     />
@@ -282,7 +323,9 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                       className="sf-inp sf-sched-activity"
                       value={row.activity}
                       onChange={(e) => updateScheduleRow(idx, 'activity', e.target.value)}
+                      onKeyDown={(e) => schedKeyDown(e, idx, 'activity')}
                       placeholder="Activity…"
+                      ref={(el) => { schedActivityRefs.current[idx] = el; }}
                     />
                     <button
                       type="button"
@@ -366,7 +409,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                         className={`sf-crew-chip${sel ? ' sel' : ''}`}
                         onClick={() => toggleCrew(m.id)}
                       >
-                        <span className="sf-crew-dot" />
+                        <span className="sf-crew-dot" style={{ background: groupColorFor(m.role) }} />
                         {m.role} – {m.name}
                       </button>
                     );
