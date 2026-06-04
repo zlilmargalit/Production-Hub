@@ -55,6 +55,7 @@ function sectionCount(sectionId, form) {
 export default function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit, onClose }) {
   const formRef = useRef(null);
   const sectionRefs = useRef({});
+  const schedTimeRefs = useRef([]);
 
   const initialScheduleRows = show
     ? parseScheduleRows(show.schedule)
@@ -113,8 +114,12 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
   };
 
   // Schedule row helpers
-  const addScheduleRow = () =>
+  const addScheduleRow = () => {
+    const newIdx = form.scheduleRows.length;
     setForm((f) => ({ ...f, scheduleRows: [...f.scheduleRows, { time: '', activity: '' }] }));
+    // Focus the time cell of the new row after React re-renders
+    setTimeout(() => { schedTimeRefs.current[newIdx]?.focus(); }, 0);
+  };
   const updateScheduleRow = (idx, field, value) =>
     setForm((f) => {
       const rows = f.scheduleRows.map((r, i) => i === idx ? { ...r, [field]: value } : r);
@@ -318,6 +323,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                       value={row.time}
                       onChange={(e) => updateScheduleRow(idx, 'time', e.target.value)}
                       placeholder="00:00"
+                      ref={(el) => { schedTimeRefs.current[idx] = el; }}
                     />
                     <input
                       dir="rtl"
