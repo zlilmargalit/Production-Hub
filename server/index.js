@@ -864,7 +864,7 @@ app.get('/api/teams', async (req, res) => {
 // ── Admin-only: user management ───────────────────────────────────────────────
 app.get('/api/users', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { artistId } = req.query;
+  const { artistId, unbound } = req.query;
   let users = loadUsers().map(({ id, username, email, role, workspaceRole, assignedShowIds, artistId: aid, createdAt }) => ({
     id, username, email: email || null, role,
     workspaceRole: workspaceRole || 'producer',
@@ -872,7 +872,13 @@ app.get('/api/users', (req, res) => {
     artistId: aid || null,
     createdAt,
   }));
-  if (artistId) users = users.filter(u => !u.artistId || u.artistId === artistId);
+  if (unbound === '1') {
+    // Only users with no workspace binding (for the "Unassigned" section in Teams)
+    users = users.filter(u => !u.artistId);
+  } else if (artistId) {
+    // Strict workspace isolation: only show users explicitly bound to this artist.
+    users = users.filter(u => u.artistId === artistId);
+  }
   res.json(users);
 });
 

@@ -343,7 +343,7 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
 }
 
 // ── Members tab ───────────────────────────────────────────────────────────────
-function TabMembers({ users, artists, shows, tasks = [], activityLog,
+function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], activityLog,
                       userArtistAccess, userPermissions,
                       onDeleteUser, onEditEmail,
                       onSaveAccess, onSavePerms, onUpdateShow,
@@ -382,10 +382,10 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
         <span className="team-member-count">{users.length} member{users.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {users.length === 0 ? (
-        <p className="team-empty">No team members yet. Use the Invite tab to add someone.</p>
-      ) : (
-        <div className="tm-member-list">
+      <div className="tm-member-list">
+          {users.length === 0 && unboundUsers.length === 0 && (
+            <p className="team-empty">No team members yet. Use the Invite tab to add someone.</p>
+          )}
           {users.map(u => {
             const isExpanded = expandedId === u.id;
 
@@ -473,6 +473,41 @@ function TabMembers({ users, artists, shows, tasks = [], activityLog,
               </div>
             );
           })}
+        </div>
+
+      {artistId && unboundUsers.length > 0 && (
+        <div className="team-unbound-section">
+          <div className="team-members-header" style={{ marginTop: 24 }}>
+            <h3 className="team-section-title">Unassigned Members</h3>
+            <span className="team-member-count">{unboundUsers.length} — not linked to any workspace</span>
+          </div>
+          <div className="tm-member-list">
+            {unboundUsers.map(u => (
+              <div key={u.id} className="tm-member-card">
+                <div className="tm-member-row">
+                  <div className="tm-avatar" style={{ background: '#9AA0A8' }}>
+                    {initials(u.username)}
+                  </div>
+                  <div className="tm-member-info">
+                    <span className="tm-member-name">{u.username}</span>
+                    <span className="tm-member-email empty">Not assigned to any workspace</span>
+                  </div>
+                  <span className={`tm-role-badge tm-role--${u.workspaceRole || 'producer'}`}>
+                    {ROLE_LABELS[u.workspaceRole] || 'Producer'}
+                  </span>
+                  {onBindUser && (
+                    <button
+                      className="btn-action"
+                      style={{ fontSize: '0.72rem', padding: '4px 10px' }}
+                      onClick={() => onBindUser(u.id, artistId)}
+                    >
+                      Bind to this workspace
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -781,6 +816,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
 function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = null }) {
   const [tab,              setTab]              = useState('members');
   const [users,            setUsers]            = useState([]);
+  const [unboundUsers,     setUnboundUsers]     = useState([]);
   const [userArtistAccess, setUserArtistAccess] = useState({});
   const [userPermissions,  setUserPermissions]  = useState({});
   const [activityLog,      setActivityLog]      = useState([]);
@@ -791,12 +827,15 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const [ur, sr, ar] = await Promise.all([
+    const fetches = [
       fetch(`/api/users${qs}`).then(r => r.ok ? r.json() : []),
       fetch('/api/admin/settings').then(r => r.ok ? r.json() : null),
       fetch('/api/team/activity').then(r => r.ok ? r.json() : []),
-    ]);
+    ];
+    if (artistId) fetches.push(fetch('/api/users?unbound=1').then(r => r.ok ? r.json() : []));
+    const [ur, sr, ar, unbound] = await Promise.all(fetches);
     setUsers(ur);
+    setUnboundUsers(artistId ? (unbound || []) : []);
     if (sr) {
       setUserArtistAccess(sr.userArtistAccess || {});
       setUserPermissions(sr.userPermissions || {});
@@ -849,8 +888,16 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
     });
     if (r.ok) {
       const { user: updated } = await r.json();
-      // After binding, user's artistId now matches — remove from view if qs is scoped
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, artistId: updated.artistId } : u));
+      if (updated.artistId === targetArtistId) {
+        // Move from unbound list into the bound list
+        const wasUnbound = unboundUsers.find(u => u.id === userId);
+        if (wasUnbound) {
+          setUnboundUsers(prev => prev.filter(u => u.id !== userId));
+          setUsers(prev => [...prev, { ...wasUnbound, artistId: updated.artistId }]);
+        } else {
+          setUsers(prev => prev.map(u => u.id === userId ? { ...u, artistId: updated.artistId } : u));
+        }
+      }
     }
   };
 
@@ -906,6 +953,7 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
           {tab === 'members' && (
             <TabMembers
               users={users}
+              unboundUsers={unboundUsers}
               artists={artists}
               shows={shows}
               tasks={tasks}
