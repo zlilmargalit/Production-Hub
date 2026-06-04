@@ -34,9 +34,9 @@ function buildCrewText(crewIds, crew) {
 
 const SECTIONS = [
   { id: 'basics',    label: 'Basics' },
+  { id: 'brief',     label: 'Brief Content' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'crew',      label: 'Crew' },
-  { id: 'brief',     label: 'Brief Content' },
   { id: 'custom',    label: 'Custom' },
 ];
 
@@ -257,54 +257,6 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
               </div>
             </section>
 
-            {/* LOGISTICS */}
-            <section ref={(el) => { sectionRefs.current.logistics = el; }} className="sf-section" id="sf-logistics">
-              <div className="sf-sec-head">
-                Logistics
-                <span className="sf-sec-sub">parking · transport</span>
-              </div>
-              <div className="sf-grid2">
-                <div className="sf-field">
-                  <label>Parking</label>
-                  <input dir="auto" name="parking" value={form.parking} onChange={set} placeholder="Parking details" className="sf-inp" />
-                </div>
-                <div className="sf-field">
-                  <label>Transportation</label>
-                  <input dir="auto" name="transportation" value={form.transportation} onChange={set} placeholder="Pickup time and details" className="sf-inp" />
-                </div>
-                <div className="sf-field full">
-                  <label>Notes</label>
-                  <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder="Internal notes…" className="sf-inp sf-textarea" />
-                </div>
-              </div>
-            </section>
-
-            {/* CREW */}
-            <section ref={(el) => { sectionRefs.current.crew = el; }} className="sf-section" id="sf-crew">
-              <div className="sf-sec-head">
-                Crew
-                <span className="sf-sec-sub">tap to toggle assignment</span>
-              </div>
-              <div className="sf-crew-wrap">
-                {sortedRoles.map((role) =>
-                  crewByRole[role].map((m) => {
-                    const sel = form.crewIds.includes(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`sf-crew-chip${sel ? ' sel' : ''}`}
-                        onClick={() => toggleCrew(m.id)}
-                      >
-                        <span className="sf-crew-dot" />
-                        {m.role} – {m.name}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </section>
-
             {/* BRIEF CONTENT */}
             <section ref={(el) => { sectionRefs.current.brief = el; }} className="sf-section" id="sf-brief">
               <div className="sf-sec-head">
@@ -372,6 +324,54 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                   placeholder="Notes, special requirements, equipment…"
                   className="sf-inp sf-textarea"
                 />
+              </div>
+            </section>
+
+            {/* LOGISTICS */}
+            <section ref={(el) => { sectionRefs.current.logistics = el; }} className="sf-section" id="sf-logistics">
+              <div className="sf-sec-head">
+                Logistics
+                <span className="sf-sec-sub">parking · transport</span>
+              </div>
+              <div className="sf-grid2">
+                <div className="sf-field">
+                  <label>Parking</label>
+                  <input dir="auto" name="parking" value={form.parking} onChange={set} placeholder="Parking details" className="sf-inp" />
+                </div>
+                <div className="sf-field">
+                  <label>Transportation</label>
+                  <input dir="auto" name="transportation" value={form.transportation} onChange={set} placeholder="Pickup time and details" className="sf-inp" />
+                </div>
+                <div className="sf-field full">
+                  <label>Notes</label>
+                  <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder="Internal notes…" className="sf-inp sf-textarea" />
+                </div>
+              </div>
+            </section>
+
+            {/* CREW */}
+            <section ref={(el) => { sectionRefs.current.crew = el; }} className="sf-section" id="sf-crew">
+              <div className="sf-sec-head">
+                Crew
+                <span className="sf-sec-sub">tap to toggle assignment</span>
+              </div>
+              <div className="sf-crew-wrap">
+                {sortedRoles.map((role) =>
+                  crewByRole[role].map((m) => {
+                    const sel = form.crewIds.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`sf-crew-chip${sel ? ' sel' : ''}`}
+                        onClick={() => toggleCrew(m.id)}
+                      >
+                        <span className="sf-crew-dot" />
+                        {m.role} – {m.name}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </section>
 
