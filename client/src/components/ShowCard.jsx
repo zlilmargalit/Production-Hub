@@ -10,6 +10,35 @@ const colorFor     = (id) => CREW_PALETTE[(id || '').split('').reduce((a, c) => 
 const initialsFor  = (name) => (name || '').split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 const formatDate   = (d) => d ? new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
 
+// Extract first–last HH:MM from a schedule string
+const getTimeRange = (schedule) => {
+  if (!schedule) return null;
+  const s = typeof schedule === 'string' ? schedule : scheduleToString(schedule);
+  const times = s.match(/\d{1,2}:\d{2}/g) || [];
+  if (!times.length) return null;
+  return times.length > 1 ? `${times[0]} – ${times[times.length - 1]}` : times[0];
+};
+
+// Completion: fraction of key fields present (0–100)
+const calcProgress = (show) => {
+  const sched = typeof show.schedule === 'string' ? show.schedule : scheduleToString(show.schedule || '');
+  const checks = [!!sched, (show.crewIds || []).length > 0, !!show.venue, !!show.contacts, !!show.address];
+  return Math.round(checks.filter(Boolean).length / checks.length * 100);
+};
+
+function ProgressBar({ pct }) {
+  if (!pct) return null;
+  const col = pct === 100 ? '#4E7265' : pct >= 60 ? '#3852B4' : '#F08D39';
+  return (
+    <div className="show-progress">
+      <div className="show-progress-track">
+        <div className="show-progress-fill" style={{ width: `${pct}%`, background: col }} />
+      </div>
+      <span className="show-progress-pct" style={{ color: col }}>{pct}%</span>
+    </div>
+  );
+}
+
 function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
@@ -22,6 +51,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const [calMsg, setCalMsg] = useState(null);
 
   const assignedCrew = (crew || []).filter((m) => (show.crewIds || []).includes(m.id));
+  const timeRange    = getTimeRange(show.schedule);
+  const progress     = calcProgress(show);
   const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
   const musicians = assignedCrew
     .filter((m) => MUSICIAN_ROLES.has(m.role))
@@ -174,7 +205,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   return (
     <div className={`show-card ${show.receipt || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
       <div className="show-card-band" />
-      <div className="show-card-header">
+      <div className={`show-card-header${expanded ? ' show-card-header--sticky' : ''}`}>
         <div className="show-card-top-row">
           {show.eventType && <div className="show-card-type" dir="auto">{show.eventType}</div>}
           <div className="show-actions">
@@ -188,11 +219,30 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         <h2 lang={isHebrew} dir={isHebrew === 'he' ? 'rtl' : 'ltr'}>{show.name}</h2>
         <div className="show-meta">
           {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
-          {show.venue && <span className="meta-item" dir="auto">{show.venue}</span>}
+          {show.venue && <><span className="meta-dot">·</span><span className="meta-item" dir="auto">{show.venue}</span></>}
+          {timeRange && (
+            <><span className="meta-dot">·</span><span className="meta-time">{timeRange}</span></>
+          )}
+          {assignedCrew.length > 0 && (
+            <>
+              <span className="meta-dot">·</span>
+              <span className="meta-crew-summary">
+                <span className="meta-crew-avatars">
+                  {assignedCrew.slice(0, 3).map((m, i) => (
+                    <span key={m.id} className="meta-crew-avatar" style={{ background: colorFor(m.id), marginLeft: i > 0 ? -4 : 0 }}>
+                      {initialsFor(m.name)}
+                    </span>
+                  ))}
+                </span>
+                {assignedCrew.length} crew
+              </span>
+            </>
+          )}
           {show.invoice && <span className="badge badge-invoice">Invoice</span>}
           {show.receipt && <span className="badge badge-receipt">Receipt</span>}
           {(show.archived && !show.invoice) && <span className="badge badge-archive">Archive</span>}
         </div>
+        <ProgressBar pct={progress} />
       </div>
 
       {expanded && (
@@ -370,6 +420,33 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
               <p dir="auto">{show.notes}</p>
             </div>
           )}
+
+          {/* ── Technical + Logistics inside accordion ── */}
+          <div className="show-expand-section">
+            <div className="show-expand-eyebrow">Expand section</div>
+            <div className="show-expand-toggle">
+              <button
+                className={`show-expand-btn${showTech ? ' active' : ''}`}
+                onClick={() => { setShowTech((p) => !p); if (showTasks) setShowTasks(false); }}
+              >Technical</button>
+              <button
+                className={`show-expand-btn${showTasks ? ' active' : ''}`}
+                onClick={() => { setShowTasks((p) => !p); if (showTech) setShowTech(false); }}
+              >Logistics</button>
+            </div>
+            {showTech && <div className="show-expand-panel"><TechnicalManager show={show} onUpdate={onUpdateShow} /></div>}
+            {showTasks && (
+              <div className="show-expand-panel hub-panel" aria-label="Production Hub — internal">
+                <div className="hub-header">
+                  <div className="hub-header-text">
+                    <div className="hub-eyebrow">Internal</div>
+                    <div className="hub-heading">Production Hub</div>
+                  </div>
+                </div>
+                <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -413,38 +490,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             Receipt
           </label>
         </div>
-
-        <div className="footer-right">
-          <button
-            className={`btn-technical ${showTech ? 'active' : ''}`}
-            onClick={() => { setShowTech(!showTech); if (showTasks) setShowTasks(false); }}
-          >
-            Technical
-          </button>
-          <button
-            className={`btn-tasks ${showTasks ? 'active' : ''}`}
-            onClick={() => { setShowTasks(!showTasks); if (showTech) setShowTech(false); }}
-          >
-            Logistics
-          </button>
-        </div>
       </div>
-
-      {showTech && (
-        <TechnicalManager show={show} onUpdate={onUpdateShow} />
-      )}
-
-      {showTasks && (
-        <div className="hub-panel" aria-label="Production Hub — internal">
-          <div className="hub-header">
-            <div className="hub-header-text">
-              <div className="hub-eyebrow">Internal</div>
-              <div className="hub-heading">Production Hub</div>
-            </div>
-          </div>
-          <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />
-        </div>
-      )}
 
     </div>
   );

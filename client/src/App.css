@@ -1879,7 +1879,16 @@ body {
 .show-card-header {
   display: flex;
   flex-direction: column;
-  padding: 20px 28px 0;
+  padding: 20px 28px 16px;
+}
+/* Sticky when expanded */
+.show-card-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px -4px rgba(26, 23, 20, 0.12);
 }
 
 /* Top row: event-type label (left) + action buttons (right) */
@@ -1945,10 +1954,9 @@ body {
 .show-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px 16px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: 4px 6px;
+  margin-bottom: 8px;
 }
 
 /* Date — featured, tabular, like a film year */
@@ -2000,6 +2008,104 @@ body {
   margin: 0 10px;
   font-weight: 400;
 }
+
+/* ── New meta enrichments ── */
+.meta-dot { color: var(--border-strong); font-size: 0.75rem; padding: 0 2px; }
+
+.meta-time {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-crew-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.meta-crew-avatars {
+  display: inline-flex;
+  align-items: center;
+}
+.meta-crew-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: 700;
+  border: 1.5px solid var(--surface);
+  flex-shrink: 0;
+}
+
+/* ── Progress bar ── */
+.show-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  @media (prefers-reduced-motion: reduce) { .show-progress-fill { transition: none; } }
+}
+.show-progress-track {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+}
+.show-progress-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+.show-progress-pct {
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Expand section (Technical / Logistics inside accordion) ── */
+.show-expand-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-strong);
+}
+.show-expand-eyebrow {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+.show-expand-toggle {
+  display: flex;
+}
+.show-expand-btn {
+  padding: 7px 18px;
+  border: 1px solid var(--text);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s;
+}
+.show-expand-btn + .show-expand-btn { border-left: none; }
+.show-expand-btn:hover { background: var(--surface-sunk); }
+.show-expand-btn.active {
+  background: var(--text);
+  color: var(--surface);
+}
+.show-expand-panel { margin-top: 10px; }
 
 .show-actions {
   display: flex;
