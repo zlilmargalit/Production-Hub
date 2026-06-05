@@ -411,7 +411,11 @@ export default function SetlistCalculator({
                         <tr key={i} className={`slc-row${t.isFound ? '' : ' slc-row--miss'}`}>
                           <td className="slc-td slc-td--num">{i + 1}</td>
                           <td className="slc-td slc-td--song">
-                            <span className={`slc-dot ${t.isFound ? 'slc-dot--ok' : 'slc-dot--miss'}`} />
+                            {t.isAnnotated ? (
+                              <span className="slc-dot slc-dot--annotated" title="Duration from annotation" />
+                            ) : (
+                              <span className={`slc-dot ${t.isFound ? 'slc-dot--ok' : 'slc-dot--miss'}`} />
+                            )}
                             {t.isFound && t.spotifyUrl ? (
                               <a href={t.spotifyUrl} target="_blank" rel="noreferrer"
                                  className="slc-link" title="Open on Spotify">

@@ -117,6 +117,23 @@ async function searchTrack(song, artist, originalText, token, retried = false) {
   };
 }
 
+// ── Duration annotation parser ───────────────────────────────────────────────
+// Matches: (9 דק׳)  (9 min)  (4:30)  (9:00)  (1:04:30)  (9 minutes)  (9 דקות)
+// Also plain numbers with units: (9 דק) (9 minute)
+const DURATION_ANNOTATION_RE = /\(\s*(\d{1,3}(?::\d{2}){0,2})\s*(?:min(?:utes?)?|דק[׳'ות]*)?\s*\)/i;
+
+function parseAnnotation(line) {
+  const m = line.match(DURATION_ANNOTATION_RE);
+  if (!m) return null;
+  const raw = m[1]; // "9" | "4:30" | "1:04:30"
+  const parts = raw.split(':').map(Number);
+  let ms;
+  if (parts.length === 1) ms = parts[0] * 60_000;           // whole minutes
+  else if (parts.length === 2) ms = (parts[0] * 60 + parts[1]) * 1000; // MM:SS
+  else ms = (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;       // HH:MM:SS
+  return { ms, fullMatch: m[0] };
+}
+
 // ── POST /api/spotify/setlist-duration ───────────────────────────────────────
 router.post('/setlist-duration', async (req, res) => {
   const { setlistText = '', defaultArtist = '' } = req.body || {};
@@ -145,15 +162,36 @@ router.post('/setlist-duration', async (req, res) => {
   let totalDurationMs = 0;
 
   for (const line of lines) {
+    // ── Check for inline duration annotation first ──────────────────────────
+    const annotation = parseAnnotation(line);
+    // Strip the annotation from the line before further parsing
+    const cleanLine = annotation ? line.replace(annotation.fullMatch, '').trim() : line;
+
     // Detect "Song - Artist" override: only split on first " - "
-    const dashIdx = line.indexOf(' - ');
+    const dashIdx = cleanLine.indexOf(' - ');
     let artist, song;
     if (dashIdx !== -1) {
-      song   = line.slice(0, dashIdx).trim();
-      artist = line.slice(dashIdx + 3).trim();
+      song   = cleanLine.slice(0, dashIdx).trim();
+      artist = cleanLine.slice(dashIdx + 3).trim();
     } else {
       artist = defaultArtist.trim() || 'unknown';
-      song   = line.trim();
+      song   = cleanLine.trim();
+    }
+
+    // If the line carries an explicit duration, use it directly (skip Spotify)
+    if (annotation) {
+      totalDurationMs += annotation.ms;
+      tracks.push({
+        originalText:      line,
+        songName:          song,
+        artist:            artist,
+        durationMs:        annotation.ms,
+        durationFormatted: fmtMs(annotation.ms),
+        spotifyUrl:        null,
+        isFound:           true,
+        isAnnotated:       true,   // caller can show a different indicator
+      });
+      continue;
     }
 
     let result = null;
