@@ -19,12 +19,13 @@ router.get('/', async (req, res, next) => {
 // POST /api/tasks
 router.post('/', async (req, res, next) => {
   try {
-    const { text, dueDate, assignedTo, showId, assigneeId, assigneeName } = req.body || {};
+    const { text, notes, dueDate, assignedTo, showId, assigneeId, assigneeName } = req.body || {};
     if (!text?.trim()) return res.status(400).json({ error: 'text required' });
     const tasks = await readTasks(req.userId);
     const task = {
       id:              uuidv4(),
       text:            text.trim(),
+      notes:           notes?.trim() || null,
       completed:       false,
       showId:          showId       || null,
       dueDate:         dueDate      || null,

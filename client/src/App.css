@@ -4135,6 +4135,37 @@ body {
 [data-theme="dark"] .gtask-pill--date.overdue { background: rgba(176,84,72,0.18); color: #E09088; }
 .gtask-pill--assigned { background: #E8F4E8; color: #2D7A2D; }
 [data-theme="dark"] .gtask-pill--assigned { background: rgba(45,122,45,0.18); color: #7EC87E; }
+.gtask-pill--notes { background: var(--surface-sunk); color: var(--text-3); font-style: italic; }
+
+/* ── Notes textarea (shared by add-form and inline expand) ── */
+.gtask-notes-input,
+.gtask-notes-inline {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 10px; font-size: 0.8125rem; font-family: inherit;
+  color: var(--text); background: var(--surface);
+  resize: vertical; line-height: 1.5;
+  margin-top: 8px;
+}
+.gtask-notes-input:focus,
+.gtask-notes-inline:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+[data-theme="dark"] .gtask-notes-input,
+[data-theme="dark"] .gtask-notes-inline { background: var(--surface-2); }
+
+.gtask-notes-panel { padding-top: 4px; }
+.gtask-notes-hint { font-size: 0.6875rem; color: var(--text-3); margin-top: 4px; }
+
+/* ── "+ Details" toggle in add form ── */
+.gtask-add-details-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.75rem; color: var(--text-3); padding: 4px 0;
+  font-family: inherit; text-align: left;
+  transition: color .15s;
+}
+.gtask-add-details-btn:hover { color: var(--accent); }
+
+/* expanded task row */
+.gtask-item.expanded { background: var(--surface); }
 
 /* ── Assigned-to-me section ─────────────────────────────────────────────── */
 .gtask-assigned-section {
