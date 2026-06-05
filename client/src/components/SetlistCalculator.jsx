@@ -333,7 +333,7 @@ export default function SetlistCalculator({
                   onChange={(e) => setLinkedShowId(e.target.value)}
                 >
                   <option value="">— Link to show —</option>
-                  {shows.filter(s => !s.archived).map(s => (
+                  {[...shows.filter(s => !s.archived)].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1).map(s => (
                     <option key={s.id} value={s.id}>
                       {s.name}{s.date ? ` · ${s.date}` : ''}
                     </option>

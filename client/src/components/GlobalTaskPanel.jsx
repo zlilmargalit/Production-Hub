@@ -47,7 +47,7 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
         </select>
         <select className="gtask-select" value={showId} onChange={(e) => setShowId(e.target.value)}>
           <option value="">Link to show…</option>
-          {(shows || []).map((s) => (
+          {[...(shows || [])].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1).map((s) => (
             <option key={s.id} value={s.id}>{s.name}{s.date ? ` · ${s.date}` : ''}</option>
           ))}
         </select>
@@ -176,7 +176,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
           </select>
           <select className="gtask-select" value={showId} onChange={(e) => setShowId(e.target.value)}>
             <option value="">Link to show…</option>
-            {(shows || []).map((s) => (
+            {[...(shows || [])].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1).map((s) => (
               <option key={s.id} value={s.id}>{s.name}{s.date ? ` · ${s.date}` : ''}</option>
             ))}
           </select>
