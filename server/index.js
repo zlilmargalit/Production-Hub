@@ -1063,11 +1063,11 @@ app.get('/api/setlists', (req, res) => {
 
 app.post('/api/setlists', (req, res) => {
   const { name, artistId, showId, setlistText, tracks } = req.body || {};
-  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  const resolvedName = name?.trim() || `Setlist ${new Date().toLocaleDateString('he-IL')}`;
   const list = loadSetlists();
   const item = {
     id: require('crypto').randomUUID(),
-    name: name.trim(),
+    name: resolvedName,
     artistId: artistId || null,
     showId: showId || null,
     setlistText: setlistText || '',

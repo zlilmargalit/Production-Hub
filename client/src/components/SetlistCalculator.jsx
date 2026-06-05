@@ -97,9 +97,11 @@ export default function SetlistCalculator({
 
   // ── Save / Update ──────────────────────────────────────────────────────────
   const doSave = async () => {
-    const name = saveName.trim();
-    if (!name) { setSaveMsg({ err: 'Enter a name first.' }); return; }
     if (!setlistText.trim()) { setSaveMsg({ err: 'Nothing to save.' }); return; }
+    const linkedShowName = shows.find(s => s.id === linkedShowId)?.name || '';
+    const name = saveName.trim()
+      || linkedShowName
+      || `Setlist ${new Date().toLocaleDateString('he-IL')}`;
     setSaving(true);
     setSaveMsg(null);
     try {
