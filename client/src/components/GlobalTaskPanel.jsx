@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { subscribeToPush } from '../utils/pushSubscribe';
 
 const fmtDate = (d) => {
@@ -10,18 +10,87 @@ const fmtDate = (d) => {
 const sortedShows = (shows) =>
   [...(shows || [])].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
 
+// Normalize legacy single showId → array
+function normalizeShowIds(task) {
+  if (Array.isArray(task.showIds) && task.showIds.length) return task.showIds;
+  if (task.showId) return [task.showId];
+  return [];
+}
+
+// ── Multi-show picker dropdown ────────────────────────────────────────────────
+function ShowMultiPicker({ selected, shows, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const toggle = (id) => {
+    onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+  };
+
+  const list = sortedShows(shows);
+  const labelText = selected.length === 0
+    ? 'Link to shows…'
+    : selected.length === 1
+      ? (shows.find(s => s.id === selected[0])?.name || '1 show')
+      : `${selected.length} shows`;
+
+  return (
+    <div className="gtask-show-picker" ref={ref}>
+      <button
+        type="button"
+        className={`gtask-select gtask-show-picker-btn${selected.length ? ' has-value' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        {labelText}
+        <span className="gtask-picker-caret">▾</span>
+      </button>
+      {open && (
+        <div className="gtask-show-picker-dropdown">
+          {list.length === 0 && <div className="gtask-picker-empty">No shows</div>}
+          {list.map(s => (
+            <label key={s.id} className="gtask-picker-option">
+              <input
+                type="checkbox"
+                checked={selected.includes(s.id)}
+                onChange={() => toggle(s.id)}
+              />
+              <span className="gtask-picker-label">
+                {s.name}
+                {s.date && <span className="gtask-picker-date">{s.date}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Inline edit form ──────────────────────────────────────────────────────────
 function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
   const [text,       setText]       = useState(task.text);
   const [notes,      setNotes]      = useState(task.notes || '');
   const [dueDate,    setDueDate]    = useState(task.dueDate    || '');
   const [assignedTo, setAssignedTo] = useState(task.assignedTo || '');
-  const [showId,     setShowId]     = useState(task.showId     || '');
+  const [showIds,    setShowIds]    = useState(normalizeShowIds(task));
 
   const handleSave = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onSave({ text: trimmed, notes: notes.trim() || null, dueDate: dueDate || null, assignedTo: assignedTo || null, showId: showId || null });
+    onSave({
+      text: trimmed,
+      notes: notes.trim() || null,
+      dueDate: dueDate || null,
+      assignedTo: assignedTo || null,
+      showIds,
+      showId: showIds[0] || null,   // keep legacy field for backward compat
+    });
   };
 
   return (
@@ -57,12 +126,7 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
             <option key={m.id} value={m.id}>{m.name}{m.role ? ` (${m.role})` : ''}</option>
           ))}
         </select>
-        <select className="gtask-select" value={showId} onChange={(e) => setShowId(e.target.value)}>
-          <option value="">Link to show…</option>
-          {sortedShows(shows).map((s) => (
-            <option key={s.id} value={s.id}>{s.name}{s.date ? ` · ${s.date}` : ''}</option>
-          ))}
-        </select>
+        <ShowMultiPicker selected={showIds} shows={shows} onChange={setShowIds} />
       </div>
       <div className="gtask-edit-actions">
         <button className="btn-primary" onClick={handleSave} disabled={!text.trim()}>Save</button>
@@ -79,11 +143,11 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const [showNotes,   setShowNotes]   = useState(false);
   const [dueDate,     setDueDate]     = useState('');
   const [assignedTo,  setAssignedTo]  = useState('');
-  const [showId,      setShowId]      = useState('');
+  const [showIds,     setShowIds]     = useState([]);
   const [filter,      setFilter]      = useState('active');
   const [editingId,   setEditingId]   = useState(null);
   const [expandedId,  setExpandedId]  = useState(null);
-  const [noteDraft,   setNoteDraft]   = useState('');   // draft for expanded inline notes
+  const [noteDraft,   setNoteDraft]   = useState('');
   const [pushStatus,  setPushStatus]  = useState(null);
   const [pushMsg,     setPushMsg]     = useState('');
   const noteSaveTimer = useRef(null);
@@ -107,8 +171,16 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const handleAdd = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onAdd({ text: trimmed, notes: notes.trim() || null, dueDate: dueDate || null, assignedTo: assignedTo || null, showId: showId || null });
-    setText(''); setNotes(''); setShowNotes(false); setDueDate(''); setAssignedTo(''); setShowId('');
+    onAdd({
+      text: trimmed,
+      notes: notes.trim() || null,
+      dueDate: dueDate || null,
+      assignedTo: assignedTo || null,
+      showIds,
+      showId: showIds[0] || null,
+    });
+    setText(''); setNotes(''); setShowNotes(false);
+    setDueDate(''); setAssignedTo(''); setShowIds([]);
   };
 
   const handleSaveEdit = (id, data) => {
@@ -116,7 +188,6 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
     setEditingId(null);
   };
 
-  // Expand a task row to show inline notes editor
   const toggleExpand = (t) => {
     if (editingId === t.id) return;
     if (expandedId === t.id) {
@@ -127,7 +198,6 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
     }
   };
 
-  // Auto-save notes on blur
   const saveNoteBlur = (taskId) => {
     clearTimeout(noteSaveTimer.current);
     noteSaveTimer.current = setTimeout(() => {
@@ -135,8 +205,8 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
     }, 300);
   };
 
-  const crewById = Object.fromEntries((crew  || []).map((m) => [m.id, m]));
   const showById = Object.fromEntries((shows || []).map((s) => [s.id, s]));
+  const crewById = Object.fromEntries((crew  || []).map((m) => [m.id, m]));
 
   const ownTasks      = tasks.filter((t) => !t.assignedToMe);
   const assignedTasks = tasks.filter((t) =>  t.assignedToMe);
@@ -197,7 +267,6 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
           </button>
         </div>
 
-        {/* Expandable details textarea */}
         {showNotes ? (
           <textarea
             className="gtask-notes-input"
@@ -209,10 +278,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
             autoFocus
           />
         ) : (
-          <button
-            className="gtask-add-details-btn"
-            onClick={() => setShowNotes(true)}
-          >
+          <button className="gtask-add-details-btn" onClick={() => setShowNotes(true)}>
             + Details
           </button>
         )}
@@ -226,12 +292,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
               <option key={m.id} value={m.id}>{m.name}{m.role ? ` (${m.role})` : ''}</option>
             ))}
           </select>
-          <select className="gtask-select" value={showId} onChange={(e) => setShowId(e.target.value)}>
-            <option value="">Link to show…</option>
-            {sortedShows(shows).map((s) => (
-              <option key={s.id} value={s.id}>{s.name}{s.date ? ` · ${s.date}` : ''}</option>
-            ))}
-          </select>
+          <ShowMultiPicker selected={showIds} shows={shows} onChange={setShowIds} />
         </div>
       </div>
 
@@ -277,17 +338,19 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                       )}
                     </div>
                     {isExpanded && (
-                      <textarea
-                        className="gtask-notes-inline"
-                        dir="auto"
-                        value={noteDraft}
-                        onChange={(e) => setNoteDraft(e.target.value)}
-                        onBlur={() => saveNoteBlur(t.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="Additional details…"
-                        rows={3}
-                        autoFocus
-                      />
+                      <div className="gtask-notes-panel" onClick={(e) => e.stopPropagation()}>
+                        <textarea
+                          className="gtask-notes-inline"
+                          dir="auto"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => saveNoteBlur(t.id)}
+                          placeholder="Additional details…"
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="gtask-notes-hint">Saves automatically when you click away</div>
+                      </div>
                     )}
                   </div>
                 </li>
@@ -307,12 +370,13 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
       ) : (
         <ul className="gtask-list">
           {filtered.map((t) => {
-            const assignee   = t.assignedTo ? crewById[t.assignedTo] : null;
-            const linkedShow = t.showId     ? showById[t.showId]     : null;
-            const today      = new Date(); today.setHours(0, 0, 0, 0);
-            const overdue    = t.dueDate && !t.completed && new Date(t.dueDate) < today;
-            const isEditing  = editingId  === t.id;
-            const isExpanded = expandedId === t.id;
+            const assignee    = t.assignedTo ? crewById[t.assignedTo] : null;
+            const linkedIds   = normalizeShowIds(t);
+            const linkedShows = linkedIds.map(id => showById[id]).filter(Boolean);
+            const today       = new Date(); today.setHours(0, 0, 0, 0);
+            const overdue     = t.dueDate && !t.completed && new Date(t.dueDate) < today;
+            const isEditing   = editingId  === t.id;
+            const isExpanded  = expandedId === t.id;
 
             return (
               <li key={t.id}
@@ -334,34 +398,27 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                       checked={t.completed}
                       onChange={() => onToggle(t.id, !t.completed)}
                     />
-                    <div
-                      className="gtask-body"
-                      onClick={() => toggleExpand(t)}
-                      style={{ cursor: 'pointer' }}
-                    >
+                    <div className="gtask-body" onClick={() => toggleExpand(t)} style={{ cursor: 'pointer' }}>
                       <span className="gtask-text" dir="auto">{t.text}</span>
                       <div className="gtask-pills">
                         {assignee && (
                           <span className="gtask-pill gtask-pill--crew">{assignee.name}</span>
                         )}
-                        {linkedShow && (
-                          <span className="gtask-pill gtask-pill--show" title={linkedShow.date || ''}>
-                            {linkedShow.name}
+                        {linkedShows.map(s => (
+                          <span key={s.id} className="gtask-pill gtask-pill--show" title={s.date || ''}>
+                            {s.name}
                           </span>
-                        )}
+                        ))}
                         {t.dueDate && (
                           <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
                             {overdue ? '⚠ ' : ''}{fmtDate(t.dueDate)}
                           </span>
                         )}
                         {t.notes && !isExpanded && (
-                          <span className="gtask-pill gtask-pill--notes" title={t.notes}>
-                            details
-                          </span>
+                          <span className="gtask-pill gtask-pill--notes" title={t.notes}>details</span>
                         )}
                       </div>
 
-                      {/* Inline notes panel */}
                       {isExpanded && (
                         <div className="gtask-notes-panel" onClick={(e) => e.stopPropagation()}>
                           <textarea

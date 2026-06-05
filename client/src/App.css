@@ -4164,6 +4164,34 @@ body {
 }
 .gtask-add-details-btn:hover { color: var(--accent); }
 
+/* ── ShowMultiPicker dropdown ───────────────────────────────────────────── */
+.gtask-show-picker { position: relative; flex: 1; min-width: 140px; }
+.gtask-show-picker-btn {
+  width: 100%; text-align: left; display: flex; align-items: center;
+  justify-content: space-between; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 6px 10px; font-size: 0.8125rem; font-family: inherit;
+  color: var(--text-3); cursor: pointer;
+}
+.gtask-show-picker-btn.has-value { color: var(--text); }
+.gtask-show-picker-btn:hover { border-color: var(--border-strong); }
+.gtask-picker-caret { font-size: 0.6rem; opacity: 0.6; flex-shrink: 0; }
+.gtask-show-picker-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 3px 3px 0 var(--border-strong);
+  max-height: 220px; overflow-y: auto;
+}
+.gtask-picker-option {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px; cursor: pointer; font-size: 0.8125rem;
+}
+.gtask-picker-option:hover { background: var(--surface-sunk); }
+.gtask-picker-option input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
+.gtask-picker-label { display: flex; flex-direction: column; }
+.gtask-picker-date { font-size: 0.6875rem; color: var(--text-3); }
+.gtask-picker-empty { padding: 10px; font-size: 0.8rem; color: var(--text-3); }
+
 /* expanded task row */
 .gtask-item.expanded { background: var(--surface); }
 
