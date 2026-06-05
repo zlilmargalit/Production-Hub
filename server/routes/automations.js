@@ -315,14 +315,35 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH /api/automations/:id  → toggle active
+// PATCH /api/automations/:id  → toggle active and/or update actionParams
 router.patch('/:id', async (req, res) => {
-  const { active } = req.body || {};
+  const { active, actionParams } = req.body || {};
   try {
     const list = await readAutoList(req.userId);
     const idx  = list.findIndex((a) => a.id === req.params.id && a.workspaceId === req.userId);
     if (idx === -1) return res.status(404).json({ error: 'Not found' });
-    list[idx] = { ...list[idx], active: !!active, updatedAt: new Date().toISOString() };
+
+    const patch = { updatedAt: new Date().toISOString() };
+    if (typeof active === 'boolean') patch.active = active;
+    if (actionParams && typeof actionParams === 'object' && !Array.isArray(actionParams)) {
+      // Merge — don't allow replacing with arbitrary keys, only accepted ones
+      const allowedKeys = [
+        // email-to-shows
+        'senderEmail', 'subjectKeywords', 'nameField', 'namePattern',
+        'artistPattern', 'venuePattern', 'datePattern',
+        // auto-folders
+        'folderTemplate', 'useDrive', 'driveFolderId', 'useLocal', 'localPath',
+        // early-coord
+        'message', 'daysBeforeShow',
+        // generic
+        'nameTemplate',
+      ];
+      const safe = {};
+      allowedKeys.forEach((k) => { if (k in actionParams) safe[k] = actionParams[k]; });
+      patch.actionParams = { ...(list[idx].actionParams || {}), ...safe };
+    }
+
+    list[idx] = { ...list[idx], ...patch };
     await writeAutoList(req.userId, list);
     res.json(list[idx]);
   } catch (err) {

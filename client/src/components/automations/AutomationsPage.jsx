@@ -63,6 +63,21 @@ export default function AutomationsPage() {
     }
   };
 
+  const handleUpdateAutomation = async (id, patch) => {
+    const res = await fetch(`/api/automations/${id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(err.error || 'Failed to update automation');
+    }
+    const updated = await res.json();
+    setAutomations((prev) => prev.map((a) => (a.id === id ? updated : a)));
+    return updated;
+  };
+
   const handleDelete = async (id) => {
     const res = await fetch(`/api/automations/${id}`, { method: 'DELETE' });
     if (res.ok) setAutomations((prev) => prev.filter((a) => a.id !== id));
@@ -115,7 +130,11 @@ export default function AutomationsPage() {
             <p className="auto-section-sub">One-click automation templates — activate and go.</p>
           </div>
         </div>
-        <RecipeCards automations={automations} onActivate={handleCreateAutomation} />
+        <RecipeCards
+          automations={automations}
+          onActivate={handleCreateAutomation}
+          onUpdate={handleUpdateAutomation}
+        />
       </div>
 
       {/* ── Builder ── */}

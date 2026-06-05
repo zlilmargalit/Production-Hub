@@ -43,20 +43,64 @@
 .intg-btn--on:hover { background: var(--accent); color: #fff; }
 
 /* Recipe cards */
-.recipe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.recipe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start; }
 .recipe-card { background: var(--surface); border: 1px solid var(--text); overflow: hidden; display: flex; flex-direction: column; box-shadow: 3px 3px 0 var(--text); transition: transform 0.2s, box-shadow 0.2s; }
 [data-theme="dark"] .recipe-card { border-color: var(--border-strong); box-shadow: 3px 3px 0 var(--border-strong); }
-.recipe-card:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--text); }
+.recipe-card:not(.recipe-card--open):hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--text); }
+.recipe-card--open { grid-column: 1 / -1; box-shadow: 4px 4px 0 var(--text); }
 .recipe-band { height: 6px; background: var(--et-color, var(--accent)); }
 .recipe-body { padding: 16px 18px 12px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .recipe-icon-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
 .recipe-name { font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.recipe-active-dot { width: 7px; height: 7px; border-radius: 50%; background: #34A853; box-shadow: 0 0 0 2px rgba(52,168,83,.2); flex-shrink: 0; margin-left: 2px; }
 .recipe-desc { font-size: 0.8125rem; color: var(--text-2); line-height: 1.5; flex: 1; }
 .recipe-requires { font-size: 0.6875rem; color: var(--clay); font-weight: 500; margin-top: 4px; }
 .recipe-foot { padding: 0 18px 16px; }
-.recipe-btn { background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); padding: 7px 14px; font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; width: 100%; }
-.recipe-btn:hover { background: var(--surface-sunk); color: var(--text); }
-.recipe-btn--active { background: var(--et-color, var(--accent)); border-color: var(--et-color, var(--accent)); color: #fff; }
+.recipe-foot-row { display: flex; align-items: center; gap: 10px; }
+.recipe-btn { background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); padding: 7px 14px; font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; flex: 1; }
+.recipe-btn:not(.recipe-btn--active):not(.recipe-btn--save):hover { background: var(--surface-sunk); color: var(--text); }
+.recipe-btn--active { background: var(--et-color, var(--accent)); border-color: var(--et-color, var(--accent)); color: #fff; cursor: default; pointer-events: none; }
+.recipe-btn--save { background: var(--et-color, var(--accent)); border-color: var(--et-color, var(--accent)); color: #fff; }
+.recipe-btn--save:hover { opacity: 0.88; }
+.recipe-btn--save:disabled { opacity: 0.6; cursor: default; }
+.recipe-edit-btn { background: none; border: none; color: var(--accent); font-size: 0.75rem; font-weight: 600; cursor: pointer; padding: 7px 0; white-space: nowrap; text-decoration: underline; text-underline-offset: 2px; }
+.recipe-edit-btn:hover { color: var(--accent-hover); }
+.recipe-cancel-btn { background: none; border: 1px solid var(--border); color: var(--text-3); font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; padding: 7px 14px; cursor: pointer; transition: all 0.14s; }
+.recipe-cancel-btn:hover { background: var(--surface-sunk); color: var(--text); }
+
+/* Config panel inside open recipe card */
+.recipe-config-area { border-top: 1px solid var(--border); padding: 18px 18px 4px; background: var(--surface-sunk); }
+
+.rc-cfg { display: flex; flex-direction: column; gap: 14px; }
+.rc-cfg-section { display: flex; flex-direction: column; gap: 5px; }
+.rc-cfg-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.rc-cfg-input { border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: 'Assistant', sans-serif; font-size: 0.875rem; padding: 7px 10px; width: 100%; box-sizing: border-box; }
+.rc-cfg-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.rc-cfg-input--sm { width: 100px; }
+.rc-cfg-select { appearance: none; -webkit-appearance: none; border: 1px solid var(--border); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%236B6259' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 10px center / 9px; color: var(--text); font-family: 'Assistant', sans-serif; font-size: 0.875rem; padding: 7px 32px 7px 10px; width: 100%; box-sizing: border-box; cursor: pointer; }
+.rc-cfg-select:focus { outline: none; border-color: var(--accent); }
+.rc-cfg-hint { font-size: 0.6875rem; color: var(--text-3); line-height: 1.4; }
+.rc-cfg-hint--warn { color: var(--orange-deep); font-weight: 600; }
+.rc-cfg-example { font-size: 0.8125rem; color: var(--text-2); line-height: 1.55; background: var(--surface); border: 1px solid var(--border-light); padding: 10px 14px; border-left: 3px solid var(--accent); }
+.rc-cfg-example strong { color: var(--text); }
+.rc-cfg-adv-toggle { align-self: flex-start; background: none; border: none; color: var(--accent); font-size: 0.75rem; font-weight: 600; cursor: pointer; padding: 2px 0; }
+.rc-cfg-adv-toggle:hover { text-decoration: underline; }
+.rc-cfg-advanced { display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border-light); }
+.rc-cfg-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rc-cfg-tokens { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.rc-cfg-tokens-label { font-size: 0.6875rem; color: var(--text-3); }
+.rc-cfg-token { font-family: 'Courier New', monospace; font-size: 0.6875rem; background: var(--accent-soft); color: var(--accent); padding: 2px 6px; border-radius: 3px; cursor: default; }
+
+/* Auto-folders paths */
+.rc-cfg-paths-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.rc-cfg-path-row { display: flex; flex-direction: column; gap: 7px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-light); }
+.rc-cfg-path-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.875rem; color: var(--text); }
+.rc-cfg-path-check input[type="checkbox"] { width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; accent-color: var(--accent); }
+.rc-cfg-path-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; color: var(--text-3); flex-shrink: 0; }
+.rc-cfg-path-icon svg { width: 20px; height: 20px; }
+.rc-cfg-path-icon--drive svg { width: 22px; height: 22px; }
+.rc-cfg-path-note { font-size: 0.6875rem; color: var(--text-3); margin-left: 2px; }
+.rc-cfg-path-input { margin-top: 2px; }
 
 /* Builder */
 .bldr-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; }
