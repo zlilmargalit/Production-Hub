@@ -688,6 +688,8 @@ function App({ demoMode = false }) {
           <SetlistCalculator
             defaultArtistName={currentArtist?.name || ''}
             artistName={currentArtist?.name || ''}
+            artistId={currentArtist?.id || null}
+            shows={shows}
           />
         ) : page === 'tech-spec' ? (
           <TechSpecParser

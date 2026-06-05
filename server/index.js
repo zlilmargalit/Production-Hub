@@ -1045,6 +1045,63 @@ app.post('/api/admin/google-credentials', async (req, res) => {
   }
 });
 
+// ── Setlists ─────────────────────────────────────────────────────────────────
+const SETLISTS_FILE = path.join(DATA_DIR, 'setlists.json');
+function loadSetlists() {
+  try { return JSON.parse(fs.readFileSync(SETLISTS_FILE, 'utf8')); } catch { return []; }
+}
+function saveSetlists(list) {
+  fs.writeFileSync(SETLISTS_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+
+app.get('/api/setlists', (req, res) => {
+  const { artistId } = req.query;
+  let list = loadSetlists();
+  if (artistId) list = list.filter(s => s.artistId === artistId);
+  res.json(list);
+});
+
+app.post('/api/setlists', (req, res) => {
+  const { name, artistId, showId, setlistText, tracks } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  const list = loadSetlists();
+  const item = {
+    id: require('crypto').randomUUID(),
+    name: name.trim(),
+    artistId: artistId || null,
+    showId: showId || null,
+    setlistText: setlistText || '',
+    tracks: tracks || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  list.push(item);
+  saveSetlists(list);
+  res.status(201).json(item);
+});
+
+app.patch('/api/setlists/:id', (req, res) => {
+  const list = loadSetlists();
+  const idx = list.findIndex(s => s.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  const { name, showId, setlistText, tracks } = req.body || {};
+  if (name !== undefined) list[idx].name = name.trim() || list[idx].name;
+  if (showId !== undefined) list[idx].showId = showId || null;
+  if (setlistText !== undefined) list[idx].setlistText = setlistText;
+  if (tracks !== undefined) list[idx].tracks = tracks;
+  list[idx].updatedAt = new Date().toISOString();
+  saveSetlists(list);
+  res.json(list[idx]);
+});
+
+app.delete('/api/setlists/:id', (req, res) => {
+  const list = loadSetlists();
+  const filtered = list.filter(s => s.id !== req.params.id);
+  if (filtered.length === list.length) return res.status(404).json({ error: 'Not found' });
+  saveSetlists(filtered);
+  res.status(204).send();
+});
+
 // ── Admin: invitation management ─────────────────────────────────────────────
 app.get('/api/invitations', (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });

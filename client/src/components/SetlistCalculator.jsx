@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Parse MM:SS or M:SS string → milliseconds
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function parseManualTime(str) {
   if (!str || !str.trim()) return 0;
   const parts = str.trim().split(':').map(Number);
@@ -19,20 +19,48 @@ function fmtMsTotal(ms) {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function SetlistCalculator({ defaultArtistName = '', artistName = '' }) {
-  const [artistInput, setArtistInput]     = useState(defaultArtistName);
-  const [setlistText, setSetlistText]     = useState('');
-  const [tracks, setTracks]               = useState(null);   // null = not yet run
-  const [loading, setLoading]             = useState(false);
-  const [error, setError]                 = useState(null);
-  const [manualTimes, setManualTimes]     = useState({});     // index → "M:SS" string
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+export default function SetlistCalculator({
+  defaultArtistName = '',
+  artistName = '',
+  artistId = null,
+  shows = [],
+}) {
+  const [artistInput, setArtistInput] = useState(defaultArtistName);
+  const [setlistText, setSetlistText] = useState('');
+  const [tracks, setTracks]           = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState(null);
+  const [manualTimes, setManualTimes] = useState({});
   const textareaRef = useRef(null);
 
-  // Sync default artist when workspace switches
-  useEffect(() => {
-    setArtistInput(defaultArtistName);
-  }, [defaultArtistName]);
+  // Saved setlists
+  const [savedSetlists, setSavedSetlists] = useState([]);
+  const [activeId, setActiveId]           = useState(null);  // currently loaded setlist id
+  const [saveName, setSaveName]           = useState('');
+  const [linkedShowId, setLinkedShowId]   = useState('');
+  const [saving, setSaving]               = useState(false);
+  const [saveMsg, setSaveMsg]             = useState(null);  // { ok } | { err }
 
+  // Sync default artist when workspace switches
+  useEffect(() => { setArtistInput(defaultArtistName); }, [defaultArtistName]);
+
+  // Load saved setlists
+  const loadSaved = useCallback(async () => {
+    const qs = artistId ? `?artistId=${encodeURIComponent(artistId)}` : '';
+    const r = await fetch(`/api/setlists${qs}`);
+    if (r.ok) setSavedSetlists(await r.json());
+  }, [artistId]);
+
+  useEffect(() => { loadSaved(); }, [loadSaved]);
+
+  // ── Spotify calculate ──────────────────────────────────────────────────────
   const calculate = async () => {
     const trimmed = setlistText.trim();
     if (!trimmed) { setError('Paste at least one song.'); return; }
@@ -56,7 +84,7 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
     }
   };
 
-  // Recompute total including manual overrides
+  // ── Totals ─────────────────────────────────────────────────────────────────
   const totalMs = (tracks || []).reduce((sum, t, i) => {
     if (t.isFound) return sum + t.durationMs;
     const manual = parseManualTime(manualTimes[i] || '');
@@ -67,9 +95,76 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
   const missedCount = (tracks || []).length - foundCount;
   const manualCount = Object.values(manualTimes).filter((v) => v.trim()).length;
 
+  // ── Save / Update ──────────────────────────────────────────────────────────
+  const doSave = async () => {
+    const name = saveName.trim();
+    if (!name) { setSaveMsg({ err: 'Enter a name first.' }); return; }
+    if (!setlistText.trim()) { setSaveMsg({ err: 'Nothing to save.' }); return; }
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      let r, data;
+      if (activeId) {
+        r    = await fetch(`/api/setlists/${activeId}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, showId: linkedShowId || null, setlistText, tracks: tracks || [] }),
+        });
+        data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Failed');
+        setSavedSetlists(prev => prev.map(s => s.id === activeId ? data : s));
+      } else {
+        r    = await fetch('/api/setlists', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, artistId, showId: linkedShowId || null, setlistText, tracks: tracks || [] }),
+        });
+        data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Failed');
+        setSavedSetlists(prev => [...prev, data]);
+        setActiveId(data.id);
+      }
+      setSaveMsg({ ok: true });
+      setTimeout(() => setSaveMsg(null), 2000);
+    } catch (err) {
+      setSaveMsg({ err: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Load a saved setlist ───────────────────────────────────────────────────
+  const loadSetlist = (sl) => {
+    setActiveId(sl.id);
+    setSaveName(sl.name);
+    setSetlistText(sl.setlistText || '');
+    setLinkedShowId(sl.showId || '');
+    setTracks(sl.tracks?.length ? sl.tracks : null);
+    setManualTimes({});
+    setError(null);
+    setArtistInput(defaultArtistName);
+  };
+
+  // ── New (clear) ────────────────────────────────────────────────────────────
+  const newSetlist = () => {
+    setActiveId(null);
+    setSaveName('');
+    setSetlistText('');
+    setLinkedShowId('');
+    setTracks(null);
+    setManualTimes({});
+    setError(null);
+  };
+
+  // ── Delete saved ───────────────────────────────────────────────────────────
+  const deleteSetlist = async (id) => {
+    if (!window.confirm('Delete this setlist?')) return;
+    await fetch(`/api/setlists/${id}`, { method: 'DELETE' });
+    setSavedSetlists(prev => prev.filter(s => s.id !== id));
+    if (activeId === id) newSetlist();
+  };
+
   // ── Export to Drive ────────────────────────────────────────────────────────
   const [exporting,    setExporting]    = useState(false);
-  const [exportResult, setExportResult] = useState(null); // { url } | { error }
+  const [exportResult, setExportResult] = useState(null);
 
   const exportToDrive = async () => {
     if (!tracks?.length) return;
@@ -81,9 +176,9 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           tracks,
-          totalDuration:  fmtMsTotal(totalMs),
-          artistName:     artistName || artistInput.trim(),
-          defaultArtist:  artistInput.trim(),
+          totalDuration: fmtMsTotal(totalMs),
+          artistName:    artistName || artistInput.trim(),
+          defaultArtist: artistInput.trim(),
         }),
       });
       const data = await res.json();
@@ -95,6 +190,9 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
       setExporting(false);
     }
   };
+
+  // ── Linked show name ───────────────────────────────────────────────────────
+  const linkedShow = shows.find(s => s.id === linkedShowId);
 
   return (
     <div className="tools-page">
@@ -111,6 +209,42 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
             Setlist Calculator
           </button>
         </nav>
+
+        {/* ── Saved setlists list ── */}
+        <div className="slc-saved-section">
+          <div className="slc-saved-header">
+            <span className="slc-saved-eyebrow">Saved Setlists</span>
+            <button className="slc-saved-new" onClick={newSetlist} title="New setlist">＋</button>
+          </div>
+          {savedSetlists.length === 0 ? (
+            <p className="slc-saved-empty">None yet — save one below.</p>
+          ) : (
+            <ul className="slc-saved-list">
+              {savedSetlists.map(sl => {
+                const linked = shows.find(s => s.id === sl.showId);
+                return (
+                  <li
+                    key={sl.id}
+                    className={`slc-saved-item${activeId === sl.id ? ' active' : ''}`}
+                    onClick={() => loadSetlist(sl)}
+                  >
+                    <div className="slc-saved-name">{sl.name}</div>
+                    {linked && (
+                      <div className="slc-saved-show">{linked.name}</div>
+                    )}
+                    <div className="slc-saved-meta">{fmtDate(sl.updatedAt)}</div>
+                    <button
+                      className="slc-saved-del"
+                      onClick={(e) => { e.stopPropagation(); deleteSetlist(sl.id); }}
+                      title="Delete"
+                    >✕</button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
         <div className="tools-sidebar-footer">More tools coming soon</div>
       </aside>
 
@@ -180,6 +314,47 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
               </button>
             </div>
 
+            {/* ── Save bar ── */}
+            <div className="slc-save-bar">
+              <input
+                className="slc-input slc-save-name-input"
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                placeholder="Setlist name…"
+                onKeyDown={(e) => { if (e.key === 'Enter') doSave(); }}
+              />
+              {shows.length > 0 && (
+                <select
+                  className="slc-input slc-show-select"
+                  value={linkedShowId}
+                  onChange={(e) => setLinkedShowId(e.target.value)}
+                >
+                  <option value="">— Link to show —</option>
+                  {shows.filter(s => !s.archived).map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{s.date ? ` · ${s.date}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                className="slc-save-btn"
+                onClick={doSave}
+                disabled={saving}
+              >
+                {saving ? 'Saving…' : activeId ? 'Update' : 'Save'}
+              </button>
+              {saveMsg?.ok  && <span className="slc-save-ok">Saved</span>}
+              {saveMsg?.err && <span className="slc-save-err">{saveMsg.err}</span>}
+            </div>
+
+            {activeId && (
+              <button className="slc-new-btn" onClick={newSetlist}>
+                ＋ New setlist
+              </button>
+            )}
+
           </div>{/* /input panel */}
 
           {/* Right: Results Panel */}
@@ -214,6 +389,11 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
                     {missedCount > 0 && ` · ${missedCount - manualCount} missing`}
                     {manualCount > 0 && ` · ${manualCount} manual`}
                   </span>
+                  {linkedShow && (
+                    <span className="slc-summary-show">
+                      Linked: {linkedShow.name}
+                    </span>
+                  )}
                 </div>
 
                 <div className="slc-table-scroll">
@@ -283,26 +463,20 @@ export default function SetlistCalculator({ defaultArtistName = '', artistName =
                     onClick={exportToDrive}
                     disabled={exporting}
                   >
-                    {exporting
-                      ? 'Uploading…'
-                      : (
-                        <>
-                          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                               strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                               width="13" height="13">
-                            <path d="M3 13h10M8 2v8M5 7l3 3 3-3" />
-                          </svg>
-                          Export to Drive
-                        </>
-                      )}
+                    {exporting ? 'Uploading…' : (
+                      <>
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                             strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                             width="13" height="13">
+                          <path d="M3 13h10M8 2v8M5 7l3 3 3-3" />
+                        </svg>
+                        Export to Drive
+                      </>
+                    )}
                   </button>
                   {exportResult?.url && (
-                    <a
-                      className="slc-export-link"
-                      href={exportResult.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <a className="slc-export-link" href={exportResult.url}
+                       target="_blank" rel="noreferrer">
                       Open in Drive ↗
                     </a>
                   )}
