@@ -1062,7 +1062,7 @@ app.get('/api/setlists', (req, res) => {
 });
 
 app.post('/api/setlists', (req, res) => {
-  const { name, artistId, showId, setlistText, tracks } = req.body || {};
+  const { name, artistId, showId, setlistText, tracks, manualTimes, totalMs } = req.body || {};
   const resolvedName = name?.trim() || `Setlist ${new Date().toLocaleDateString('he-IL')}`;
   const list = loadSetlists();
   const item = {
@@ -1072,6 +1072,8 @@ app.post('/api/setlists', (req, res) => {
     showId: showId || null,
     setlistText: setlistText || '',
     tracks: tracks || [],
+    manualTimes: manualTimes || {},
+    totalMs: totalMs || 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -1084,11 +1086,13 @@ app.patch('/api/setlists/:id', (req, res) => {
   const list = loadSetlists();
   const idx = list.findIndex(s => s.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Not found' });
-  const { name, showId, setlistText, tracks } = req.body || {};
+  const { name, showId, setlistText, tracks, manualTimes, totalMs } = req.body || {};
   if (name !== undefined) list[idx].name = name.trim() || list[idx].name;
   if (showId !== undefined) list[idx].showId = showId || null;
   if (setlistText !== undefined) list[idx].setlistText = setlistText;
   if (tracks !== undefined) list[idx].tracks = tracks;
+  if (manualTimes !== undefined) list[idx].manualTimes = manualTimes;
+  if (totalMs !== undefined) list[idx].totalMs = totalMs;
   list[idx].updatedAt = new Date().toISOString();
   saveSetlists(list);
   res.json(list[idx]);

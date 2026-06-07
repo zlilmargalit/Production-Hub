@@ -106,10 +106,18 @@ export default function SetlistCalculator({
     setSaveMsg(null);
     try {
       let r, data;
+      const payload = {
+        name,
+        showId:      linkedShowId || null,
+        setlistText,
+        tracks:      tracks || [],
+        manualTimes,
+        totalMs,
+      };
       if (activeId) {
         r    = await fetch(`/api/setlists/${activeId}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, showId: linkedShowId || null, setlistText, tracks: tracks || [] }),
+          body: JSON.stringify(payload),
         });
         data = await r.json();
         if (!r.ok) throw new Error(data.error || 'Failed');
@@ -117,7 +125,7 @@ export default function SetlistCalculator({
       } else {
         r    = await fetch('/api/setlists', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, artistId, showId: linkedShowId || null, setlistText, tracks: tracks || [] }),
+          body: JSON.stringify({ ...payload, artistId }),
         });
         data = await r.json();
         if (!r.ok) throw new Error(data.error || 'Failed');
@@ -140,7 +148,7 @@ export default function SetlistCalculator({
     setSetlistText(sl.setlistText || '');
     setLinkedShowId(sl.showId || '');
     setTracks(sl.tracks?.length ? sl.tracks : null);
-    setManualTimes({});
+    setManualTimes(sl.manualTimes || {});   // restore saved manual durations
     setError(null);
     setArtistInput(defaultArtistName);
   };
@@ -234,7 +242,10 @@ export default function SetlistCalculator({
                     {linked && (
                       <div className="slc-saved-show">{linked.name}</div>
                     )}
-                    <div className="slc-saved-meta">{fmtDate(sl.updatedAt)}</div>
+                    <div className="slc-saved-meta">
+                      {sl.totalMs > 0 && <span className="slc-saved-dur">{fmtMsTotal(sl.totalMs)}</span>}
+                      {fmtDate(sl.updatedAt)}
+                    </div>
                     <button
                       className="slc-saved-del"
                       onClick={(e) => { e.stopPropagation(); deleteSetlist(sl.id); }}
