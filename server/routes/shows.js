@@ -259,9 +259,12 @@ async function createBriefDoc(payload) {
     const x = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const lines = String(text).split('\n');
     if (lines.length === 1) return x(text);
+    // New runs must explicitly clear bold so they don't inherit the paragraph's
+    // default bold style in Google Docs after conversion.
+    const noB = '<w:rPr><w:b w:val="0"/><w:bCs w:val="0"/></w:rPr>';
     return lines.map((l, i) => i === 0
       ? x(l)
-      : `</w:t></w:r><w:r><w:br/></w:r><w:r><w:t xml:space="preserve">${x(l)}`
+      : `</w:t></w:r><w:r><w:br/></w:r><w:r>${noB}<w:t xml:space="preserve">${x(l)}`
     ).join('');
   };
 
@@ -823,17 +826,17 @@ ${imageSectionHtml}
     // Render to a Buffer using the cached Puppeteer browser.
     const pdfBuffer = await htmlToPdfBuffer(html);
 
-    const cloudMode = !PDF_DIR;
-    if (cloudMode) {
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
-      return res.end(pdfBuffer);
+    // In local mode also save a copy to disk; in both modes stream the PDF
+    // back to the browser so the download dialog always appears.
+    if (PDF_DIR) {
+      await fsp.mkdir(PDF_DIR, { recursive: true });
+      const outputPath = path.join(PDF_DIR, filename);
+      await fsp.writeFile(outputPath, pdfBuffer).catch(() => {});
     }
 
-    await fsp.mkdir(PDF_DIR, { recursive: true });
-    const outputPath = path.join(PDF_DIR, filename);
-    await fsp.writeFile(outputPath, pdfBuffer);
-    res.json({ success: true, filename, path: outputPath });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    return res.end(pdfBuffer);
   } catch (err) {
     console.error('[pdf] generation failed:', err.message);
     res.status(500).json({ error: 'PDF generation failed', details: err.message });

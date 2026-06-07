@@ -47,6 +47,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const [pdfStatus, setPdfStatus] = useState(null);
   const [briefError, setBriefError] = useState(null);
   const [pdfError, setPdfError] = useState(null);
+  const [briefDocUrl, setBriefDocUrl] = useState(null);
   const [calStatus, setCalStatus] = useState(null); // null | 'loading' | 'done' | 'error'
   const [calMsg, setCalMsg] = useState(null);
 
@@ -91,6 +92,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const createBrief = async () => {
     setBriefStatus('loading');
     setBriefError(null);
+    setBriefDocUrl(null);
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
       const res  = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
@@ -110,9 +112,8 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           const sd = await sr.json().catch(() => ({}));
           if (sd.status === 'done') {
             setBriefStatus('sent');
-            if (sd.docUrl) window.open(sd.docUrl, '_blank');
-            setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 3000);
-            return;
+            if (sd.docUrl) setBriefDocUrl(sd.docUrl);
+            return; // keep "Sent ✓" + link visible until user navigates away
           }
           if (sd.status === 'error') {
             setBriefStatus('error');
@@ -481,6 +482,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                'Brief'}
             </button>
             {briefError && <span className="btn-error-msg" title={briefError}>{briefError}</span>}
+            {briefDocUrl && <a className="btn-doc-link" href={briefDocUrl} target="_blank" rel="noreferrer">Open doc →</a>}
           </div>
           <div className="btn-action-wrap">
             <button
