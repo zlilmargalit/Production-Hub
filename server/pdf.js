@@ -1,75 +1,106 @@
 // Singleton Puppeteer browser used to render PDFs.
 //
-// The old implementation spawned a fresh `google-chrome --headless --print-to-pdf`
-// process per request — cold-start cost of ~3-5 s. Here we keep ONE browser
-// alive for the life of the server, and just open a new page per request
-// (typically <500 ms end-to-end).
+// We use puppeteer-core (no bundled Chromium) and discover the Chrome/Chromium
+// binary at first launch — NOT at module-load time — so the Nix PATH is fully
+// initialised.
 //
-// We use puppeteer-core (no bundled Chromium) and point it at the same Chrome
-// binary the project already relies on via CHROME_PATH.
+// Bug fixed: the old IIFE returned the bare string 'chromium' when the binary
+// was runnable in PATH but `which` didn't return an absolute path.
+// puppeteer-core does existsSync(executablePath) and 'chromium' as a relative
+// path always fails that check → "Browser was not found at the configured
+// directory."  We now always resolve to an absolute path or throw clearly.
 
 const puppeteer = require('puppeteer-core');
+const fss       = require('fs');
+const { execSync } = require('child_process');
 
-const CHROME_PATH = process.env.CHROME_PATH || (() => {
+// ── Chrome path resolution (lazy — runs once on first PDF request) ──────────
+
+let _chromePath = null; // cached after first resolution
+
+function sh(cmd) {
+  try {
+    return execSync(cmd, { encoding: 'utf8', stdio: 'pipe', shell: '/bin/sh' }).trim();
+  } catch {
+    return null;
+  }
+}
+
+function resolveChromePath() {
+  // Explicit override wins
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+
+  // macOS: local Chrome
   if (process.platform === 'darwin') {
     return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   }
-  // On Railway / Nix: chromium is installed via nixpacks.toml.
-  // Strategy:
-  //   1. `which <bin>` → validate the path actually exists on disk
-  //   2. Try known absolute paths (nixpacks nix store / system)
-  //   3. Last resort: try executing `<bin> --version` to confirm it's runnable in PATH
-  const fss = require('fs');
-  const { execSync } = require('child_process');
 
+  // Linux / Railway (nixpacks installs `chromium`).
+  // Strategy: always resolve to an ABSOLUTE path — puppeteer-core requires it.
   for (const bin of ['chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome']) {
-    // 1. which → absolute path that exists
-    try {
-      const p = execSync(`which ${bin}`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-      if (p && fss.existsSync(p)) { console.log(`[pdf] Found Chrome via which: ${p}`); return p; }
-    } catch {}
-    // 3. Binary runnable directly in PATH (existsSync('chromium') would fail, but spawn works)
-    try {
-      execSync(`${bin} --version`, { encoding: 'utf8', stdio: 'pipe' });
-      console.log(`[pdf] Chrome runnable in PATH as: ${bin}`);
-      return bin;
-    } catch {}
+    // realpath follows symlinks → actual binary in the nix store
+    const rp = sh(`realpath "$(which ${bin} 2>/dev/null)" 2>/dev/null`);
+    if (rp && fss.existsSync(rp)) {
+      console.log(`[pdf] Chrome via realpath: ${rp}`);
+      return rp;
+    }
+
+    // which alone (symlink is fine for puppeteer-core as long as it exists)
+    const wp = sh(`which ${bin} 2>/dev/null`);
+    if (wp && fss.existsSync(wp)) {
+      console.log(`[pdf] Chrome via which: ${wp}`);
+      return wp;
+    }
   }
-  // 2. Known absolute paths for nixpacks / common Linux installs
+
+  // Known absolute paths for nixpacks / common Linux installs
   for (const abs of [
     '/nix/var/nix/profiles/default/bin/chromium',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
     '/usr/local/bin/chromium',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
   ]) {
-    if (fss.existsSync(abs)) { console.log(`[pdf] Found Chrome at absolute path: ${abs}`); return abs; }
+    if (fss.existsSync(abs)) {
+      console.log(`[pdf] Chrome at: ${abs}`);
+      return abs;
+    }
   }
-  console.warn('[pdf] Chrome not found — set CHROME_PATH env var on Railway. Attempting "chromium".');
-  return 'chromium';
-})();
 
-console.log('[pdf] CHROME_PATH =', CHROME_PATH);
+  // Nothing found — throw a clear error rather than passing a non-path string
+  throw new Error(
+    'Chromium/Chrome not found on this server. ' +
+    'Add  CHROME_PATH=/nix/var/nix/profiles/default/bin/chromium  ' +
+    'as an environment variable on Railway.'
+  );
+}
+
+function getChromePath() {
+  if (!_chromePath) _chromePath = resolveChromePath();
+  return _chromePath;
+}
+
+// ── Singleton browser ────────────────────────────────────────────────────────
 
 let browserPromise = null;
 
 async function launchBrowser() {
+  const cp = getChromePath();
+  console.log('[pdf] Launching browser:', cp);
   const browser = await puppeteer.launch({
-    executablePath: CHROME_PATH,
-    headless: true,           // 'new' is deprecated in puppeteer-core v22+
+    executablePath: cp,
+    headless: true,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-gpu',
-      '--single-process',     // required in Railway/Docker containers
+      '--single-process',   // required in Railway/Docker containers
       '--no-zygote',
     ],
   });
-  // If the browser dies (crash, OOM, manual kill), drop the cached promise so
-  // the next request triggers a fresh launch instead of using a dead handle.
-  browser.on('disconnected', () => {
-    browserPromise = null;
-  });
+  browser.on('disconnected', () => { browserPromise = null; });
   return browser;
 }
 
@@ -83,32 +114,29 @@ function getBrowser() {
   return browserPromise;
 }
 
-// Render an HTML string to a PDF Buffer. Format/margins match the previous
-// Chrome --print-to-pdf defaults so the visual output is unchanged.
+// ── Render HTML → PDF Buffer ─────────────────────────────────────────────────
+
 async function htmlToPdfBuffer(html, options = {}) {
-  // Two attempts: on the first failure (stale singleton browser) we close the
-  // browser, clear the promise, and retry once with a fresh launch.
+  // Two attempts: on the first failure (stale singleton) recycle the browser
+  // and retry once with a fresh launch.
   for (let attempt = 0; attempt < 2; attempt++) {
     const browser = await getBrowser();
-    const page = await browser.newPage();
+    const page    = await browser.newPage();
     try {
-      // 'networkidle0' is more reliable than 'load' for self-contained HTML
-      // that embeds images as data-URLs — no external network requests means
-      // the idle condition is met immediately after the DOM is painted.
       await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
       const buffer = await page.pdf({
-        format: options.format || 'A4',
+        format:          options.format || 'A4',
         printBackground: true,
-        margin: options.margin || { top: '0', right: '0', bottom: '0', left: '0' },
+        margin:          options.margin || { top: '0', right: '0', bottom: '0', left: '0' },
         preferCSSPageSize: true,
         ...options.pdf,
       });
+      await page.close().catch(() => {});
       return buffer;
     } catch (err) {
       await page.close().catch(() => {});
       if (attempt === 0) {
-        // Stale browser — force a fresh launch on the next attempt.
-        console.warn('[pdf] setContent failed (attempt 1), recycling browser:', err.message);
+        console.warn('[pdf] attempt 1 failed, recycling browser:', err.message);
         browserPromise = null;
         try { await browser.close(); } catch {}
       } else {
@@ -120,10 +148,7 @@ async function htmlToPdfBuffer(html, options = {}) {
 
 async function shutdown() {
   if (!browserPromise) return;
-  try {
-    const browser = await browserPromise;
-    await browser.close();
-  } catch {}
+  try { const b = await browserPromise; await b.close(); } catch {}
   browserPromise = null;
 }
 
