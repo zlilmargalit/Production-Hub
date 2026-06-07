@@ -460,12 +460,14 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                   </div>
                 </div>
 
-                {show.guestList?.length > 0 && (
-                  <div className="hub-guest-section">
-                    <div className="hub-guest-header">
-                      <span className="hub-guest-label">Guest List</span>
+                <div className="hub-guest-section">
+                  <div className="hub-guest-header">
+                    <span className="hub-guest-label">Guest List</span>
+                    {(show.guestList?.length > 0) && (
                       <span className="hub-guest-count">{show.guestList.length}</span>
-                    </div>
+                    )}
+                  </div>
+                  {(show.guestList?.length > 0) ? (
                     <div className="sc-guest-list">
                       {show.guestList.map((g, i) => (
                         <div key={i} className="sc-guest-row">
@@ -474,8 +476,10 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <span className="hub-guest-empty">No guests added</span>
+                  )}
+                </div>
 
                 <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />
               </div>
