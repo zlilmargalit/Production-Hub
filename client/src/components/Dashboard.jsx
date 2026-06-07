@@ -477,6 +477,7 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
   return (
     <div className="upnext">
       <div className="upnext-header"><h2 className="upnext-title">Up Next</h2></div>
+      <div className="upnext-list">
       {rows.length === 0 && <p className="upnext-empty">No upcoming shows.</p>}
       {rows.map((show) => {
         const artist = artists.find((a) => a.id === show.artistId);
@@ -508,6 +509,7 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -567,7 +569,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
                       )}
                       {show && <span className="mytask-show" dir="auto">{show.name}</span>}
                       {task.dueDate && (
-                        <span className={`mytask-due${overdue ? ' mytask-due--overdue' : ''}`}>Due {task.dueDate}</span>
+                        <span className={`mytask-due${overdue ? ' mytask-due--overdue' : ''}`}>{task.dueDate.slice(5)}</span>
                       )}
                     </div>
                   </div>
@@ -654,7 +656,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
           <div className="dash-marquee-track">
             {Array.from({ length: 10 }).map((_, i) => (
               <span key={i} className="dash-marquee-item">
-                PRODUCTION HUB<span className="dash-marquee-dot">·</span>
+                Production Hub<span className="dash-marquee-dot">•</span>
               </span>
             ))}
           </div>
