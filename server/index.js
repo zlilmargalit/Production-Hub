@@ -507,6 +507,19 @@ app.use((req, res, next) => {
 });
 
 
+// ── Artist scope — scope req.userId to the artist when ?artistId= is supplied ─
+// All per-artist routes (shows, crew, templates, event-types, field-templates,
+// tasks) send ?artistId=<uuid>.  By rewriting req.userId here, every downstream
+// readJsonCached / writeJsonAndCache call automatically lands in the correct
+// server/data/artists/<artistId>/ directory without changing a single route.
+app.use((req, res, next) => {
+  const artistId = req.query.artistId;
+  if (artistId && typeof artistId === 'string' && artistId.length > 0) {
+    req.userId = artistScopedId(req.userId, artistId);
+  }
+  next();
+});
+
 // ── Who-am-I (after auth gate) ───────────────────────────────────────────────
 const ADMIN_PROFILE_PATH = () => path.join(DATA_DIR, 'admin-profile.json');
 
