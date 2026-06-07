@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ConfirmModal from './ConfirmModal';
+// ConfirmModal kept for calendar invite confirm dialog
 
 const MODES = ['Taxi', 'Van', 'Self'];
 
@@ -10,6 +11,13 @@ function buildTransportText(mode, driver, time) {
   if (time) parts.push(time);
   return parts.join(' — ');
 }
+
+const guestListToText = (gl) => {
+  if (!gl) return '';
+  if (typeof gl === 'string') return gl;
+  if (Array.isArray(gl)) return gl.map((g) => g.name + (g.notes ? ` — ${g.notes}` : '')).join('\n');
+  return '';
+};
 
 function TaskManager({ show, onUpdate, artistId }) {
   const [transport, setTransport] = useState({
@@ -32,18 +40,7 @@ function TaskManager({ show, onUpdate, artistId }) {
     lightingRentalNeeds: show.lightingRentalNeeds || '',
     lightingRentalSupplier: show.lightingRentalSupplier || '',
   });
-  // ── Tasks — typed ────────────────────────────────────────────────────
-  const [newTaskType, setNewTaskType] = useState('checkbox');
-  const [newTaskLabel, setNewTaskLabel] = useState('');
-  const [newTaskValue, setNewTaskValue] = useState('');
-  const [pendingFile, setPendingFile] = useState(null); // { data, name, isPdf? } for image/file
-  const [newImgWidth, setNewImgWidth] = useState(80);   // default 80% for images
-  const tasks = show.tasks || [];
-
-  // Normalise legacy tasks (only have {id,text,completed}) to new shape
-  const normalisedTasks = tasks.map((t) =>
-    t.type ? t : { ...t, type: 'checkbox', label: t.text ?? '', inBrief: false }
-  );
+  const [guestText, setGuestText] = useState(() => guestListToText(show.guestList));
 
   useEffect(() => {
     setTransport({
@@ -66,6 +63,7 @@ function TaskManager({ show, onUpdate, artistId }) {
       lightingRentalNeeds: show.lightingRentalNeeds || '',
       lightingRentalSupplier: show.lightingRentalSupplier || '',
     });
+    setGuestText(guestListToText(show.guestList));
   }, [
     show.id,
     show.transportMode, show.transportDriver, show.transportTime,
@@ -74,6 +72,7 @@ function TaskManager({ show, onUpdate, artistId }) {
     show.rentalNeeds, show.rentalSupplier,
     show.soundRentalNeeds, show.soundRentalSupplier,
     show.lightingRentalNeeds, show.lightingRentalSupplier,
+    show.guestList,
   ]);
 
   const saveTransport = (updated) => {
@@ -122,54 +121,8 @@ function TaskManager({ show, onUpdate, artistId }) {
     saveTransport(next);
   };
 
-  const addTask = () => {
-    const label = newTaskLabel.trim();
-    if (!label && !pendingFile) return;
-    let newT = { id: crypto.randomUUID(), type: newTaskType, label, inBrief: false };
-    if (newTaskType === 'checkbox') {
-      newT = { ...newT, completed: false };
-    } else if (newTaskType === 'text') {
-      newT = { ...newT, value: newTaskValue.trim() };
-    } else if (newTaskType === 'image') {
-      newT = { ...newT, data: pendingFile?.data ?? '', name: pendingFile?.name ?? '', imgWidth: newImgWidth, inBrief: true };
-    } else if (newTaskType === 'file') {
-      newT = { ...newT, data: pendingFile?.data ?? '', name: pendingFile?.name ?? '' };
-    }
-    onUpdate(show.id, { ...show, tasks: [...normalisedTasks, newT] });
-    setNewTaskLabel('');
-    setNewTaskValue('');
-    setPendingFile(null);
-    setNewImgWidth(80);
-  };
-
-  const toggleTask = (id) =>
-    onUpdate(show.id, {
-      ...show,
-      tasks: normalisedTasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
-    });
-
-  const removeTask = (id) =>
-    onUpdate(show.id, { ...show, tasks: normalisedTasks.filter((t) => t.id !== id) });
-
-  const toggleBrief = (id) =>
-    onUpdate(show.id, {
-      ...show,
-      tasks: normalisedTasks.map((t) => (t.id === id ? { ...t, inBrief: !t.inBrief } : t)),
-    });
-
-  const updateImgWidth = (id, w) =>
-    onUpdate(show.id, {
-      ...show,
-      tasks: normalisedTasks.map((t) => (t.id === id ? { ...t, imgWidth: w } : t)),
-    });
-
-  const handleFileInput = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPendingFile({ data: ev.target.result, name: file.name, isPdf: file.type === 'application/pdf' });
-    reader.readAsDataURL(file);
-    e.target.value = '';
+  const saveGuestList = (text) => {
+    onUpdate(show.id, { ...show, guestList: text });
   };
 
   const [inviteStatus, setInviteStatus] = useState(null);
@@ -399,130 +352,23 @@ function TaskManager({ show, onUpdate, artistId }) {
         )}
       </div>
 
-      {/* Tasks */}
+      {/* Guest List */}
       <div className="fixed-task-section">
-        <h4 className="fixed-task-title">Tasks</h4>
-
-        {/* Type selector */}
-        <div className="task-type-row">
-          {[
-            { key: 'checkbox', label: 'Checkbox' },
-            { key: 'text',     label: 'Text' },
-            { key: 'image',    label: 'Image' },
-            { key: 'file',     label: 'File' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              className={`task-type-btn ${newTaskType === key ? 'active' : ''}`}
-              onClick={() => { setNewTaskType(key); setPendingFile(null); }}
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Label / content inputs */}
-        <div className="task-add-row">
-          <input
-            className="fixed-input"
-            dir="auto"
-            value={newTaskLabel}
-            onChange={(e) => setNewTaskLabel(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && newTaskType !== 'text' && addTask()}
-            placeholder={newTaskType === 'checkbox' ? 'Task description…' : 'Label…'}
-          />
-          <button className="btn-add-task" onClick={addTask}>Add</button>
-        </div>
-
-        {newTaskType === 'text' && (
-          <textarea
-            className="fixed-input task-textarea"
-            dir="auto"
-            value={newTaskValue}
-            onChange={(e) => setNewTaskValue(e.target.value)}
-            placeholder="Text content…"
-            rows={3}
-          />
-        )}
-
-        {(newTaskType === 'image' || newTaskType === 'file') && (
-          <div className="task-file-row">
-            <label className="task-file-btn">
-              {pendingFile ? pendingFile.name : (newTaskType === 'image' ? 'Choose image…' : 'Choose file…')}
-              <input type="file" accept={newTaskType === 'image' ? 'image/*,application/pdf' : '*/*'} onChange={handleFileInput} style={{ display: 'none' }} />
-            </label>
-            {pendingFile && newTaskType === 'image' && !pendingFile.isPdf && (
-              <img src={pendingFile.data} alt="preview" className="task-img-preview-sm" />
-            )}
-          </div>
-        )}
-
-        {newTaskType === 'image' && (
-          <div className="task-img-width-row">
-            <label className="task-img-width-label">Brief width: <strong>{newImgWidth}%</strong></label>
-            <input type="range" min={20} max={100} step={5} value={newImgWidth} onChange={(e) => setNewImgWidth(+e.target.value)} className="task-img-slider" />
-          </div>
-        )}
-
-        {/* Task list */}
-        {normalisedTasks.length > 0 && (
-          <ul className="task-list">
-            {normalisedTasks.map((t) => (
-              <li key={t.id} className={`task-item task-item--${t.type} ${t.completed ? 'completed' : ''}`}>
-                {t.type === 'checkbox' && (
-                  <input type="checkbox" checked={t.completed || false} onChange={() => toggleTask(t.id)} />
-                )}
-                {t.type !== 'checkbox' && (
-                  <span className="task-type-badge">
-                    {t.type === 'text' ? 'T' : t.type === 'image' ? 'IMG' : 'FILE'}
-                  </span>
-                )}
-
-                <div className="task-body">
-                  <span className="task-text" dir="auto">{t.label || t.text}</span>
-
-                  {t.type === 'text' && t.value && (
-                    <p className="task-text-value" dir="auto">{t.value}</p>
-                  )}
-
-                  {t.type === 'image' && t.data && (
-                    <div className="task-img-block">
-                      {t.data.startsWith('data:application/pdf') || t.name?.endsWith('.pdf') ? (
-                        <a href={t.data} download={t.name} className="file-download-link">📎 {t.name}</a>
-                      ) : (
-                        <img src={t.data} alt={t.label} className="task-img-preview" style={{ width: `${t.imgWidth ?? 80}%` }} />
-                      )}
-                      <div className="task-img-width-row">
-                        <label className="task-img-width-label">Brief width: <strong>{t.imgWidth ?? 80}%</strong></label>
-                        <input
-                          type="range" min={20} max={100} step={5}
-                          value={t.imgWidth ?? 80}
-                          onChange={(e) => updateImgWidth(t.id, +e.target.value)}
-                          className="task-img-slider"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {t.type === 'file' && t.data && (
-                    <a href={t.data} download={t.name} className="file-download-link">📎 {t.name}</a>
-                  )}
-                </div>
-
-                <div className="task-item-actions">
-                  {(t.type === 'text' || t.type === 'image' || t.type === 'file') && (
-                    <label className="task-brief-toggle" title="Include in Brief / PDF">
-                      <input type="checkbox" checked={t.inBrief || false} onChange={() => toggleBrief(t.id)} />
-                      <span className="task-brief-label">Brief</span>
-                    </label>
-                  )}
-                  <button className="task-remove" onClick={() => removeTask(t.id)} title="Remove">✕</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h4 className="fixed-task-title">Guest List</h4>
+        <textarea
+          className="fixed-input guest-list-textarea"
+          dir="auto"
+          value={guestText}
+          onChange={(e) => setGuestText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              // Enter = new line (default textarea behavior — no override needed)
+            }
+          }}
+          onBlur={() => saveGuestList(guestText)}
+          placeholder={`שם מוזמן\nשם מוזמן נוסף`}
+          rows={4}
+        />
       </div>
 
       {confirmModal && (

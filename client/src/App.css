@@ -8609,6 +8609,14 @@ body {
   color: var(--text-3);
   font-style: italic;
 }
+.guest-list-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+  font-family: inherit;
+  font-size: 0.875rem;
+}
 
 /* Footer */
 .sf-foot {
