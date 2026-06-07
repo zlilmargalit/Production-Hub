@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import BacklineChecklist from './backliner/BacklineChecklist';
 import TechnicalSetlist  from './backliner/TechnicalSetlist';
 import TechFiles         from './backliner/TechFiles';
-import MetricBox         from './ui/MetricBox';
 import SegmentedControl  from './ui/SegmentedControl';
+import PageBar           from './ui/PageBar';
 import SavedPill, { useSavedPill } from './ui/SavedPill';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -150,36 +150,48 @@ function InlinePermissions({ userId, perms, onSave }) {
 
   return (
     <div className="tm-inline-perms">
-      <div className="tm-perm-grid">
-        {ALL_RUBRICS.map(rubric => (
-          <div key={rubric} className="tm-perm-rubric-row">
-            <div className="tm-perm-rubric-info">
-              <span className="tm-perm-rubric-name">{RUBRIC_LABELS[rubric]}</span>
-              <span className="tm-perm-rubric-sub">{RUBRIC_SUBTITLES[rubric]}</span>
+      {/* Change 2: compact View/Edit matrix */}
+      <div className="tm-perm-matrix">
+        {/* Header row */}
+        <div className="tm-perm-matrix-head">
+          <span className="tm-perm-matrix-area-col">Area</span>
+          <span className="tm-perm-matrix-cell-col">View</span>
+          <span className="tm-perm-matrix-cell-col">Edit</span>
+          <button className="tm-perm-matrix-save" onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+        {/* Data rows */}
+        {ALL_RUBRICS.map(rubric => {
+          const canView = (local.viewRubrics || []).includes(rubric);
+          const canEdit = (local.editRubrics || []).includes(rubric);
+          return (
+            <div key={rubric} className="tm-perm-matrix-row">
+              <div className="tm-perm-matrix-area">
+                <span className="tm-perm-rubric-name">{RUBRIC_LABELS[rubric]}</span>
+                <span className="tm-perm-rubric-sub">{RUBRIC_SUBTITLES[rubric]}</span>
+              </div>
+              <button
+                className={`tm-perm-cell${canView ? ' tm-perm-cell--on' : ''}`}
+                onClick={() => toggle('view', rubric, !canView)}
+                aria-pressed={canView}
+                aria-label={`${RUBRIC_LABELS[rubric]} View`}
+              >
+                {canView && <span className="tm-perm-check">✓</span>}
+              </button>
+              <button
+                className={`tm-perm-cell${canEdit ? ' tm-perm-cell--on' : ''}`}
+                onClick={() => toggle('edit', rubric, !canEdit)}
+                aria-pressed={canEdit}
+                aria-label={`${RUBRIC_LABELS[rubric]} Edit`}
+              >
+                {canEdit && <span className="tm-perm-check">✓</span>}
+              </button>
             </div>
-            <div className="tm-perm-rubric-checks">
-              <label className="tm-perm-check-label">
-                <input type="checkbox"
-                  checked={(local.viewRubrics || []).includes(rubric)}
-                  onChange={e => toggle('view', rubric, e.target.checked)}
-                /> View
-              </label>
-              <label className="tm-perm-check-label">
-                <input type="checkbox"
-                  checked={(local.editRubrics || []).includes(rubric)}
-                  onChange={e => toggle('edit', rubric, e.target.checked)}
-                /> Edit
-              </label>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <div className="tm-perm-footer">
-        <button className="btn-action" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        <SavedPill show={saved} />
-      </div>
+      <SavedPill show={saved} />
     </div>
   );
 }
@@ -912,39 +924,24 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
 
   return (
     <div className="team-page">
-      {/* Page header */}
-      <div className="page-header-edit">
-        <div className="page-header-left">
-          <h1 className="page-title">Teams<span className="page-title-dot">.</span></h1>
-          <p className="page-subtitle">
-            <span className="page-subtitle-num">{String(users.length).padStart(2, '0')}</span>
-            <span className="page-subtitle-line" />
-            <span>members</span>
-          </p>
-        </div>
-        <div className="page-marquee" aria-hidden="true">
-          <span className="page-marquee-track">
-            <span>TEAM</span><span>·</span><span>TEAM</span><span>·</span>
-            <span>TEAM</span><span>·</span><span>TEAM</span><span>·</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Stats bar */}
-      <div className="tm-stats-bar">
-        <MetricBox value={users.length}         label="Total Members" />
-        <MetricBox value={count('backliner')}   label="Backliners" />
-        <MetricBox value={count('sound')}       label="Soundmen" />
-        <MetricBox value={count('light')}       label="Lighting" />
-      </div>
-
-      {/* Tab bar */}
-      <SegmentedControl
-        items={TABS.map(({ key, label, badge }) => ({ id: key, label, count: badge > 0 ? badge : undefined }))}
-        activeId={tab}
-        onChange={setTab}
-        className="team-seg"
-      />
+      <PageBar
+        title="Teams"
+        count={users.length}
+        countLabel="members"
+        metrics={[
+          { value: users.length,       label: 'Total' },
+          { value: count('backliner'), label: 'Backline' },
+          { value: count('sound'),     label: 'Sound' },
+          { value: count('light'),     label: 'Lighting' },
+        ]}
+      >
+        <SegmentedControl
+          items={TABS.map(({ key, label, badge }) => ({ id: key, label, count: badge > 0 ? badge : undefined }))}
+          activeId={tab}
+          onChange={setTab}
+          className="team-seg"
+        />
+      </PageBar>
 
       {loading ? (
         <div className="team-loading">Loading…</div>

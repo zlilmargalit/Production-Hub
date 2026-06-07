@@ -1,10 +1,19 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import ShowCard from './ShowCard';
+import PageBar  from './ui/PageBar';
 
-// ── Filter dropdown (month + type) ────────────────────────────────────────────
+// ── Filter dropdown (month + type) ── Change 3: chips + footer ───────────────
 function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, onChangeMonth, onChangeType }) {
-  const [open, setOpen] = useState(false);
+  const [open,        setOpen]        = useState(false);
+  // Staged (uncommitted) state — committed on Apply
+  const [stagedMonth, setStagedMonth] = useState(filterMonth);
+  const [stagedType,  setStagedType]  = useState(filterType);
   const ref = useRef(null);
+
+  // Keep staged in sync when dropdown opens
+  useEffect(() => {
+    if (open) { setStagedMonth(filterMonth); setStagedType(filterType); }
+  }, [open, filterMonth, filterType]);
 
   useEffect(() => {
     if (!open) return;
@@ -16,6 +25,26 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
   }, [open]);
 
   const activeCount = (filterMonth ? 1 : 0) + (filterType ? 1 : 0);
+
+  const apply = () => {
+    onChangeMonth(stagedMonth);
+    onChangeType(stagedType);
+    setOpen(false);
+  };
+
+  const clear = () => {
+    setStagedMonth('');
+    setStagedType('');
+    onChangeMonth('');
+    onChangeType('');
+    setOpen(false);
+  };
+
+  const monthLabel = filterMonth
+    ? (monthOptions.find(o => o.value === filterMonth)?.label || filterMonth)
+    : null;
+  const typeLabel = filterType || null;
+  const summaryParts = [monthLabel, typeLabel].filter(Boolean);
 
   return (
     <div className="filter-drop" ref={ref}>
@@ -36,17 +65,25 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
         <div className="filter-drop-panel">
           {monthOptions.length > 1 && (
             <div className="filter-drop-section">
-              <span className="filter-drop-label">Month</span>
-              <div className="filter-drop-chips">
+              <div className="filter-drop-section-head">
+                <span className="filter-drop-label">Month</span>
+                {stagedMonth && (
+                  <button className="filter-drop-section-clear" onClick={() => setStagedMonth('')}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              {/* Change 3: wrapping chips instead of vertical stack */}
+              <div className="filter-drop-chips filter-drop-chips--wrap">
                 <button
-                  className={`filter-drop-chip${!filterMonth ? ' active' : ''}`}
-                  onClick={() => onChangeMonth('')}
+                  className={`filter-drop-chip${!stagedMonth ? ' active' : ''}`}
+                  onClick={() => setStagedMonth('')}
                 >All</button>
                 {monthOptions.map((o) => (
                   <button
                     key={o.value}
-                    className={`filter-drop-chip${filterMonth === o.value ? ' active' : ''}`}
-                    onClick={() => onChangeMonth(o.value)}
+                    className={`filter-drop-chip${stagedMonth === o.value ? ' active' : ''}`}
+                    onClick={() => setStagedMonth(o.value)}
                   >{o.label}</button>
                 ))}
               </div>
@@ -54,33 +91,48 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
           )}
           {typeOptions.length > 1 && (
             <div className="filter-drop-section">
-              <span className="filter-drop-label">Type</span>
-              <div className="filter-drop-chips">
+              <div className="filter-drop-section-head">
+                <span className="filter-drop-label">Type</span>
+                {stagedType && (
+                  <button className="filter-drop-section-clear" onClick={() => setStagedType('')}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="filter-drop-chips filter-drop-chips--wrap">
                 <button
-                  className={`filter-drop-chip${!filterType ? ' active' : ''}`}
-                  onClick={() => onChangeType('')}
+                  className={`filter-drop-chip${!stagedType ? ' active' : ''}`}
+                  onClick={() => setStagedType('')}
                 >All</button>
                 {typeOptions.map((t) => (
                   <button
                     key={t}
                     dir="auto"
-                    className={`filter-drop-chip${filterType === t ? ' active' : ''}`}
-                    onClick={() => onChangeType(t)}
+                    className={`filter-drop-chip${stagedType === t ? ' active' : ''}`}
+                    onClick={() => setStagedType(t)}
                   >{t}</button>
                 ))}
               </div>
             </div>
           )}
-          {activeCount > 0 && (
-            <div className="filter-drop-footer">
-              <button
-                className="filter-drop-clear"
-                onClick={() => { onChangeMonth(''); onChangeType(''); setOpen(false); }}
-              >
-                Clear filters
+          {/* Footer: summary + Apply */}
+          <div className="filter-drop-footer filter-drop-footer--bar">
+            <span className="filter-drop-summary">
+              {summaryParts.length > 0
+                ? `Showing ${summaryParts.join(' · ')}`
+                : 'All shows'}
+            </span>
+            <div className="filter-drop-footer-actions">
+              {(stagedMonth || stagedType) && (
+                <button className="filter-drop-clear" onClick={clear}>
+                  Clear
+                </button>
+              )}
+              <button className="filter-drop-apply" onClick={apply}>
+                Apply
               </button>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
@@ -155,30 +207,19 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
 
   return (
     <div>
-      {/* Editorial page header */}
-      <div className="page-header-edit">
-        <div className="page-header-left">
-          <h1 className="page-title">Shows<span className="page-title-dot">.</span></h1>
-          <div className="page-subtitle-row">
-            <p className="page-subtitle">
-              <span className="page-subtitle-num">{thisMonthCount.toString().padStart(2, '0')}</span>
-              <span className="page-subtitle-line" />
-              <span>productions in {monthName}</span>
-            </p>
-            {onNew && (
-              <button className="btn-primary btn-new-mobile" onClick={onNew}>+ New</button>
-            )}
-          </div>
-        </div>
-        <div className="page-marquee" aria-hidden="true">
-          <span className="page-marquee-track">
-            <span>Production Hub</span><span>·</span>
-            <span>Production Hub</span><span>·</span>
-            <span>Production Hub</span><span>·</span>
-            <span>Production Hub</span><span>·</span>
-          </span>
-        </div>
-      </div>
+      <PageBar
+        title="Shows"
+        count={thisMonthCount}
+        countLabel={`in ${monthName}`}
+        metrics={[
+          { value: counts.upcoming, label: 'Upcoming' },
+          { value: counts.past,     label: 'Past' },
+          { value: counts.all,      label: 'Total' },
+        ]}
+        actions={onNew && (
+          <button className="btn-primary" onClick={onNew}>+ New</button>
+        )}
+      />
 
       <div className="filter-bar-row">
         <div className="filter-bar">

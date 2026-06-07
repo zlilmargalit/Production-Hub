@@ -3,6 +3,7 @@ import ConfirmModal from './ConfirmModal';
 import { etColorIdx } from '../utils/etColor';
 import SegmentedControl from './ui/SegmentedControl';
 import IconButton from './ui/IconButton';
+import PageBar from './ui/PageBar';
 const uuidv4 = () => crypto.randomUUID();
 
 // ── Per-group color helpers ─────────────────────────────────────────────────
@@ -181,52 +182,32 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
 
   return (
     <div>
-      {/* Editorial page header — matches Shows page style */}
-      <div className="page-header-edit">
-        <div className="page-header-left">
-          <h1 className="page-title">
-            {tab === 'members' ? 'Crew' : 'Event Types'}
-            <span className="page-title-dot">.</span>
-          </h1>
-          <p className="page-subtitle">
-            {tab === 'members' ? (
-              <>
-                <span className="page-subtitle-num">{crew.length.toString().padStart(2, '0')}</span>
-                <span className="page-subtitle-line" />
-                <span>team members</span>
-              </>
-            ) : (
-              <>
-                <span className="page-subtitle-num">{(eventTypes || []).length.toString().padStart(2, '0')}</span>
-                <span className="page-subtitle-line" />
-                <span>event types defined</span>
-              </>
-            )}
-          </p>
-        </div>
-        <div className="page-marquee" aria-hidden="true">
-          <span className="page-marquee-track">
-            <span>Crew & Types</span><span>·</span>
-            <span>Crew & Types</span><span>·</span>
-            <span>Crew & Types</span><span>·</span>
-            <span>Crew & Types</span><span>·</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="crew-header">
-        <SegmentedControl
-          items={[
-            { id: 'members', label: 'Members', count: crew.length },
-            { id: 'templates', label: 'Event Types', count: (eventTypes || []).length },
-          ]}
-          activeId={tab}
-          onChange={setTab}
-        />
-        {tab === 'members' && (
+      <PageBar
+        title={tab === 'members' ? 'Crew' : 'Event Types'}
+        count={tab === 'members' ? crew.length : (eventTypes || []).length}
+        countLabel={tab === 'members' ? 'members' : 'types'}
+        metrics={tab === 'members' ? [
+          { value: crew.length, label: 'Total' },
+          { value: crew.filter(m => (m.role||'').toLowerCase().includes('sound') || (m.role||'').toLowerCase().includes('סאונד')).length, label: 'Sound' },
+          { value: crew.filter(m => (m.role||'').toLowerCase().includes('backline') || (m.role||'').toLowerCase().includes('בקלי')).length, label: 'Backline' },
+        ] : [
+          { value: (eventTypes || []).length, label: 'Types' },
+        ]}
+        actions={tab === 'members' && (
           <button className="btn-primary" onClick={openAdd}>+ Add Member</button>
         )}
-      </div>
+      >
+        <div className="crew-header-inner">
+          <SegmentedControl
+            items={[
+              { id: 'members', label: 'Members', count: crew.length },
+              { id: 'templates', label: 'Event Types', count: (eventTypes || []).length },
+            ]}
+            activeId={tab}
+            onChange={setTab}
+          />
+        </div>
+      </PageBar>
 
       {tab === 'members' ? (
         crew.length === 0 ? (

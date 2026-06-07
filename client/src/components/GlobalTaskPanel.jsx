@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { subscribeToPush } from '../utils/pushSubscribe';
+import PageBar from './ui/PageBar';
 
 const fmtDate = (d) => {
   if (!d) return null;
@@ -222,34 +223,29 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
 
   return (
     <div className="gtask-page">
-      {/* Page header */}
-      <div className="page-header-edit">
-        <div className="page-header-left">
-          <h1 className="page-title">Tasks<span className="page-title-dot">.</span></h1>
-          <p className="page-subtitle">
-            <span className="page-subtitle-num">{String(countActive).padStart(2, '0')}</span>
-            <span className="page-subtitle-line" />
-            <span>active</span>
-          </p>
-        </div>
-        <button
-          className={`gtask-test-push-btn${pushStatus === 'ok' ? ' gtask-test-push-btn--ok' : pushStatus === 'error' ? ' gtask-test-push-btn--err' : ''}`}
-          onClick={handleTestPush}
-          disabled={pushStatus === 'sending'}
-          title="Send a test push notification"
-        >
-          {pushStatus === 'sending' ? 'Sending…'
-            : pushStatus === 'ok'   ? `✓ ${pushMsg}`
-            : pushStatus === 'error'? `✕ ${pushMsg}`
-            : 'Test Push'}
-        </button>
-        <div className="page-marquee" aria-hidden="true">
-          <span className="page-marquee-track">
-            <span>Tasks</span><span>·</span><span>Tasks</span><span>·</span>
-            <span>Tasks</span><span>·</span><span>Tasks</span><span>·</span>
-          </span>
-        </div>
-      </div>
+      <PageBar
+        title="Tasks"
+        count={countActive}
+        countLabel="active"
+        metrics={[
+          { value: countActive,                       label: 'Active' },
+          { value: countDone,                         label: 'Done' },
+          { value: ownTasks.filter(t=>t.dueDate).length, label: 'With date' },
+        ]}
+        actions={
+          <button
+            className={`gtask-test-push-btn${pushStatus === 'ok' ? ' gtask-test-push-btn--ok' : pushStatus === 'error' ? ' gtask-test-push-btn--err' : ''}`}
+            onClick={handleTestPush}
+            disabled={pushStatus === 'sending'}
+            title="Send a test push notification"
+          >
+            {pushStatus === 'sending' ? 'Sending…'
+              : pushStatus === 'ok'   ? `✓ ${pushMsg}`
+              : pushStatus === 'error'? `✕ ${pushMsg}`
+              : 'Test Push'}
+          </button>
+        }
+      />
 
       {/* Add-task form */}
       <div className="gtask-add-card">
