@@ -8536,6 +8536,12 @@ body {
   color: var(--text-2);
 }
 
+/* ShowCard guest list (read-only display) */
+.sc-guest-list  { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.sc-guest-row   { display: flex; align-items: baseline; gap: 10px; font-size: 0.8125rem; }
+.sc-guest-name  { color: var(--text); font-weight: 500; }
+.sc-guest-notes { color: var(--text-3); font-size: 0.75rem; }
+
 /* Footer */
 .sf-foot {
   display: flex;

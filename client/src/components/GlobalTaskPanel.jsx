@@ -34,7 +34,8 @@ function ShowMultiPicker({ selected, shows, onChange }) {
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
   };
 
-  const list = sortedShows(shows);
+  const today = new Date().toISOString().slice(0, 10);
+  const list = sortedShows(shows).filter(s => !s.archived && (!s.date || s.date >= today));
   const labelText = selected.length === 0
     ? 'Link to shows…'
     : selected.length === 1
