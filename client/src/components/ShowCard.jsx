@@ -20,17 +20,31 @@ const getTimeRange = (schedule) => {
 };
 
 // Completion: fraction of key fields present (0–100)
+// Returns { pct, missing[] } so the bar can show a tooltip
 const calcProgress = (show) => {
   const sched = typeof show.schedule === 'string' ? show.schedule : scheduleToString(show.schedule || '');
-  const checks = [!!sched, (show.crewIds || []).length > 0, !!show.venue, !!show.contacts, !!show.address];
-  return Math.round(checks.filter(Boolean).length / checks.length * 100);
+  const items = [
+    { ok: !!sched,                                label: 'Schedule' },
+    { ok: (show.crewIds || []).length > 0,        label: 'Crew' },
+    { ok: !!show.venue,                           label: 'Venue' },
+    { ok: !!show.contacts,                        label: 'Contacts' },
+    { ok: !!show.address,                         label: 'Address' },
+    { ok: !!show.soundCoordinated,                label: 'Sound coordinated' },
+    { ok: !!show.lightingCoordinated,             label: 'Lighting coordinated' },
+    { ok: !!show.transportation,                  label: 'Transportation' },
+    { ok: !!show.food,                            label: 'Food' },
+  ];
+  const pct     = Math.round(items.filter(i => i.ok).length / items.length * 100);
+  const missing = items.filter(i => !i.ok).map(i => i.label);
+  return { pct, missing };
 };
 
-function ProgressBar({ pct }) {
-  if (!pct) return null;
-  const col = pct === 100 ? '#4E7265' : pct >= 60 ? '#3852B4' : '#F08D39';
+function ProgressBar({ pct, missing = [] }) {
+  if (!pct && pct !== 0) return null;
+  const col     = pct === 100 ? '#4E7265' : pct >= 60 ? '#3852B4' : '#F08D39';
+  const tooltip = missing.length ? `Missing: ${missing.join(', ')}` : 'All done';
   return (
-    <div className="show-progress">
+    <div className="show-progress" title={tooltip}>
       <div className="show-progress-track">
         <div className="show-progress-fill" style={{ width: `${pct}%`, background: col }} />
       </div>
@@ -53,7 +67,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
   const assignedCrew = (crew || []).filter((m) => (show.crewIds || []).includes(m.id));
   const timeRange    = getTimeRange(show.schedule);
-  const progress     = calcProgress(show);
+  const { pct: progressPct, missing: progressMissing } = calcProgress(show);
   const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
   const musicians = assignedCrew
     .filter((m) => MUSICIAN_ROLES.has(m.role))
@@ -243,7 +257,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           {show.receipt && <span className="badge badge-receipt">Receipt</span>}
           {(show.archived && !show.invoice) && <span className="badge badge-archive">Archive</span>}
         </div>
-        <ProgressBar pct={progress} />
+        <ProgressBar pct={progressPct} missing={progressMissing} />
       </div>
 
       {expanded && (
