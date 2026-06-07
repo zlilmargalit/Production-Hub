@@ -21,7 +21,7 @@ const BLANK = {
   name: '', date: '', eventType: '', venue: '', address: '',
   parking: '', transportation: '', additionalDetails: '',
   contacts: '', notes: '', invoice: false, receipt: false, archived: false,
-  crewIds: [], scheduleRows: [], customFields: {}, pdfFields: {},
+  crewIds: [], scheduleRows: [], guestList: [], customFields: {}, pdfFields: {},
 };
 
 // ── Group color for crew dot in chips ──────────────────────────────────────
@@ -49,8 +49,14 @@ const SECTIONS = [
   { id: 'brief',     label: 'Brief Content' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'crew',      label: 'Crew' },
+  { id: 'guests',    label: 'Guest List' },
   { id: 'custom',    label: 'Custom' },
 ];
+
+function isRehearsal(eventType) {
+  const t = (eventType || '').toLowerCase();
+  return t.includes('חזרה') || t.includes('rehearsal');
+}
 
 function hasSectionFlag(sectionId, form) {
   if (sectionId === 'basics')    return !form.name || !form.date;
@@ -59,8 +65,9 @@ function hasSectionFlag(sectionId, form) {
 }
 
 function sectionCount(sectionId, form) {
-  if (sectionId === 'crew')   return form.crewIds.length || null;
-  if (sectionId === 'custom') return Object.keys(form.customFields || {}).filter((k) => form.customFields[k]).length || null;
+  if (sectionId === 'crew')    return form.crewIds.length || null;
+  if (sectionId === 'guests')  return form.guestList?.length || null;
+  if (sectionId === 'custom')  return Object.keys(form.customFields || {}).filter((k) => form.customFields[k]).length || null;
   return null;
 }
 
@@ -92,6 +99,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
           archived: show.archived || false,
           crewIds: show.crewIds || [],
           scheduleRows: initialScheduleRows,
+          guestList: show.guestList || [],
           customFields: show.customFields || {},
           pdfFields: show.pdfFields || {},
         }
@@ -168,6 +176,17 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
     }
   };
 
+  // Guest list helpers
+  const addGuest = () =>
+    setForm((f) => ({ ...f, guestList: [...(f.guestList || []), { name: '', notes: '' }] }));
+  const updateGuest = (idx, field, value) =>
+    setForm((f) => {
+      const gl = (f.guestList || []).map((g, i) => i === idx ? { ...g, [field]: value } : g);
+      return { ...f, guestList: gl };
+    });
+  const removeGuest = (idx) =>
+    setForm((f) => ({ ...f, guestList: (f.guestList || []).filter((_, i) => i !== idx) }));
+
   const setCustomField = (id, value) =>
     setForm((f) => ({ ...f, customFields: { ...f.customFields, [id]: value } }));
 
@@ -233,7 +252,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
 
           {/* Left rail */}
           <nav className="sf-rail">
-            {SECTIONS.map((s) => {
+            {SECTIONS.filter((s) => s.id !== 'guests' || !isRehearsal(form.eventType)).map((s) => {
               const flagged = hasSectionFlag(s.id, form);
               const count   = sectionCount(s.id, form);
               return (
@@ -417,6 +436,49 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                 )}
               </div>
             </section>
+
+            {/* GUEST LIST */}
+            {!isRehearsal(form.eventType) && (
+              <section ref={(el) => { sectionRefs.current.guests = el; }} className="sf-section" id="sf-guests">
+                <div className="sf-sec-head">
+                  Guest List
+                  <span className="sf-sec-sub">
+                    {(form.guestList || []).length > 0
+                      ? `${(form.guestList || []).length} guests`
+                      : 'invited guests · VIPs'}
+                  </span>
+                </div>
+                <div className="sf-field full">
+                  {(form.guestList || []).map((guest, idx) => (
+                    <div key={idx} className="sf-guest-row">
+                      <input
+                        dir="auto"
+                        className="sf-inp sf-guest-name"
+                        value={guest.name}
+                        onChange={(e) => updateGuest(idx, 'name', e.target.value)}
+                        placeholder="Guest name…"
+                      />
+                      <input
+                        dir="auto"
+                        className="sf-inp sf-guest-notes"
+                        value={guest.notes}
+                        onChange={(e) => updateGuest(idx, 'notes', e.target.value)}
+                        placeholder="Notes (optional)"
+                      />
+                      <button
+                        type="button"
+                        className="icon-btn danger sf-sched-del"
+                        onClick={() => removeGuest(idx)}
+                        aria-label="Remove guest"
+                      >✕</button>
+                    </div>
+                  ))}
+                  <button type="button" className="sf-sched-add" onClick={addGuest}>
+                    ＋ Add guest
+                  </button>
+                </div>
+              </section>
+            )}
 
             {/* CUSTOM */}
             {customDefs.length > 0 && (
