@@ -484,8 +484,10 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
     });
   }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const today     = todayStr();
-  const upcoming  = allShows.filter((s) => !s.archived && toDateStr(s.date) >= today);
+  const today       = todayStr();
+  const _now        = new Date();
+  const monthPrefix = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
+  const upcoming    = allShows.filter((s) => !s.archived && s.date && s.date.startsWith(monthPrefix));
   const openTasks = tasks.filter((t) => !t.completed);
 
   const toggleArtist = useCallback((id) => {
