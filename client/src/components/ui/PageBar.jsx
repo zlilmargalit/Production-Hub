@@ -18,7 +18,7 @@ import { useRef, useEffect, useState } from 'react';
  *  actions     ReactNode?      — action buttons (tabs row right side)
  *  children    ReactNode?      — tabs / segmented control (tabs row left side)
  */
-export default function PageBar({ title, accentColor, count, countLabel, metrics = [], actions, children }) {
+export default function PageBar({ title, accentColor, count, countLabel, metrics = [], actions, headerAction, children }) {
   const sentinelRef = useRef(null);
   const [stuck, setStuck] = useState(false);
 
@@ -69,6 +69,7 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
               ))}
             </div>
           )}
+          {headerAction && <div className="pg-bar-header-action">{headerAction}</div>}
         </div>
 
         {/* Full-width 2px ink divider */}

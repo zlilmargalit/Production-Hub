@@ -599,11 +599,6 @@ function App({ demoMode = false }) {
                   : applyStatus?.updated != null ? `${applyStatus.updated} updated`
                   : 'Apply Crew'}
               </button>
-              {userRole === 'admin' && (
-                <button className="btn-primary btn-new-desktop" onClick={() => setShowForm(true)}>
-                  + New
-                </button>
-              )}
             </>
           )}
           {/* Notification bell — join requests + assigned tasks */}

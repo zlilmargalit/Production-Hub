@@ -278,7 +278,6 @@ function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows })
           <span className="gtask-board-col-dot gtask-board-col-dot--blue" aria-hidden="true">●</span>
           <span className="gtask-board-col-title">Scheduled</span>
           <span className="gtask-board-col-count">{scheduled.length}</span>
-          <span className="gtask-board-col-hint">nearest first</span>
         </div>
         {scheduled.length === 0 ? (
           <div className="gtask-board-empty">No dated tasks</div>
@@ -295,7 +294,6 @@ function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows })
           <span className="gtask-board-col-dot gtask-board-col-dot--orange" aria-hidden="true">●</span>
           <span className="gtask-board-col-title">No date</span>
           <span className="gtask-board-col-count">{noDate.length}</span>
-          <span className="gtask-board-col-hint">no less important</span>
         </div>
         {noDate.length === 0 ? (
           <div className="gtask-board-empty">No undated tasks</div>

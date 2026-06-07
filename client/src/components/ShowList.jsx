@@ -212,12 +212,7 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
         title="Shows"
         count={thisMonthCount}
         countLabel={`in ${monthName}`}
-        metrics={[
-          { value: counts.upcoming, label: 'Upcoming' },
-          { value: counts.past,     label: 'Past' },
-          { value: counts.all,      label: 'Total' },
-        ]}
-        actions={onNew && (
+        headerAction={onNew && (
           <button className="btn-primary" onClick={onNew}>+ New</button>
         )}
       />
