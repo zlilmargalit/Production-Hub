@@ -270,22 +270,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <Field label="Transportation" value={show.transportation} inPdf={isPdfOn('transportation')} onTogglePdf={() => togglePdf('transportation')} />
             <Field label="Contacts" value={show.contacts} multiline inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
 
-            {show.guestList?.length > 0 && (
-              <div className="detail-field detail-full">
-                <div className="field-label-row">
-                  <span className="field-label">Guest List</span>
-                  <span className="field-label-count">{show.guestList.length}</span>
-                </div>
-                <div className="sc-guest-list">
-                  {show.guestList.map((g, i) => (
-                    <div key={i} className="sc-guest-row">
-                      <span className="sc-guest-name" dir="auto">{g.name}</span>
-                      {g.notes && <span className="sc-guest-notes" dir="auto">{g.notes}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
           </div>
 
@@ -475,6 +459,24 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                     <div className="hub-heading">Production Hub</div>
                   </div>
                 </div>
+
+                {show.guestList?.length > 0 && (
+                  <div className="hub-guest-section">
+                    <div className="hub-guest-header">
+                      <span className="hub-guest-label">Guest List</span>
+                      <span className="hub-guest-count">{show.guestList.length}</span>
+                    </div>
+                    <div className="sc-guest-list">
+                      {show.guestList.map((g, i) => (
+                        <div key={i} className="sc-guest-row">
+                          <span className="sc-guest-name" dir="auto">{g.name}</span>
+                          {g.notes && <span className="sc-guest-notes" dir="auto">{g.notes}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <TaskManager show={show} onUpdate={onUpdateShow} artistId={artistId} />
               </div>
             )}

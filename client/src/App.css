@@ -8578,6 +8578,33 @@ body {
 .sc-guest-name  { color: var(--text); font-weight: 500; }
 .sc-guest-notes { color: var(--text-3); font-size: 0.75rem; }
 
+/* Guest list block inside the Logistics (hub-panel) section */
+.hub-guest-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+.hub-guest-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hub-guest-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.hub-guest-count {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 20px;
+}
+
 /* Footer */
 .sf-foot {
   display: flex;
