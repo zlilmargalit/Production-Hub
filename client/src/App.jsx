@@ -20,6 +20,7 @@ function App({ demoMode = false }) {
   const [templates, setTemplates] = useState({});
   const [fieldTemplates, setFieldTemplates] = useState({});
   const [eventTypes, setEventTypes] = useState([]);
+  const [eventTypeChecklists, setEventTypeChecklists] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingShow, setEditingShow] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +95,9 @@ function App({ demoMode = false }) {
     const res = await fetch(`/api/event-types${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load event types');
     setEventTypes(await res.json());
+    // Load checklists alongside event types
+    const cr = await fetch(`/api/event-types/checklists${artistQS()}`);
+    if (cr.ok) setEventTypeChecklists(await cr.json());
   }, []);
 
   const fetchTasks = useCallback(async () => {
@@ -187,6 +191,16 @@ function App({ demoMode = false }) {
       body: JSON.stringify(fields),
     });
     setFieldTemplates((prev) => ({ ...prev, [eventType]: fields }));
+  }, [demoMode]);
+
+  const saveEventTypeChecklist = useCallback(async (typeName, checklist) => {
+    if (demoMode) { setEventTypeChecklists((prev) => ({ ...prev, [typeName]: checklist })); return; }
+    const res = await fetch(
+      `/api/event-types/checklists/${encodeURIComponent(typeName)}${artistQS()}`,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(checklist) }
+    );
+    if (res.ok) setEventTypeChecklists((prev) => ({ ...prev, [typeName]: checklist }));
+    else console.error('[saveChecklist] PUT failed', res.status);
   }, [demoMode]);
 
   const saveEventTypes = useCallback(async (types) => {
@@ -652,6 +666,7 @@ function App({ demoMode = false }) {
             crew={crew}
             onOpenShow={openShowFromDashboard}
             onToggleTask={toggleTask}
+            eventTypeChecklists={eventTypeChecklists}
           />
         ) : page === 'shows' ? (
           <ShowList
@@ -718,6 +733,8 @@ function App({ demoMode = false }) {
             onSaveFieldTemplate={saveFieldTemplate}
             eventTypes={eventTypes}
             onSaveEventTypes={saveEventTypes}
+            eventTypeChecklists={eventTypeChecklists}
+            onSaveEventTypeChecklist={saveEventTypeChecklist}
             tasks={tasks}
             demoMode={demoMode}
             artistId={currentArtist?.id || null}

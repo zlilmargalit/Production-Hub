@@ -30,6 +30,7 @@ const DEFAULTS = {
   'event-types.json':    '[]',
   'field-templates.json':'{}',
   'tasks.json':          '[]',
+  'event-type-checklists.json': '{}',
 };
 
 /**
