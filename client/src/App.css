@@ -7457,6 +7457,8 @@ body {
   box-shadow: 4px 4px 0 var(--surface-sunk);
   border-radius: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .mcal-topbar {
   display: flex;
@@ -7547,7 +7549,9 @@ body {
 .mcal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: minmax(50px, auto);
+  grid-template-rows: min-content;
+  grid-auto-rows: minmax(50px, 1fr);
+  flex: 1 1 auto;
 }
 .mcal-day-hdr {
   padding: 6px 0;

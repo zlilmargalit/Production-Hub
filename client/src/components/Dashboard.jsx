@@ -472,7 +472,7 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
     .filter((s) => !s.archived && toDateStr(s.date) >= today)
     .filter((s) => selectedArtists.length === 0 || selectedArtists.includes(s.artistId))
     .sort((a, b) => toDateStr(a.date).localeCompare(toDateStr(b.date)))
-    .slice(0, 8);
+    .slice(0, 6);
 
   return (
     <div className="upnext">
