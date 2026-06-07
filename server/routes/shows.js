@@ -275,6 +275,7 @@ async function createBriefDoc(payload) {
     '{{ADDRESS}}':            toDocx(payload.address),
     '{{TECHNICA_CREW}}':      toDocx(payload.technicalCrew),
     '{{TRANSPORTATION}}':     toDocx(payload.transportation),
+    '{{PARKING}}':            toDocx(payload.parking),
     '{{SCHEDULE}}':           toDocx(payload.schedule),
     '{{CONTACTS}}':           toDocx(payload.contacts),
     '{{ADDITIONAL_DETAILS}}': toDocx(payload.additionalDetails),
