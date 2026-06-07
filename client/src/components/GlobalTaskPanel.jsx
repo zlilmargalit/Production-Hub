@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { subscribeToPush } from '../utils/pushSubscribe';
 import PageBar from './ui/PageBar';
 
 const fmtDate = (d) => {
@@ -138,6 +137,178 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
   );
 }
 
+// ── Date pill for board view ──────────────────────────────────────────────────
+function DatePill({ dueDate, completed }) {
+  if (!dueDate) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due   = new Date(dueDate);
+  const isToday   = due.getTime() === today.getTime();
+  const isOverdue = !completed && due < today;
+
+  let className = 'gtask-date-pill';
+  if (isToday)        className += ' gtask-date-pill--today';
+  else if (isOverdue) className += ' gtask-date-pill--overdue';
+  else                className += ' gtask-date-pill--future';
+
+  return (
+    <span className={className}>
+      {isOverdue && <span aria-hidden="true">⚠ </span>}
+      {fmtDate(dueDate)}
+    </span>
+  );
+}
+
+// ── Single task row (board view) ──────────────────────────────────────────────
+function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, setExpandedId, noteDraft, setNoteDraft, saveNoteBlur, editingId, setEditingId, crew, shows }) {
+  const linkedIds   = normalizeShowIds(t);
+  const linkedShows = linkedIds.map(id => showById[id]).filter(Boolean);
+  const isEditing   = editingId  === t.id;
+  const isExpanded  = expandedId === t.id;
+
+  const toggleExpand = () => {
+    if (editingId === t.id) return;
+    if (expandedId === t.id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(t.id);
+      setNoteDraft(t.notes || '');
+    }
+  };
+
+  return (
+    <div
+      className={`gtask-board-row${t.completed ? ' completed' : ''}${isExpanded ? ' expanded' : ''}`}
+    >
+      {isEditing ? (
+        <TaskEditForm
+          task={t}
+          crew={crew}
+          shows={shows}
+          onSave={(data) => { onEdit(t.id, data); setEditingId(null); }}
+          onCancel={() => setEditingId(null)}
+        />
+      ) : (
+        <>
+          <div className="gtask-board-row-main">
+            <input
+              type="checkbox"
+              className="gtask-check"
+              checked={t.completed}
+              onChange={() => onToggle(t.id, !t.completed)}
+            />
+            <span
+              className="gtask-text"
+              dir="rtl"
+              onClick={toggleExpand}
+              style={{ cursor: 'pointer', flex: 1 }}
+            >
+              {t.text}
+            </span>
+            <div className="gtask-board-row-hover-actions">
+              <button
+                className="btn-action"
+                onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setExpandedId(null); }}
+              >Edit</button>
+              <button
+                className="btn-action btn-action--danger"
+                onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}
+              >Delete</button>
+            </div>
+          </div>
+
+          {/* Pills row */}
+          {(t.dueDate || linkedShows.length > 0) && (
+            <div className="gtask-board-row-pills">
+              <DatePill dueDate={t.dueDate} completed={t.completed} />
+              {linkedShows.map(s => (
+                <span key={s.id} className="gtask-pill gtask-pill--show">{s.name}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Inline notes */}
+          {isExpanded && (
+            <div className="gtask-notes-panel" onClick={(e) => e.stopPropagation()}>
+              <textarea
+                className="gtask-notes-inline"
+                dir="auto"
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                onBlur={() => saveNoteBlur(t.id)}
+                placeholder="Additional details…"
+                rows={3}
+                autoFocus
+              />
+              <div className="gtask-notes-hint">Saves automatically when you click away</div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Two-column board (Active tab only) ───────────────────────────────────────
+function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows }) {
+  const [expandedId,  setExpandedId]  = useState(null);
+  const [noteDraft,   setNoteDraft]   = useState('');
+  const [editingId,   setEditingId]   = useState(null);
+  const noteSaveTimer = useRef(null);
+
+  const saveNoteBlur = (taskId) => {
+    clearTimeout(noteSaveTimer.current);
+    noteSaveTimer.current = setTimeout(() => {
+      onEdit(taskId, { notes: noteDraft.trim() || null });
+    }, 300);
+  };
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const scheduled = [...tasks.filter(t => t.dueDate)]
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const noDate = tasks.filter(t => !t.dueDate);
+
+  const rowProps = { showById, onToggle, onEdit, onDelete, expandedId, setExpandedId, noteDraft, setNoteDraft, saveNoteBlur, editingId, setEditingId, crew, shows };
+
+  return (
+    <div className="gtask-board">
+      {/* Left: Scheduled */}
+      <div className="gtask-board-col">
+        <div className="gtask-board-col-header">
+          <span className="gtask-board-col-dot gtask-board-col-dot--blue" aria-hidden="true">●</span>
+          <span className="gtask-board-col-title">Scheduled</span>
+          <span className="gtask-board-col-count">{scheduled.length}</span>
+          <span className="gtask-board-col-hint">nearest first</span>
+        </div>
+        {scheduled.length === 0 ? (
+          <div className="gtask-board-empty">No dated tasks</div>
+        ) : (
+          scheduled.map(t => (
+            <BoardTaskRow key={t.id} t={t} {...rowProps} />
+          ))
+        )}
+      </div>
+
+      {/* Right: No date */}
+      <div className="gtask-board-col">
+        <div className="gtask-board-col-header">
+          <span className="gtask-board-col-dot gtask-board-col-dot--orange" aria-hidden="true">●</span>
+          <span className="gtask-board-col-title">No date</span>
+          <span className="gtask-board-col-count">{noDate.length}</span>
+          <span className="gtask-board-col-hint">no less important</span>
+        </div>
+        {noDate.length === 0 ? (
+          <div className="gtask-board-empty">No undated tasks</div>
+        ) : (
+          noDate.map(t => (
+            <BoardTaskRow key={t.id} t={t} {...rowProps} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main panel ────────────────────────────────────────────────────────────────
 function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpdate }) {
   const [text,        setText]        = useState('');
@@ -150,25 +321,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const [editingId,   setEditingId]   = useState(null);
   const [expandedId,  setExpandedId]  = useState(null);
   const [noteDraft,   setNoteDraft]   = useState('');
-  const [pushStatus,  setPushStatus]  = useState(null);
-  const [pushMsg,     setPushMsg]     = useState('');
   const noteSaveTimer = useRef(null);
-
-  const handleTestPush = async () => {
-    setPushStatus('sending'); setPushMsg('');
-    try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        await subscribeToPush().catch(() => {});
-      }
-      const res  = await fetch('/api/automations/push/test', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) { setPushStatus('error'); setPushMsg(data.error || 'Failed'); }
-      else         { setPushStatus('ok');    setPushMsg(`Sent to ${data.sent} subscription${data.sent !== 1 ? 's' : ''}`); }
-    } catch {
-      setPushStatus('error'); setPushMsg('Network error');
-    }
-    setTimeout(() => { setPushStatus(null); setPushMsg(''); }, 4000);
-  };
 
   const handleAdd = () => {
     const trimmed = text.trim();
@@ -233,19 +386,6 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
           { value: countDone,                         label: 'Done' },
           { value: ownTasks.filter(t=>t.dueDate).length, label: 'With date' },
         ]}
-        actions={
-          <button
-            className={`gtask-test-push-btn${pushStatus === 'ok' ? ' gtask-test-push-btn--ok' : pushStatus === 'error' ? ' gtask-test-push-btn--err' : ''}`}
-            onClick={handleTestPush}
-            disabled={pushStatus === 'sending'}
-            title="Send a test push notification"
-          >
-            {pushStatus === 'sending' ? 'Sending…'
-              : pushStatus === 'ok'   ? `✓ ${pushMsg}`
-              : pushStatus === 'error'? `✕ ${pushMsg}`
-              : 'Test Push'}
-          </button>
-        }
       />
 
       {/* Add-task form */}
@@ -281,8 +421,14 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
         )}
 
         <div className="gtask-add-meta">
-          <input type="date" className="gtask-date-input" value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)} title="Due date" />
+          <input
+            type="date"
+            className="gtask-date-input"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            title="Due date (optional)"
+            placeholder="dd/mm/yyyy — optional"
+          />
           <select className="gtask-select" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Assign to…</option>
             {(crew || []).map((m) => (
@@ -293,11 +439,10 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
         </div>
       </div>
 
-      {/* Filter bar */}
+      {/* Filter bar — Active / Completed only */}
       <div className="gtask-filter-bar">
         {[
           { key: 'active', label: 'Active',    count: countActive },
-          { key: 'all',    label: 'All',        count: tasks.length },
           { key: 'done',   label: 'Completed',  count: countDone },
         ].map(({ key, label, count }) => (
           <button key={key}
@@ -357,92 +502,107 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
         </div>
       )}
 
-      {/* Task list */}
-      {filtered.length === 0 ? (
-        <div className="gtask-empty">
-          {filter === 'active' ? "No active tasks — you're all caught up!"
-            : filter === 'done' ? 'No completed tasks yet'
-            : 'No tasks yet — add one above'}
-        </div>
-      ) : (
-        <ul className="gtask-list">
-          {filtered.map((t) => {
-            const assignee    = t.assignedTo ? crewById[t.assignedTo] : null;
-            const linkedIds   = normalizeShowIds(t);
-            const linkedShows = linkedIds.map(id => showById[id]).filter(Boolean);
-            const today       = new Date(); today.setHours(0, 0, 0, 0);
-            const overdue     = t.dueDate && !t.completed && new Date(t.dueDate) < today;
-            const isEditing   = editingId  === t.id;
-            const isExpanded  = expandedId === t.id;
+      {/* Active tab: two-column board */}
+      {filter === 'active' && (
+        filtered.length === 0 ? (
+          <div className="gtask-empty">No active tasks — you're all caught up!</div>
+        ) : (
+          <TaskBoard
+            tasks={filtered}
+            showById={showById}
+            onToggle={onToggle}
+            onEdit={handleSaveEdit}
+            onDelete={onDelete}
+            crew={crew}
+            shows={shows}
+          />
+        )
+      )}
 
-            return (
-              <li key={t.id}
-                className={`gtask-item${t.completed ? ' completed' : ''}${overdue ? ' overdue' : ''}${isEditing ? ' editing' : ''}${isExpanded ? ' expanded' : ''}`}
-              >
-                {isEditing ? (
-                  <TaskEditForm
-                    task={t}
-                    crew={crew}
-                    shows={shows}
-                    onSave={(data) => handleSaveEdit(t.id, data)}
-                    onCancel={() => setEditingId(null)}
-                  />
-                ) : (
-                  <>
-                    <input
-                      type="checkbox"
-                      className="gtask-check"
-                      checked={t.completed}
-                      onChange={() => onToggle(t.id, !t.completed)}
+      {/* Completed tab: flat list */}
+      {filter === 'done' && (
+        filtered.length === 0 ? (
+          <div className="gtask-empty">No completed tasks yet</div>
+        ) : (
+          <ul className="gtask-list">
+            {filtered.map((t) => {
+              const assignee    = t.assignedTo ? crewById[t.assignedTo] : null;
+              const linkedIds   = normalizeShowIds(t);
+              const linkedShows = linkedIds.map(id => showById[id]).filter(Boolean);
+              const today       = new Date(); today.setHours(0, 0, 0, 0);
+              const overdue     = t.dueDate && !t.completed && new Date(t.dueDate) < today;
+              const isEditing   = editingId  === t.id;
+              const isExpanded  = expandedId === t.id;
+
+              return (
+                <li key={t.id}
+                  className={`gtask-item${t.completed ? ' completed' : ''}${overdue ? ' overdue' : ''}${isEditing ? ' editing' : ''}${isExpanded ? ' expanded' : ''}`}
+                >
+                  {isEditing ? (
+                    <TaskEditForm
+                      task={t}
+                      crew={crew}
+                      shows={shows}
+                      onSave={(data) => handleSaveEdit(t.id, data)}
+                      onCancel={() => setEditingId(null)}
                     />
-                    <div className="gtask-body" onClick={() => toggleExpand(t)} style={{ cursor: 'pointer' }}>
-                      <span className="gtask-text" dir="auto">{t.text}</span>
-                      <div className="gtask-pills">
-                        {assignee && (
-                          <span className="gtask-pill gtask-pill--crew">{assignee.name}</span>
-                        )}
-                        {linkedShows.map(s => (
-                          <span key={s.id} className="gtask-pill gtask-pill--show" title={s.date || ''}>
-                            {s.name}
-                          </span>
-                        ))}
-                        {t.dueDate && (
-                          <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
-                            {overdue ? '⚠ ' : ''}{fmtDate(t.dueDate)}
-                          </span>
-                        )}
-                        {t.notes && !isExpanded && (
-                          <span className="gtask-pill gtask-pill--notes" title={t.notes}>details</span>
+                  ) : (
+                    <>
+                      <input
+                        type="checkbox"
+                        className="gtask-check"
+                        checked={t.completed}
+                        onChange={() => onToggle(t.id, !t.completed)}
+                      />
+                      <div className="gtask-body" onClick={() => toggleExpand(t)} style={{ cursor: 'pointer' }}>
+                        <span className="gtask-text" dir="auto">{t.text}</span>
+                        <div className="gtask-pills">
+                          {assignee && (
+                            <span className="gtask-pill gtask-pill--crew">{assignee.name}</span>
+                          )}
+                          {linkedShows.map(s => (
+                            <span key={s.id} className="gtask-pill gtask-pill--show" title={s.date || ''}>
+                              {s.name}
+                            </span>
+                          ))}
+                          {t.dueDate && (
+                            <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
+                              {overdue ? '⚠ ' : ''}{fmtDate(t.dueDate)}
+                            </span>
+                          )}
+                          {t.notes && !isExpanded && (
+                            <span className="gtask-pill gtask-pill--notes" title={t.notes}>details</span>
+                          )}
+                        </div>
+
+                        {isExpanded && (
+                          <div className="gtask-notes-panel" onClick={(e) => e.stopPropagation()}>
+                            <textarea
+                              className="gtask-notes-inline"
+                              dir="auto"
+                              value={noteDraft}
+                              onChange={(e) => setNoteDraft(e.target.value)}
+                              onBlur={() => saveNoteBlur(t.id)}
+                              placeholder="Additional details…"
+                              rows={3}
+                              autoFocus
+                            />
+                            <div className="gtask-notes-hint">Saves automatically when you click away</div>
+                          </div>
                         )}
                       </div>
 
-                      {isExpanded && (
-                        <div className="gtask-notes-panel" onClick={(e) => e.stopPropagation()}>
-                          <textarea
-                            className="gtask-notes-inline"
-                            dir="auto"
-                            value={noteDraft}
-                            onChange={(e) => setNoteDraft(e.target.value)}
-                            onBlur={() => saveNoteBlur(t.id)}
-                            placeholder="Additional details…"
-                            rows={3}
-                            autoFocus
-                          />
-                          <div className="gtask-notes-hint">Saves automatically when you click away</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="gtask-item-actions">
-                      <button className="btn-action" onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setExpandedId(null); }}>Edit</button>
-                      <button className="btn-action btn-action--danger" onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}>Delete</button>
-                    </div>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                      <div className="gtask-item-actions">
+                        <button className="btn-action" onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setExpandedId(null); }}>Edit</button>
+                        <button className="btn-action btn-action--danger" onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}>Delete</button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )
       )}
     </div>
   );

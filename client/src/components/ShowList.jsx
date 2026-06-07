@@ -154,6 +154,8 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
   const monthName = today.toLocaleDateString('en-US', { month: 'long' });
 
   // Derive month and type options from all shows (used for filter dropdowns)
+  const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
   const monthOptions = useMemo(() => {
     const seen = new Set();
     const opts = [];
@@ -162,9 +164,8 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
       const prefix = s.date.slice(0, 7); // 'YYYY-MM'
       if (!seen.has(prefix)) {
         seen.add(prefix);
-        const [y, m] = prefix.split('-');
-        const label = new Date(Number(y), Number(m) - 1, 1)
-          .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const [, m] = prefix.split('-');
+        const label = SHORT_MONTHS[Number(m) - 1] || prefix;
         opts.push({ value: prefix, label });
       }
     });

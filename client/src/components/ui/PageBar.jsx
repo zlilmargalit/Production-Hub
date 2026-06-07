@@ -4,18 +4,19 @@ import { useRef, useEffect, useState } from 'react';
  * Compact sticky page-bar — replaces the giant page-header-edit + separate stats cards.
  *
  * Layout (matching design):
- *   Row 1 — title + count label  (left)   /  actions (right, optional)
- *   Row 2 — metric strip full-width  (optional)
- *   Row 3 — tabs / segmented control (optional, via children)
+ *   Row 1 — [title + de-emphasized count] LEFT  /  [stat strip] RIGHT
+ *            justifyContent:space-between, alignItems:flex-end, full width
+ *   Full-width 2px ink divider
+ *   Row 2 — tabs (left) + action button (right, optional)
  *
  * Props:
  *  title       string          — page name
  *  accentColor string?         — custom dot color (defaults to var(--accent))
  *  count       number?         — main count shown inline next to the title
  *  countLabel  string?         — e.g. "members", "shows"
- *  metrics     {value,label}[] — metric strip segments (rendered between title and tabs)
- *  actions     ReactNode?      — right-side action buttons (title row)
- *  children    ReactNode?      — tabs / segmented control (third row)
+ *  metrics     {value,label}[] — right-side stat strip segments
+ *  actions     ReactNode?      — action buttons (tabs row right side)
+ *  children    ReactNode?      — tabs / segmented control (tabs row left side)
  */
 export default function PageBar({ title, accentColor, count, countLabel, metrics = [], actions, children }) {
   const sentinelRef = useRef(null);
@@ -37,7 +38,7 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
       <div ref={sentinelRef} className="pg-bar-sentinel" aria-hidden="true" />
       <div className={`pg-bar${stuck ? ' pg-bar--stuck' : ''}`}>
 
-        {/* Row 1 — title + count */}
+        {/* Row 1 — title+count LEFT / stat strip RIGHT */}
         <div className="pg-bar-row1">
           <div className="pg-bar-left">
             <h1 className="pg-bar-title">
@@ -53,25 +54,33 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
               </span>
             )}
           </div>
-          {actions && <div className="pg-bar-actions">{actions}</div>}
+
+          {metrics.length > 0 && (
+            <div className="pg-bar-stat-strip">
+              {metrics.map((m, i) => (
+                <div key={i} className="pg-bar-stat">
+                  <span className="pg-bar-stat-val">
+                    {typeof m.value === 'number'
+                      ? String(m.value).padStart(2, '0')
+                      : m.value}
+                  </span>
+                  <span className="pg-bar-stat-lbl">{m.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Row 2 — metric strip (below title, above tabs) */}
-        {metrics.length > 0 && (
-          <div className="pg-bar-metric-strip">
-            {metrics.map((m, i) => (
-              <div key={i} className="pg-bar-metric">
-                <span className="pg-bar-metric-val">
-                  {String(m.value).padStart(2, '0')}
-                </span>
-                <span className="pg-bar-metric-lbl">{m.label}</span>
-              </div>
-            ))}
+        {/* Full-width 2px ink divider */}
+        <div className="pg-bar-divider" />
+
+        {/* Row 2 — tabs (left) + actions (right) */}
+        {(children || actions) && (
+          <div className="pg-bar-tabs">
+            <div className="pg-bar-tabs-left">{children}</div>
+            {actions && <div className="pg-bar-actions">{actions}</div>}
           </div>
         )}
-
-        {/* Row 3 — tabs */}
-        {children && <div className="pg-bar-tabs">{children}</div>}
       </div>
     </>
   );

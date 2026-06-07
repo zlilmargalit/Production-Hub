@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PageBar from './ui/PageBar';
 
 const RUBRIC_LABELS = {
   schedule:  'Schedule',
@@ -208,22 +209,15 @@ function TeamsPage() {
 
   return (
     <div>
-      <div className="page-header-edit">
-        <div className="page-header-left">
-          <h1 className="page-title">Teams<span className="page-title-dot">.</span></h1>
-          <p className="page-subtitle">
-            <span className="page-subtitle-num">{String(teams.length).padStart(2, '0')}</span>
-            <span className="page-subtitle-line" />
-            <span>groups</span>
-          </p>
-        </div>
-        <div className="page-marquee" aria-hidden="true">
-          <span className="page-marquee-track">
-            <span>Teams</span><span>·</span><span>Teams</span><span>·</span>
-            <span>Teams</span><span>·</span><span>Teams</span><span>·</span>
-          </span>
-        </div>
-      </div>
+      <PageBar
+        title="Teams"
+        accentColor="var(--orange)"
+        count={teams.length}
+        countLabel="groups"
+        metrics={[
+          { value: teams.length, label: 'Total' },
+        ]}
+      />
 
       {/* Pending invitations — shown above everything else */}
       <PendingInvitations onAccepted={loadTeams} />

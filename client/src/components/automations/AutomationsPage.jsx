@@ -3,6 +3,7 @@ import IntegrationsBar from './IntegrationsBar';
 import RecipeCards     from './RecipeCards';
 import AutomationBuilder from './AutomationBuilder';
 import AutomationList  from './AutomationList';
+import PageBar from '../ui/PageBar';
 import './automations.css';
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -93,28 +94,20 @@ export default function AutomationsPage() {
     );
   }
 
+  const connectedCount = Object.values(integrations).filter(Boolean).length;
+
   return (
     <div className="auto-page">
-      {/* ── Hero ── */}
-      <div className="page-header-edit">
-        <div className="page-header-left">
-          <h1 className="page-title">Automations<span className="page-title-dot">.</span></h1>
-          <p className="page-subtitle">
-            <span className="page-subtitle-num">{String(activeCount).padStart(2, '0')}</span>
-            <span className="page-subtitle-line" />
-            <span>active rule{activeCount !== 1 ? 's' : ''}</span>
-            {totalCount > activeCount && (
-              <><span className="page-subtitle-line" /><span>{totalCount - activeCount} paused</span></>
-            )}
-          </p>
-        </div>
-        <div className="page-marquee" aria-hidden="true">
-          <span className="page-marquee-track">
-            <span>Automations</span><span>·</span><span>Automations</span><span>·</span>
-            <span>Automations</span><span>·</span><span>Automations</span><span>·</span>
-          </span>
-        </div>
-      </div>
+      <PageBar
+        title="Automations"
+        count={activeCount}
+        countLabel="active rules"
+        metrics={[
+          { value: String(activeCount).padStart(2, '0'), label: 'Active' },
+          { value: String(connectedCount).padStart(2, '0'), label: 'Connected' },
+          { value: String(automations.length).padStart(2, '0'), label: 'Recipes' },
+        ]}
+      />
 
       {/* ── Integrations ── */}
       <div className="auto-section">
