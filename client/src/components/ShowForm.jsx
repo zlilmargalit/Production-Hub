@@ -75,6 +75,8 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
   const sectionRefs = useRef({});
   const schedTimeRefs     = useRef([]);
   const schedActivityRefs = useRef([]);
+  const schedDragIdx      = useRef(null);
+  const [schedDragOver,   setSchedDragOver] = useState(null);
 
   const initialScheduleRows = show
     ? parseScheduleRows(show.schedule)
@@ -147,6 +149,32 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
     });
   const removeScheduleRow = (idx) =>
     setForm((f) => ({ ...f, scheduleRows: f.scheduleRows.filter((_, i) => i !== idx) }));
+
+  const onSchedDragStart = (e, idx) => {
+    schedDragIdx.current = idx;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const onSchedDragOver = (e, idx) => {
+    e.preventDefault();
+    setSchedDragOver(idx);
+  };
+  const onSchedDrop = (e, idx) => {
+    e.preventDefault();
+    const from = schedDragIdx.current;
+    if (from === null || from === idx) { setSchedDragOver(null); return; }
+    setForm((f) => {
+      const rows = [...f.scheduleRows];
+      const [moved] = rows.splice(from, 1);
+      rows.splice(idx, 0, moved);
+      return { ...f, scheduleRows: rows };
+    });
+    schedDragIdx.current = null;
+    setSchedDragOver(null);
+  };
+  const onSchedDragEnd = () => {
+    schedDragIdx.current = null;
+    setSchedDragOver(null);
+  };
 
   const schedKeyDown = (e, idx, col) => {
     const total = form.scheduleRows.length;
@@ -326,7 +354,16 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
               <div className="sf-field full" style={{ marginBottom: 20 }}>
                 <label>Schedule</label>
                 {form.scheduleRows.map((row, idx) => (
-                  <div key={idx} className="sf-sched-row">
+                  <div
+                    key={idx}
+                    className={`sf-sched-row${schedDragOver === idx ? ' sf-sched-drop-target' : ''}`}
+                    draggable
+                    onDragStart={(e) => onSchedDragStart(e, idx)}
+                    onDragOver={(e) => onSchedDragOver(e, idx)}
+                    onDrop={(e) => onSchedDrop(e, idx)}
+                    onDragEnd={onSchedDragEnd}
+                  >
+                    <span className="sf-sched-handle" title="Drag to reorder">⠿</span>
                     <input
                       type="text"
                       className="sf-inp sf-sched-time"

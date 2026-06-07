@@ -3,14 +3,19 @@ import { useRef, useEffect, useState } from 'react';
 /**
  * Compact sticky page-bar — replaces the giant page-header-edit + separate stats cards.
  *
+ * Layout (matching design):
+ *   Row 1 — title + count label  (left)   /  actions (right, optional)
+ *   Row 2 — metric strip full-width  (optional)
+ *   Row 3 — tabs / segmented control (optional, via children)
+ *
  * Props:
  *  title       string          — page name
  *  accentColor string?         — custom dot color (defaults to var(--accent))
  *  count       number?         — main count shown inline next to the title
  *  countLabel  string?         — e.g. "members", "shows"
- *  metrics     {value,label}[] — right-side metric strip segments
- *  actions     ReactNode?      — right-side action buttons (rendered after metrics)
- *  children    ReactNode?      — tabs / segmented control (second row)
+ *  metrics     {value,label}[] — metric strip segments (rendered between title and tabs)
+ *  actions     ReactNode?      — right-side action buttons (title row)
+ *  children    ReactNode?      — tabs / segmented control (third row)
  */
 export default function PageBar({ title, accentColor, count, countLabel, metrics = [], actions, children }) {
   const sentinelRef = useRef(null);
@@ -19,8 +24,6 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || !('IntersectionObserver' in window)) return;
-    // Fire when the sentinel (1px div just above the bar) goes out of view —
-    // i.e. the bar has scrolled up to its sticky position under the navbar.
     const obs = new IntersectionObserver(
       ([entry]) => setStuck(!entry.isIntersecting),
       { rootMargin: '-73px 0px 0px 0px', threshold: 0 },
@@ -33,6 +36,8 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
     <>
       <div ref={sentinelRef} className="pg-bar-sentinel" aria-hidden="true" />
       <div className={`pg-bar${stuck ? ' pg-bar--stuck' : ''}`}>
+
+        {/* Row 1 — title + count */}
         <div className="pg-bar-row1">
           <div className="pg-bar-left">
             <h1 className="pg-bar-title">
@@ -48,24 +53,24 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
               </span>
             )}
           </div>
-          {(metrics.length > 0 || actions) && (
-            <div className="pg-bar-right">
-              {metrics.length > 0 && (
-                <div className="pg-bar-metric-strip">
-                  {metrics.map((m, i) => (
-                    <div key={i} className="pg-bar-metric">
-                      <span className="pg-bar-metric-val">
-                        {String(m.value).padStart(2, '0')}
-                      </span>
-                      <span className="pg-bar-metric-lbl">{m.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {actions && <div className="pg-bar-actions">{actions}</div>}
-            </div>
-          )}
+          {actions && <div className="pg-bar-actions">{actions}</div>}
         </div>
+
+        {/* Row 2 — metric strip (below title, above tabs) */}
+        {metrics.length > 0 && (
+          <div className="pg-bar-metric-strip">
+            {metrics.map((m, i) => (
+              <div key={i} className="pg-bar-metric">
+                <span className="pg-bar-metric-val">
+                  {String(m.value).padStart(2, '0')}
+                </span>
+                <span className="pg-bar-metric-lbl">{m.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Row 3 — tabs */}
         {children && <div className="pg-bar-tabs">{children}</div>}
       </div>
     </>

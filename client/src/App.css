@@ -1703,12 +1703,12 @@ body {
   border-bottom-color: var(--border);
   box-shadow: 0 3px 10px rgba(26,23,20,.06);
 }
+/* Row 1: title + optional actions */
 .pg-bar-row1 {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 16px;
   padding-bottom: 10px;
 }
 .pg-bar-left {
@@ -1740,28 +1740,28 @@ body {
   font-variant-numeric: tabular-nums;
   align-self: center;
 }
-.pg-bar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
+.pg-bar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Row 2: metric strip — full-width, between title and tabs */
 .pg-bar-metric-strip {
   display: flex;
   border: 1px solid var(--border-strong);
   background: var(--surface);
+  margin-bottom: 10px;
+  width: fit-content;          /* shrink to content, left-aligned */
 }
 .pg-bar-metric {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 16px;
+  padding: 6px 20px;
   gap: 2px;
+  min-width: 80px;
 }
 .pg-bar-metric + .pg-bar-metric { border-left: 1px solid var(--border); }
 .pg-bar-metric-val {
   font-family: 'Bricolage Grotesque', sans-serif;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -1776,7 +1776,8 @@ body {
   color: var(--text-3);
   white-space: nowrap;
 }
-.pg-bar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Row 3: tabs */
 .pg-bar-tabs { padding-bottom: 10px; }
 
 @media (max-width: 640px) {
@@ -8476,7 +8477,20 @@ body {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  border-top: 2px solid transparent;
+  transition: border-color 0.1s;
 }
+.sf-sched-drop-target { border-top-color: var(--accent) !important; }
+.sf-sched-handle {
+  cursor: grab;
+  color: var(--text-3);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.sf-sched-handle:active { cursor: grabbing; }
 .sf-sched-time {
   width: 96px !important;
   flex-shrink: 0;
