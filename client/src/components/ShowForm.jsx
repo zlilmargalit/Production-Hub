@@ -49,7 +49,6 @@ const SECTIONS = [
   { id: 'brief',     label: 'Brief Content' },
   { id: 'logistics', label: 'Logistics' },
   { id: 'crew',      label: 'Crew' },
-  { id: 'guests',    label: 'Guest List' },
   { id: 'custom',    label: 'Custom' },
 ];
 
@@ -65,9 +64,9 @@ function hasSectionFlag(sectionId, form) {
 }
 
 function sectionCount(sectionId, form) {
-  if (sectionId === 'crew')    return form.crewIds.length || null;
-  if (sectionId === 'guests')  return form.guestList?.length || null;
-  if (sectionId === 'custom')  return Object.keys(form.customFields || {}).filter((k) => form.customFields[k]).length || null;
+  if (sectionId === 'crew')      return form.crewIds.length || null;
+  if (sectionId === 'logistics') return form.guestList?.length || null;
+  if (sectionId === 'custom')    return Object.keys(form.customFields || {}).filter((k) => form.customFields[k]).length || null;
   return null;
 }
 
@@ -252,7 +251,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
 
           {/* Left rail */}
           <nav className="sf-rail">
-            {SECTIONS.filter((s) => s.id !== 'guests' || !isRehearsal(form.eventType)).map((s) => {
+            {SECTIONS.map((s) => {
               const flagged = hasSectionFlag(s.id, form);
               const count   = sectionCount(s.id, form);
               return (
@@ -393,7 +392,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             <section ref={(el) => { sectionRefs.current.logistics = el; }} className="sf-section" id="sf-logistics">
               <div className="sf-sec-head">
                 Logistics
-                <span className="sf-sec-sub">parking · transport</span>
+                <span className="sf-sec-sub">parking · transport · guests</span>
               </div>
               <div className="sf-grid2">
                 <div className="sf-field">
@@ -409,46 +408,16 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                   <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder="Internal notes…" className="sf-inp sf-textarea" />
                 </div>
               </div>
-            </section>
 
-            {/* CREW */}
-            <section ref={(el) => { sectionRefs.current.crew = el; }} className="sf-section" id="sf-crew">
-              <div className="sf-sec-head">
-                Crew
-                <span className="sf-sec-sub">tap to toggle assignment</span>
-              </div>
-              <div className="sf-crew-wrap">
-                {sortedRoles.map((role) =>
-                  crewByRole[role].map((m) => {
-                    const sel = form.crewIds.includes(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`sf-crew-chip${sel ? ' sel' : ''}`}
-                        onClick={() => toggleCrew(m.id)}
-                      >
-                        <span className="sf-crew-dot" style={{ background: groupColorFor(m.role) }} />
-                        {m.role} – {m.name}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </section>
-
-            {/* GUEST LIST */}
-            {!isRehearsal(form.eventType) && (
-              <section ref={(el) => { sectionRefs.current.guests = el; }} className="sf-section" id="sf-guests">
-                <div className="sf-sec-head">
-                  Guest List
-                  <span className="sf-sec-sub">
-                    {(form.guestList || []).length > 0
-                      ? `${(form.guestList || []).length} guests`
-                      : 'invited guests · VIPs'}
-                  </span>
-                </div>
-                <div className="sf-field full">
+              {/* Guest list — hidden for rehearsals */}
+              {!isRehearsal(form.eventType) && (
+                <div className="sf-field full" style={{ marginTop: 8 }}>
+                  <label>
+                    Guest List
+                    {(form.guestList || []).length > 0 && (
+                      <span className="sf-guest-count">{(form.guestList || []).length}</span>
+                    )}
+                  </label>
                   {(form.guestList || []).map((guest, idx) => (
                     <div key={idx} className="sf-guest-row">
                       <input
@@ -477,8 +446,34 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                     ＋ Add guest
                   </button>
                 </div>
-              </section>
-            )}
+              )}
+            </section>
+
+            {/* CREW */}
+            <section ref={(el) => { sectionRefs.current.crew = el; }} className="sf-section" id="sf-crew">
+              <div className="sf-sec-head">
+                Crew
+                <span className="sf-sec-sub">tap to toggle assignment</span>
+              </div>
+              <div className="sf-crew-wrap">
+                {sortedRoles.map((role) =>
+                  crewByRole[role].map((m) => {
+                    const sel = form.crewIds.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`sf-crew-chip${sel ? ' sel' : ''}`}
+                        onClick={() => toggleCrew(m.id)}
+                      >
+                        <span className="sf-crew-dot" style={{ background: groupColorFor(m.role) }} />
+                        {m.role} – {m.name}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </section>
 
             {/* CUSTOM */}
             {customDefs.length > 0 && (
