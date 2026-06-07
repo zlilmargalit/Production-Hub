@@ -544,6 +544,7 @@ body {
   white-space: nowrap;
   border-radius: 0;
 }
+.mcal-topbar .seg { box-shadow: none; }
 .seg-btn:last-child { border-right: none; }
 .seg-btn:hover { background: var(--surface-sunk); color: var(--text); }
 .seg-btn.active { background: var(--text); color: var(--surface); }
