@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import FilterChip from './ui/FilterChip';
 import SegmentedControl from './ui/SegmentedControl';
 
 // ── Artist colour palette (stable by index) ────────────────────────────────────
@@ -28,7 +27,6 @@ function localDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Extract first HH:MM from schedule text or loadIn
 function getShowTime(show) {
   if (show.schedule) {
     const m = show.schedule.match(/\d{1,2}:\d{2}/);
@@ -37,7 +35,6 @@ function getShowTime(show) {
   return show.loadIn || '';
 }
 
-// Parse "HH:MM label" lines from schedule field
 function parseScheduleLines(text) {
   if (!text) return [];
   return text.split('\n')
@@ -49,7 +46,237 @@ function parseScheduleLines(text) {
     });
 }
 
-// ── Event pill ─────────────────────────────────────────────────────────────────
+// ── Progress Ring ──────────────────────────────────────────────────────────────
+function ProgressRing({ done, total, color }) {
+  const R = 18;
+  const C = 2 * Math.PI * R;
+  const pct = total === 0 ? 0 : done / total;
+  const offset = C * (1 - pct);
+  return (
+    <svg width="44" height="44" viewBox="0 0 44 44" className="cl-ring" aria-hidden="true">
+      <circle cx="22" cy="22" r={R} fill="none" stroke="var(--border)" strokeWidth="3" />
+      <circle
+        cx="22" cy="22" r={R} fill="none"
+        stroke={color} strokeWidth="3"
+        strokeDasharray={C} strokeDashoffset={offset}
+        strokeLinecap="square"
+        transform="rotate(-90 22 22)"
+        style={{ transition: 'stroke-dashoffset 0.3s' }}
+      />
+      <text x="22" y="22" textAnchor="middle" dominantBaseline="central"
+        style={{ fontSize: '9px', fontWeight: 700, fill: color, fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+        {done}/{total}
+      </text>
+    </svg>
+  );
+}
+
+// ── Checklist Card ─────────────────────────────────────────────────────────────
+function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checkedIds, onToggle, onDelete, isAdded, onAdd }) {
+  const [addingText, setAddingText] = useState('');
+  const [adding, setAdding] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (adding && inputRef.current) inputRef.current.focus();
+  }, [adding]);
+
+  const handleAdd = () => {
+    const text = addingText.trim();
+    setAdding(false);
+    setAddingText('');
+    if (text) onAdd(text);
+  };
+
+  return (
+    <div className="cl-card" style={{ '--cl-color': accentColor }}>
+      <div className="cl-card-header">
+        <ProgressRing done={doneCount} total={items.length} color={accentColor} />
+        <div className="cl-card-title-group">
+          <span className="cl-card-title">{label}</span>
+          {timeLabel && <span className="cl-card-time">{timeLabel}</span>}
+        </div>
+        <span className="cl-card-count">{doneCount}/{items.length}</span>
+      </div>
+
+      <div className="cl-card-items">
+        {items.map((item) => {
+          const done = checkedIds.has(item.id);
+          const added = isAdded(item);
+          return (
+            <div key={item.id} className={`cl-row${done ? ' cl-row--done' : ''}`}>
+              <button
+                className={`cl-check${done ? ' cl-check--done' : ''}`}
+                style={done ? { background: accentColor, borderColor: accentColor } : {}}
+                onClick={() => onToggle(item.id)}
+                aria-label={done ? 'Mark incomplete' : 'Mark complete'}
+              >
+                {done && (
+                  <svg width="10" height="8" viewBox="0 0 10 8">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <span className="cl-row-text" dir="auto">{item.text}</span>
+              <button className="cl-row-del" onClick={() => onDelete(item.id, added)} aria-label="Remove">✕</button>
+            </div>
+          );
+        })}
+
+        {adding ? (
+          <div className="cl-row cl-row--adding">
+            <span className="cl-check cl-check--placeholder" />
+            <input
+              ref={inputRef}
+              className="cl-add-input"
+              dir="auto"
+              value={addingText}
+              onChange={(e) => setAddingText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAdd();
+                if (e.key === 'Escape') { setAdding(false); setAddingText(''); }
+              }}
+              onBlur={handleAdd}
+              placeholder="הוסף משימה..."
+            />
+          </div>
+        ) : (
+          <button className="cl-add-btn" onClick={() => setAdding(true)}>+ Add task</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Show-Day Banner ────────────────────────────────────────────────────────────
+function ShowDayBanner({ show, checklist }) {
+  const lsKey       = `ph-cl-${show.id}`;
+  const collapseKey = `ph-cl-open-${show.id}-${todayStr()}`;
+
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem(collapseKey) !== 'false'; }
+    catch { return true; }
+  });
+
+  const loadState = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem(lsKey) || '{}');
+      return {
+        checkedIds:  new Set(s.checkedIds  || []),
+        addedItems:  s.addedItems  || [],
+        deletedIds:  new Set(s.deletedIds  || []),
+      };
+    } catch {
+      return { checkedIds: new Set(), addedItems: [], deletedIds: new Set() };
+    }
+  };
+
+  const [state, setState] = useState(loadState);
+
+  const saveState = (next) => {
+    try {
+      localStorage.setItem(lsKey, JSON.stringify({
+        checkedIds: [...next.checkedIds],
+        addedItems: next.addedItems,
+        deletedIds: [...next.deletedIds],
+      }));
+    } catch {}
+    setState(next);
+  };
+
+  const toggleOpen = () => {
+    const next = !open;
+    try { localStorage.setItem(collapseKey, String(next)); } catch {}
+    setOpen(next);
+  };
+
+  const toggleCheck = (id) => {
+    const ids = new Set(state.checkedIds);
+    ids.has(id) ? ids.delete(id) : ids.add(id);
+    saveState({ ...state, checkedIds: ids });
+  };
+
+  const deleteItem = (id, isAdded) => {
+    if (isAdded) {
+      saveState({ ...state, addedItems: state.addedItems.filter((i) => i.id !== id) });
+    } else {
+      saveState({ ...state, deletedIds: new Set([...state.deletedIds, id]) });
+    }
+  };
+
+  const addItem = (phase, text) => {
+    const item = { id: `custom-${Date.now()}-${Math.random().toString(36).slice(2)}`, phase, text };
+    saveState({ ...state, addedItems: [...state.addedItems, item] });
+  };
+
+  const beforeTemplate = (checklist?.before || []).filter((i) => !state.deletedIds.has(i.id));
+  const venueTemplate  = (checklist?.venue  || []).filter((i) => !state.deletedIds.has(i.id));
+  const beforeAdded    = state.addedItems.filter((i) => i.phase === 'before');
+  const venueAdded     = state.addedItems.filter((i) => i.phase === 'venue');
+
+  const beforeItems = [...beforeTemplate, ...beforeAdded];
+  const venueItems  = [...venueTemplate,  ...venueAdded];
+  const beforeDone  = beforeItems.filter((i) => state.checkedIds.has(i.id)).length;
+  const venueDone   = venueItems.filter((i)  => state.checkedIds.has(i.id)).length;
+
+  const time         = getShowTime(show);
+  const schedLines   = parseScheduleLines(show.schedule);
+  const departTime   = schedLines.find((l) => l.time)?.time || '';
+  const arriveTime   = show.loadIn || (schedLines[1]?.time || '');
+
+  return (
+    <div className="showday-banner">
+      <div className="showday-hdr" onClick={toggleOpen} role="button" tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && toggleOpen()}>
+        <div className="showday-hdr-left">
+          <span className="showday-badge">Show today</span>
+          <span className="showday-name" dir="auto">{show.name}</span>
+          {show.venue && (
+            <>
+              <span className="showday-sep" aria-hidden="true">·</span>
+              <span className="showday-venue" dir="auto">{show.venue}</span>
+            </>
+          )}
+        </div>
+        <div className="showday-hdr-right">
+          {time && <span className="showday-time">{time}</span>}
+          <span className="showday-chevron" aria-hidden="true">{open ? '▲' : '▼'}</span>
+        </div>
+      </div>
+
+      {open && (
+        <div className="showday-body">
+          <ChecklistCard
+            label="Before you leave"
+            accentColor="var(--orange)"
+            timeLabel={departTime ? `Depart ${departTime}` : ''}
+            items={beforeItems}
+            doneCount={beforeDone}
+            checkedIds={state.checkedIds}
+            onToggle={toggleCheck}
+            onDelete={deleteItem}
+            isAdded={(item) => state.addedItems.some((a) => a.id === item.id)}
+            onAdd={(text) => addItem('before', text)}
+          />
+          <ChecklistCard
+            label="At the venue"
+            accentColor="var(--accent)"
+            timeLabel={arriveTime ? `Arrive ${arriveTime}` : ''}
+            items={venueItems}
+            doneCount={venueDone}
+            checkedIds={state.checkedIds}
+            onToggle={toggleCheck}
+            onDelete={deleteItem}
+            isAdded={(item) => state.addedItems.some((a) => a.id === item.id)}
+            onAdd={(text) => addItem('venue', text)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Event Pill ─────────────────────────────────────────────────────────────────
 function EventPill({ show, onClick }) {
   const time = getShowTime(show);
   return (
@@ -66,9 +293,9 @@ function EventPill({ show, onClick }) {
   );
 }
 
-// ── Quick-view popover ─────────────────────────────────────────────────────────
+// ── Quick-view Popover ─────────────────────────────────────────────────────────
 function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
-  const ref = useRef(null);
+  const ref    = useRef(null);
   const artist = artists.find((a) => a.id === show.artistId);
 
   useEffect(() => {
@@ -80,9 +307,7 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
   }, [onClose]);
 
   const dateStr = show.date
-    ? new Date(show.date + 'T12:00:00').toLocaleDateString('en-GB', {
-        day: 'numeric', month: 'long', year: 'numeric',
-      })
+    ? new Date(show.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
   const scheduleLines = parseScheduleLines(show.schedule);
@@ -90,28 +315,18 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
 
   return (
     <div className="qv-backdrop">
-      <div
-        className="qv-popover"
-        ref={ref}
-        style={{ '--qv-color': artistColor, '--qv-soft': artist?.soft || 'var(--accent-soft)' }}
-      >
+      <div className="qv-popover" ref={ref}
+        style={{ '--qv-color': artistColor, '--qv-soft': artist?.soft || 'var(--accent-soft)' }}>
         <div className="qv-top-band" />
         <div className="qv-body">
           <button className="qv-close" onClick={onClose} aria-label="Close">✕</button>
-
           {artist && (
             <div className="qv-artist" style={{ color: artistColor }}>
-              <span className="qv-artist-dot" />
-              {artist.name}
+              <span className="qv-artist-dot" /> {artist.name}
             </div>
           )}
-
           <h3 className="qv-show-name" dir="auto">{show.name}</h3>
-
-          <p className="qv-date">
-            {dateStr}{show.loadIn ? ` · Doors ${show.loadIn}` : ''}
-          </p>
-
+          <p className="qv-date">{dateStr}{show.loadIn ? ` · Doors ${show.loadIn}` : ''}</p>
           {(show.venue || show.address) && (
             <div className="qv-venue-row">
               <span className="qv-venue-label">Venue</span>
@@ -121,30 +336,21 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
               </div>
             </div>
           )}
-
           {scheduleLines.length > 0 && (
             <div className="qv-section">
               <p className="qv-section-label">Schedule · לו״ז</p>
               <div className="qv-sched">
                 {scheduleLines.map((line, i) => (
                   <div key={i} className="qv-sched-row">
-                    {line.time && (
-                      <span className="qv-sched-time" style={{ color: artistColor }}>
-                        {line.time}
-                      </span>
-                    )}
+                    {line.time && <span className="qv-sched-time" style={{ color: artistColor }}>{line.time}</span>}
                     <span className="qv-sched-label" dir="auto">{line.label}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
           <div className="qv-footer">
-            <button
-              className="qv-open-link"
-              onClick={() => { onOpenShow(show); onClose(); }}
-            >
+            <button className="qv-open-link" onClick={() => { onOpenShow(show); onClose(); }}>
               Open show →
             </button>
           </div>
@@ -154,76 +360,57 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
   );
 }
 
-// ── Master Calendar ────────────────────────────────────────────────────────────
+// ── Calendar ───────────────────────────────────────────────────────────────────
 function sundayOfWeek(d) {
-  const day = d.getDay(); // 0=Sun
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay());
 }
 
 function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
-  const [view, setView]   = useState('month');
-  const [month, setMonth] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-  });
+  const [view, setView]     = useState('month');
+  const [month, setMonth]   = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [weekStart, setWeekStart] = useState(() => sundayOfWeek(new Date()));
-  const [popover, setPopover] = useState(null);
+  const [popover, setPopover]     = useState(null);
 
-  const today = todayStr();
-  const year  = month.getFullYear();
-  const m     = month.getMonth();
+  const today  = todayStr();
+  const year   = month.getFullYear();
+  const m      = month.getMonth();
 
   const filtered = selectedArtists.length === 0
     ? allShows
     : allShows.filter((s) => selectedArtists.includes(s.artistId));
 
-  // Week starts Sunday (getDay() returns 0 for Sunday — no offset needed)
   const firstDay   = new Date(year, m, 1);
   const lastDay    = new Date(year, m + 1, 0);
-  const startPad   = firstDay.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const startPad   = firstDay.getDay();
   const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
 
   const cells = Array.from({ length: totalCells }, (_, i) => {
-    const dayOffset = i - startPad;
-    const date      = new Date(year, m, 1 + dayOffset);
-    const dateStr   = localDateStr(date);
+    const date           = new Date(year, m, 1 + (i - startPad));
+    const dateStr        = localDateStr(date);
     const isCurrentMonth = date.getMonth() === m;
     const isToday        = dateStr === today;
-    const shows = filtered
-      .filter((s) => toDateStr(s.date) === dateStr && !s.archived)
+    const shows          = filtered.filter((s) => toDateStr(s.date) === dateStr && !s.archived)
       .sort((a, b) => getShowTime(a).localeCompare(getShowTime(b)));
     return { date, dateStr, isCurrentMonth, isToday, shows };
   });
 
-  // Week view: 7 days starting from weekStart (Sunday)
   const weekCells = Array.from({ length: 7 }, (_, i) => {
     const date    = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
     const dateStr = localDateStr(date);
-    const isToday = dateStr === today;
-    const shows   = filtered
-      .filter((s) => toDateStr(s.date) === dateStr && !s.archived)
-      .sort((a, b) => getShowTime(a).localeCompare(getShowTime(b)));
-    return { date, dateStr, isToday, shows };
+    return { date, dateStr, isToday: dateStr === today, shows: filtered.filter((s) => toDateStr(s.date) === dateStr && !s.archived) };
   });
 
-  const displayedMonth = view === 'week'
-    ? weekStart.toLocaleString('default', { month: 'long' })
-    : month.toLocaleString('default', { month: 'long' });
-  const displayedYear = view === 'week' ? weekStart.getFullYear() : year;
+  const displayedMonth = (view === 'week' ? weekStart : month).toLocaleString('default', { month: 'long' });
+  const displayedYear  = view === 'week' ? weekStart.getFullYear() : year;
 
   const prevMonth = () => setMonth(new Date(year, m - 1, 1));
   const nextMonth = () => setMonth(new Date(year, m + 1, 1));
   const prevWeek  = () => setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() - 7));
   const nextWeek  = () => setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7));
+  const goToday   = () => { const n = new Date(); setMonth(new Date(n.getFullYear(), n.getMonth(), 1)); setWeekStart(sundayOfWeek(n)); };
 
   const handlePrev = view === 'week' ? prevWeek : prevMonth;
   const handleNext = view === 'week' ? nextWeek : nextMonth;
-
-  const goToday = () => {
-    const n = new Date();
-    setMonth(new Date(n.getFullYear(), n.getMonth(), 1));
-    setWeekStart(sundayOfWeek(n));
-  };
 
   return (
     <div className="mcal">
@@ -237,67 +424,34 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
           <button className="mcal-today-btn" onClick={goToday}>Today</button>
           <button className="mcal-nav-btn" onClick={handleNext} aria-label="Next">›</button>
         </div>
-        <SegmentedControl
-          items={[{ id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }]}
-          activeId={view}
-          onChange={setView}
-        />
+        <SegmentedControl items={[{ id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }]} activeId={view} onChange={setView} />
       </div>
 
       {view === 'month' ? (
         <div className="mcal-grid">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-            <div key={d} className="mcal-day-hdr">{d}</div>
+          {['S','M','T','W','T','F','S'].map((d, i) => (
+            <div key={i} className="mcal-day-hdr">{d}</div>
           ))}
-
           {cells.map(({ date, dateStr, isCurrentMonth, isToday, shows }) => (
-            <div
-              key={dateStr}
-              className={[
-                'mcal-cell',
-                !isCurrentMonth ? 'mcal-cell--out'   : '',
-                isToday         ? 'mcal-cell--today'  : '',
-              ].filter(Boolean).join(' ')}
-            >
+            <div key={dateStr} className={['mcal-cell', !isCurrentMonth ? 'mcal-cell--out' : '', isToday ? 'mcal-cell--today' : ''].filter(Boolean).join(' ')}>
               <span className="mcal-day-num">{date.getDate()}</span>
-
               {shows.slice(0, 2).map((show) => (
-                <EventPill
-                  key={show.id}
-                  show={show}
-                  onClick={() => setPopover({ show })}
-                />
+                <EventPill key={show.id} show={show} onClick={() => setPopover({ show })} />
               ))}
-
-              {shows.length > 2 && (
-                <span className="mcal-more">+{shows.length - 2} more</span>
-              )}
+              {shows.length > 2 && <span className="mcal-more">+{shows.length - 2}</span>}
             </div>
           ))}
         </div>
       ) : (
         <div className="mcal-week-grid">
           {weekCells.map(({ date, dateStr, isToday, shows }) => (
-            <div
-              key={dateStr}
-              className={['mcal-week-col', isToday ? 'mcal-week-col--today' : ''].filter(Boolean).join(' ')}
-            >
+            <div key={dateStr} className={['mcal-week-col', isToday ? 'mcal-week-col--today' : ''].filter(Boolean).join(' ')}>
               <div className="mcal-week-col-hdr">
-                <span className="mcal-week-wday">
-                  {date.toLocaleString('default', { weekday: 'short' })}
-                </span>
-                <span className={`mcal-week-daynum${isToday ? ' mcal-week-daynum--today' : ''}`}>
-                  {date.getDate()}
-                </span>
+                <span className="mcal-week-wday">{date.toLocaleString('default', { weekday: 'short' })}</span>
+                <span className={`mcal-week-daynum${isToday ? ' mcal-week-daynum--today' : ''}`}>{date.getDate()}</span>
               </div>
               <div className="mcal-week-col-body">
-                {shows.map((show) => (
-                  <EventPill
-                    key={show.id}
-                    show={show}
-                    onClick={() => setPopover({ show })}
-                  />
-                ))}
+                {shows.map((show) => <EventPill key={show.id} show={show} onClick={() => setPopover({ show })} />)}
               </div>
             </div>
           ))}
@@ -305,12 +459,7 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
       )}
 
       {popover && (
-        <QuickViewPopover
-          show={popover.show}
-          artists={artists}
-          onClose={() => setPopover(null)}
-          onOpenShow={onOpenShow}
-        />
+        <QuickViewPopover show={popover.show} artists={artists} onClose={() => setPopover(null)} onOpenShow={onOpenShow} />
       )}
     </div>
   );
@@ -319,41 +468,27 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
 // ── Up Next ────────────────────────────────────────────────────────────────────
 function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
   const today = todayStr();
-  const rows = allShows
+  const rows  = allShows
     .filter((s) => !s.archived && toDateStr(s.date) >= today)
     .filter((s) => selectedArtists.length === 0 || selectedArtists.includes(s.artistId))
     .sort((a, b) => toDateStr(a.date).localeCompare(toDateStr(b.date)))
-    .slice(0, 7);
+    .slice(0, 8);
 
   return (
     <div className="upnext">
-      <div className="upnext-header">
-        <h2 className="upnext-title">Up Next</h2>
-      </div>
-
-      {rows.length === 0 && (
-        <p className="upnext-empty">No upcoming shows.</p>
-      )}
-
+      <div className="upnext-header"><h2 className="upnext-title">Up Next</h2></div>
+      {rows.length === 0 && <p className="upnext-empty">No upcoming shows.</p>}
       {rows.map((show) => {
         const artist = artists.find((a) => a.id === show.artistId);
         const date   = new Date(show.date + 'T12:00:00');
-        const day    = date.getDate();
-        const mon    = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-        const wday   = date.toLocaleString('default', { weekday: 'short' }).toUpperCase();
-        const time   = getShowTime(show);
-
         return (
-          <div
-            key={show.id}
-            className="upnext-row"
+          <div key={show.id} className="upnext-row"
             style={{ '--row-color': artist?.color || 'var(--border)' }}
-            onClick={() => onOpenShow(show)}
-          >
+            onClick={() => onOpenShow(show)}>
             <div className="upnext-datecol">
-              <span className="upnext-day">{day}</span>
-              <span className="upnext-mon">{mon}</span>
-              <span className="upnext-wday">{wday}</span>
+              <span className="upnext-day">{date.getDate()}</span>
+              <span className="upnext-mon">{date.toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
+              <span className="upnext-wday">{date.toLocaleString('default', { weekday: 'short' }).toUpperCase()}</span>
             </div>
             <div className="upnext-colorbar" />
             <div className="upnext-info">
@@ -365,8 +500,8 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
               )}
               <span className="upnext-name" dir="auto">{show.name}</span>
               <span className="upnext-meta">
-                {time && <span>{time}</span>}
-                {time && show.venue && <span className="upnext-sep"> · </span>}
+                {getShowTime(show) && <span>{getShowTime(show)}</span>}
+                {getShowTime(show) && show.venue && <span className="upnext-sep"> · </span>}
                 {show.venue && <span dir="auto">{show.venue}</span>}
               </span>
             </div>
@@ -379,8 +514,7 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
 
 // ── My Tasks ───────────────────────────────────────────────────────────────────
 function MyTasks({ tasks, allShows, artists, onToggleTask }) {
-  const today = todayStr();
-
+  const today  = todayStr();
   const myTasks = [...tasks]
     .filter((t) => !t.completed)
     .sort((a, b) => {
@@ -395,11 +529,10 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
       <div className="mytasks-header">
         <div className="mytasks-header-text">
           <h2 className="mytasks-title">My Tasks</h2>
-          <p className="mytasks-sub">Assigned to you · across all productions</p>
+          <p className="mytasks-sub">assigned to you</p>
         </div>
         <span className="mytasks-count-badge">{myTasks.length}</span>
       </div>
-
       <div className="mytasks-card">
         {myTasks.length === 0 ? (
           <p className="mytasks-empty">All clear.</p>
@@ -409,7 +542,6 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
               const show   = task.showId ? allShows.find((s) => s.id === task.showId) : null;
               const artist = show ? artists.find((a) => a.id === show?.artistId) : null;
               const overdue = task.dueDate && task.dueDate < today;
-
               return (
                 <div key={task.id} className={`mytask-row${overdue ? ' mytask-row--overdue' : ''}`}>
                   <button
@@ -424,9 +556,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
                     )}
                   </button>
                   <div className="mytask-content">
-                    <span className={`mytask-text${task.completed ? ' mytask-text--done' : ''}`} dir="auto">
-                      {task.text}
-                    </span>
+                    <span className={`mytask-text${task.completed ? ' mytask-text--done' : ''}`} dir="auto">{task.text}</span>
                     <div className="mytask-meta">
                       {artist && (
                         <>
@@ -435,13 +565,9 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
                           {show && <span className="mytask-sep">·</span>}
                         </>
                       )}
-                      {show && (
-                        <span className="mytask-show" dir="auto">{show.name}</span>
-                      )}
+                      {show && <span className="mytask-show" dir="auto">{show.name}</span>}
                       {task.dueDate && (
-                        <span className={`mytask-due${overdue ? ' mytask-due--overdue' : ''}`}>
-                          Due {task.dueDate}
-                        </span>
+                        <span className={`mytask-due${overdue ? ' mytask-due--overdue' : ''}`}>Due {task.dueDate}</span>
                       )}
                     </div>
                   </div>
@@ -456,10 +582,10 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
 }
 
 // ── Dashboard root ─────────────────────────────────────────────────────────────
-export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask }) {
+export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {} }) {
   const artists = withColor(rawArtists);
-  const [allShows, setAllShows]     = useState([]);
-  const [loadingShows, setLoading]  = useState(true);
+  const [allShows, setAllShows]       = useState([]);
+  const [loadingShows, setLoading]    = useState(true);
   const [selectedArtists, setSelected] = useState([]);
 
   useEffect(() => {
@@ -469,111 +595,118 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
       artists.map((a) =>
         fetch(`/api/shows?artistId=${encodeURIComponent(a.id)}`, { credentials: 'include' })
           .then((r) => r.ok ? r.json() : [])
-          .then((shows) => shows.map((s) => ({
-            ...s,
-            artistId:   a.id,
-            artistName: a.name,
-            color:      a.color,
-            soft:       a.soft,
-          })))
+          .then((shows) => shows.map((s) => ({ ...s, artistId: a.id, artistName: a.name, color: a.color, soft: a.soft })))
           .catch(() => [])
       )
-    ).then((results) => {
-      setAllShows(results.flat());
-      setLoading(false);
-    });
+    ).then((results) => { setAllShows(results.flat()); setLoading(false); });
   }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const today       = todayStr();
-  const _now        = new Date();
-  const monthPrefix = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
-  const upcoming    = allShows.filter((s) => !s.archived && s.date && s.date.startsWith(monthPrefix));
-  const openTasks = tasks.filter((t) => !t.completed);
+  const today      = todayStr();
+  const now        = new Date();
+  const openTasks  = tasks.filter((t) => !t.completed);
+  const allUpcoming = allShows.filter((s) => !s.archived);
 
   const toggleArtist = useCallback((id) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }, []);
 
-  // Sub-line date label
-  const now  = new Date();
-  const dateLabel = now.toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
+  // Date label
+  const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Artist chip counts
+  const artistCounts = artists.map((a) => ({
+    ...a,
+    count: allShows.filter((s) => !s.archived && s.artistId === a.id && toDateStr(s.date) >= today).length,
+  }));
+
+  // Shows happening today
+  const todayShows = allShows.filter((s) => !s.archived && toDateStr(s.date) === today);
 
   return (
     <div className="dashboard">
 
-      {/* ── Hero ── */}
-      <div className="dash-hero">
-        <h1 className="dash-title">
-          Today<span className="dash-title-period">.</span>
-        </h1>
-        <div className="dash-subline">
-          <span>{dateLabel}</span>
-          <span className="dash-subline-rule" aria-hidden="true" />
-          <span>{artists.length} active artist{artists.length !== 1 ? 's' : ''}</span>
-          <span className="dash-subline-rule" aria-hidden="true" />
-          <span>{upcoming.length} show{upcoming.length !== 1 ? 's' : ''} this month</span>
+      {/* ── Compact header ── */}
+      <div className="dash-compact-header">
+        {/* Row 1: title + date LEFT / stat strip RIGHT */}
+        <div className="dash-hdr-row1">
+          <div className="dash-hdr-left">
+            <h1 className="dash-title">Today<span className="dash-title-period">.</span></h1>
+            <span className="dash-date-label">{dateLabel}</span>
+          </div>
+          <div className="dash-stats">
+            <div className="dash-stat">
+              <span className="dash-stat-value">{String(artists.length).padStart(2, '0')}</span>
+              <span className="dash-stat-label">Artists</span>
+            </div>
+            <div className="dash-stat">
+              <span className="dash-stat-value">{String(allUpcoming.length).padStart(2, '0')}</span>
+              <span className="dash-stat-label">Shows</span>
+            </div>
+            <div className="dash-stat">
+              <span className="dash-stat-value">{String(openTasks.length).padStart(2, '0')}</span>
+              <span className="dash-stat-label">Tasks</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: marquee (Home-only brand strip) */}
+        <div className="dash-marquee" aria-hidden="true">
+          <div className="dash-marquee-track">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <span key={i} className="dash-marquee-item">
+                PRODUCTION HUB<span className="dash-marquee-dot">·</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 3: 2px divider + artist filter chips */}
+        <div className="dash-filter-divider">
+          <span className="dash-filter-eyebrow">Artists</span>
+          <div className="dash-filter-chips">
+            <button
+              className={`dash-chip${selectedArtists.length === 0 ? ' dash-chip--active' : ''}`}
+              onClick={() => setSelected([])}
+            >
+              All artists
+            </button>
+            {artistCounts.map((a) => {
+              const active = selectedArtists.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  className={`dash-chip dash-chip--artist${active ? ' dash-chip--active' : ''}`}
+                  style={{ '--chip-c': a.color, '--chip-s': a.soft }}
+                  onClick={() => toggleArtist(a.id)}
+                >
+                  <span className="dash-chip-dot" style={{ background: a.color }} />
+                  {a.name} {a.count}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* ── Artist filter chips ── */}
-      <div className="dash-filters">
-        <FilterChip
-          on={selectedArtists.length === 0}
-          onToggle={() => setSelected([])}
-        >
-          All artists
-        </FilterChip>
-        {artists.map((a) => {
-          const count = allShows.filter(
-            (s) => !s.archived && s.artistId === a.id && toDateStr(s.date) >= today
-          ).length;
-          return (
-            <FilterChip
-              key={a.id}
-              on={selectedArtists.includes(a.id)}
-              swatch={a.color}
-              count={count}
-              onToggle={() => toggleArtist(a.id)}
-            >
-              {a.name}
-            </FilterChip>
-          );
-        })}
-      </div>
+      {/* ── Show-day checklist banner (only when a show is today) ── */}
+      {todayShows.length > 0 && !loadingShows && todayShows.map((show) => (
+        <ShowDayBanner
+          key={show.id}
+          show={show}
+          checklist={eventTypeChecklists[show.eventType] || null}
+        />
+      ))}
 
       {/* ── Body ── */}
       {loadingShows ? (
-        <div className="dash-loading">
-          <div className="spinner" />
-          <p>Loading shows…</p>
-        </div>
+        <div className="dash-loading"><div className="spinner" /><p>Loading shows…</p></div>
       ) : (
         <>
           <div className="dash-body">
-            <MasterCalendar
-              allShows={allShows}
-              artists={artists}
-              selectedArtists={selectedArtists}
-              onOpenShow={onOpenShow}
-            />
-            <UpNext
-              allShows={allShows}
-              artists={artists}
-              selectedArtists={selectedArtists}
-              onOpenShow={onOpenShow}
-            />
+            <MasterCalendar allShows={allShows} artists={artists} selectedArtists={selectedArtists} onOpenShow={onOpenShow} />
+            <UpNext allShows={allShows} artists={artists} selectedArtists={selectedArtists} onOpenShow={onOpenShow} />
           </div>
-
-          <MyTasks
-            tasks={tasks}
-            allShows={allShows}
-            artists={artists}
-            onToggleTask={onToggleTask}
-          />
+          <MyTasks tasks={tasks} allShows={allShows} artists={artists} onToggleTask={onToggleTask} />
         </>
       )}
     </div>

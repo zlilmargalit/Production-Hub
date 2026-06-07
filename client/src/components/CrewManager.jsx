@@ -76,7 +76,7 @@ function buildCrewText(crewIds, crew) {
     .join(' | ');
 }
 
-function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, tasks = [], demoMode = false, artistId }) {
+function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, eventTypeChecklists = {}, onSaveEventTypeChecklist, tasks = [], demoMode = false, artistId }) {
   const [tab, setTab] = useState('members');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -311,6 +311,8 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
           onSave={saveTemplate}
           onSaveFieldTemplate={onSaveFieldTemplate}
           onSaveEventTypes={onSaveEventTypes}
+          eventTypeChecklists={eventTypeChecklists}
+          onSaveEventTypeChecklist={onSaveEventTypeChecklist}
         />
       )}
 
@@ -339,7 +341,7 @@ const FIELD_TYPES = [
   { value: 'file',     label: 'File' },
 ];
 
-function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onSaveFieldTemplate, onSaveEventTypes }) {
+function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onSaveFieldTemplate, onSaveEventTypes, eventTypeChecklists = {}, onSaveEventTypeChecklist }) {
   // ── Confirmation modal (for delete) ──
   const [confirmModal, setConfirmModal] = useState(null);
 
@@ -422,6 +424,37 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
 
   const saveFields = () => { onSaveFieldTemplate(editingFieldsType, localFields); setEditingFieldsType(null); };
 
+  // ── Checklist editing state ──
+  const [editingClType, setEditingClType] = useState(null);
+  const [localClBefore, setLocalClBefore] = useState([]);
+  const [localClVenue, setLocalClVenue] = useState([]);
+  const [newClBeforeText, setNewClBeforeText] = useState('');
+  const [newClVenueText, setNewClVenueText] = useState('');
+
+  const startClEdit = (et) => {
+    setEditingClType(et);
+    const cl = eventTypeChecklists[et] || {};
+    setLocalClBefore([...(cl.before || [])]);
+    setLocalClVenue([...(cl.venue || [])]);
+    setNewClBeforeText('');
+    setNewClVenueText('');
+  };
+  const addClItem = (phase) => {
+    const text = (phase === 'before' ? newClBeforeText : newClVenueText).trim();
+    if (!text) return;
+    const item = { id: uuidv4(), text };
+    if (phase === 'before') { setLocalClBefore((p) => [...p, item]); setNewClBeforeText(''); }
+    else                    { setLocalClVenue((p)  => [...p, item]); setNewClVenueText(''); }
+  };
+  const removeClItem = (phase, id) => {
+    if (phase === 'before') setLocalClBefore((p) => p.filter((i) => i.id !== id));
+    else                    setLocalClVenue((p)  => p.filter((i) => i.id !== id));
+  };
+  const saveCl = () => {
+    if (onSaveEventTypeChecklist) onSaveEventTypeChecklist(editingClType, { before: localClBefore, venue: localClVenue });
+    setEditingClType(null);
+  };
+
   return (
     <div className="templates-page">
       <p className="templates-desc">
@@ -441,8 +474,12 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
           const isEditingCrew = editingCrewType === et;
           const isEditingFields = editingFieldsType === et;
 
+          const isEditingCl = editingClType === et;
+          const clDefs = eventTypeChecklists[et] || {};
+          const clCount = (clDefs.before || []).length + (clDefs.venue || []).length;
+
           return (
-            <div key={et} className={`template-card ${isEditingCrew || isEditingFields ? 'editing' : ''}`} data-et-idx={etColorIdx(et)}>
+            <div key={et} className={`template-card ${isEditingCrew || isEditingFields || isEditingCl ? 'editing' : ''}`} data-et-idx={etColorIdx(et)}>
               {/* Single compact header — buttons LEFT, event type name RIGHT (RTL) */}
               <div className="template-card-header">
                 <div className="template-header-actions">
@@ -457,6 +494,12 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                     onClick={() => isEditingFields ? setEditingFieldsType(null) : startFieldsEdit(et)}
                   >
                     Fields{fieldDefs.length > 0 ? ` (${fieldDefs.length})` : ''}
+                  </button>
+                  <button
+                    className={`btn-secondary btn-sm${isEditingCl ? ' template-btn-active' : ''}`}
+                    onClick={() => isEditingCl ? setEditingClType(null) : startClEdit(et)}
+                  >
+                    Checklist{clCount > 0 ? ` (${clCount})` : ''}
                   </button>
                   <IconButton danger onClick={() => deleteEventType(et)} title="Delete event type">✕</IconButton>
                 </div>
@@ -559,6 +602,65 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                   <div className="template-actions">
                     <button className="btn-secondary" onClick={() => setEditingFieldsType(null)}>Cancel</button>
                     <button className="btn-primary" onClick={saveFields}>Save Fields</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Checklist editor — toggle independently ── */}
+              {isEditingCl && (
+                <div className="template-editor" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                  <p className="crew-section-label" style={{ marginBottom: 8 }}>
+                    Define default tasks for "Before you leave" and "At the venue" checklists shown on the home page on show day.
+                  </p>
+                  {/* Before phase */}
+                  <p className="crew-section-label">Before you leave</p>
+                  <div className="fields-list" style={{ marginBottom: 8 }}>
+                    {localClBefore.map((item) => (
+                      <div key={item.id} className="field-def-row">
+                        <span className="field-def-label" dir="auto">{item.text}</span>
+                        <div className="field-def-actions">
+                          <button className="btn-icon btn-danger" onClick={() => removeClItem('before', item.id)}>✕</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="field-add-row" style={{ marginBottom: 14 }}>
+                    <input
+                      dir="auto"
+                      className="task-input"
+                      value={newClBeforeText}
+                      onChange={(e) => setNewClBeforeText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addClItem('before')}
+                      placeholder="Add task..."
+                    />
+                    <button className="btn-primary btn-sm" onClick={() => addClItem('before')}>+ Add</button>
+                  </div>
+                  {/* Venue phase */}
+                  <p className="crew-section-label">At the venue</p>
+                  <div className="fields-list" style={{ marginBottom: 8 }}>
+                    {localClVenue.map((item) => (
+                      <div key={item.id} className="field-def-row">
+                        <span className="field-def-label" dir="auto">{item.text}</span>
+                        <div className="field-def-actions">
+                          <button className="btn-icon btn-danger" onClick={() => removeClItem('venue', item.id)}>✕</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="field-add-row" style={{ marginBottom: 14 }}>
+                    <input
+                      dir="auto"
+                      className="task-input"
+                      value={newClVenueText}
+                      onChange={(e) => setNewClVenueText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addClItem('venue')}
+                      placeholder="Add task..."
+                    />
+                    <button className="btn-primary btn-sm" onClick={() => addClItem('venue')}>+ Add</button>
+                  </div>
+                  <div className="template-actions">
+                    <button className="btn-secondary" onClick={() => setEditingClType(null)}>Cancel</button>
+                    <button className="btn-primary" onClick={saveCl}>Save Checklist</button>
                   </div>
                 </div>
               )}
