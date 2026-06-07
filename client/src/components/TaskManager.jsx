@@ -19,6 +19,36 @@ const guestListToText = (gl) => {
   return '';
 };
 
+// Count total guests from free-text guest list.
+// Rules per line:
+//   זוג / זוגית          → 2
+//   +N  (e.g. +1, +2)    → 1 + N  (the named person plus N more)
+//   trailing number N    → N  (e.g. "עדי דוברת 2" = 2 guests on that name)
+//   no number            → 1
+const countGuests = (text) => {
+  if (!text || !text.trim()) return 0;
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  let total = 0;
+  for (const line of lines) {
+    if (/זוג(ית)?/u.test(line)) {
+      total += 2;
+    } else {
+      const plusMatch = line.match(/\+\s*(\d+)/);
+      if (plusMatch) {
+        total += 1 + parseInt(plusMatch[1], 10);
+      } else {
+        const numMatch = line.match(/(\d+)\s*$/);
+        if (numMatch) {
+          total += parseInt(numMatch[1], 10);
+        } else {
+          total += 1;
+        }
+      }
+    }
+  }
+  return total;
+};
+
 function TaskManager({ show, onUpdate, artistId }) {
   const [transport, setTransport] = useState({
     mode: show.transportMode || '',
@@ -354,7 +384,12 @@ function TaskManager({ show, onUpdate, artistId }) {
 
       {/* Guest List */}
       <div className="fixed-task-section">
-        <h4 className="fixed-task-title">Guest List</h4>
+        <div className="fixed-task-title-row">
+          <h4 className="fixed-task-title">Guest List</h4>
+          {countGuests(guestText) > 0 && (
+            <span className="guest-count-badge">{countGuests(guestText)}</span>
+          )}
+        </div>
         <textarea
           className="fixed-input guest-list-textarea"
           dir="auto"
