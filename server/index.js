@@ -1537,9 +1537,27 @@ async function gracefulExit(signal) {
 process.on('SIGTERM', () => gracefulExit('SIGTERM'));
 process.on('SIGINT',  () => gracefulExit('SIGINT'));
 
-// ── Startup migration: copy root data into any empty artist directories ───────
-// Runs on every boot. Safe & idempotent — only copies if the artist file is
-// empty/missing and the root file has actual content.
+// ── Startup migration: one-time single→multi-tenant backfill + leak cleanup ───
+// The legacy single-tenant data lives in the root DATA_DIR/*.json files. When
+// multi-tenancy was introduced that data should become the FIRST (oldest)
+// artist's workspace — and ONLY that artist's. Earlier this routine copied the
+// root files into *every* empty artist directory, which leaked the original
+// artist's crew/shows into every other artist and re-injected itself whenever a
+// workspace was cleared. This version enforces complete per-artist isolation:
+//
+//   • Oldest artist  → seeded from root only while its files are still empty
+//                      (the legitimate one-time backfill). Idempotent.
+//   • Other artists  → never seeded from root. Any file that is byte-identical
+//                      to the current root file is a leaked copy and is reset to
+//                      empty. Byte-identity is the safety guard: two independent
+//                      workspaces cannot have an identical multi-MB shows file or
+//                      identical crew list, so only provable copies are removed —
+//                      anything the artist actually edited has diverged and is
+//                      preserved untouched.
+//
+// Runs on every boot and is fully idempotent (an emptied file is no longer
+// identical to the non-empty root, and a freshly created artist starts empty,
+// so neither is ever touched again).
 async function migrateRootDataToArtists() {
   try {
     const artistsFile = path.join(DATA_DIR, 'artists.json');
@@ -1548,54 +1566,64 @@ async function migrateRootDataToArtists() {
     const artists = JSON.parse(await fsp.readFile(artistsFile, 'utf8'));
     if (!artists.length) return;
 
+    // Oldest artist = legitimate owner of the legacy root data.
+    const oldest = artists.reduce((a, b) =>
+      new Date(a.createdAt || 0) <= new Date(b.createdAt || 0) ? a : b);
+
     const fileDefs = [
-      { file: 'shows.json',          empty: [] },
-      { file: 'crew.json',           empty: [] },
-      { file: 'event-types.json',    empty: [] },
-      { file: 'roles.json',          empty: [] },
-      { file: 'field-templates.json',empty: {} },
-      { file: 'templates.json',      empty: {} },
+      { file: 'shows.json',          empty: '[]' },
+      { file: 'crew.json',           empty: '[]' },
+      { file: 'event-types.json',    empty: '[]' },
+      { file: 'roles.json',          empty: '[]' },
+      { file: 'field-templates.json',empty: '{}' },
+      { file: 'templates.json',      empty: '{}' },
     ];
+
+    const { invalidate } = require('./cache');
+    const bust = (file, artistId) => {
+      if (typeof invalidate === 'function') {
+        invalidate(`${file.replace('.json', '')}:art:${artistId}`);
+      }
+    };
 
     for (const artist of artists) {
       const artistDir = path.join(DATA_DIR, 'artists', artist.id);
       await fsp.mkdir(artistDir, { recursive: true });
+      const isOldest = artist.id === oldest.id;
 
-      let migratedCount = 0;
       for (const { file, empty } of fileDefs) {
         const dst = path.join(artistDir, file);
         const src = path.join(DATA_DIR, file);
 
-        // Read current artist file (default to empty if missing)
-        let artistData = empty;
-        try { artistData = JSON.parse(await fsp.readFile(dst, 'utf8')); } catch {}
-        const isEmpty = Array.isArray(artistData)
-          ? artistData.length === 0
-          : Object.keys(artistData).length === 0;
-        if (!isEmpty) continue; // already has data — skip
+        let rootContent = null;
+        try { rootContent = await fsp.readFile(src, 'utf8'); } catch { /* no root file */ }
 
-        // Read root file
-        let srcContent;
-        try { srcContent = await fsp.readFile(src, 'utf8'); } catch { continue; }
-        const srcData = JSON.parse(srcContent);
-        const hasContent = Array.isArray(srcData)
-          ? srcData.length > 0
-          : Object.keys(srcData).length > 0;
-        if (!hasContent) continue;
+        let dstContent = null;
+        try { dstContent = await fsp.readFile(dst, 'utf8'); } catch { /* missing */ }
 
-        // Copy root → artist, then invalidate cache
-        await fsp.writeFile(dst, srcContent);
-        // Invalidate in-memory cache so next read gets fresh data
-        const { invalidate } = require('./cache');
-        if (typeof invalidate === 'function') {
-          const baseName = file.replace('.json', '');
-          invalidate(`${baseName}:art:${artist.id}`);
+        const dstIsEmpty = dstContent === null ||
+          (() => { try { const d = JSON.parse(dstContent);
+            return Array.isArray(d) ? d.length === 0 : Object.keys(d).length === 0;
+          } catch { return true; } })();
+
+        if (isOldest) {
+          // Legitimate one-time backfill: fill empty file from non-empty root.
+          if (!dstIsEmpty || !rootContent) continue;
+          const rootData = JSON.parse(rootContent);
+          const rootHasContent = Array.isArray(rootData)
+            ? rootData.length > 0 : Object.keys(rootData).length > 0;
+          if (!rootHasContent) continue;
+          await fsp.writeFile(dst, rootContent);
+          bust(file, artist.id);
+          console.log(`[migrate] seeded ${file} → original artist "${artist.name}"`);
+        } else {
+          // Isolation cleanup: a file byte-identical to root is a leaked copy.
+          if (rootContent !== null && dstContent !== null && dstContent === rootContent) {
+            await fsp.writeFile(dst, empty);
+            bust(file, artist.id);
+            console.log(`[migrate] cleared leaked ${file} from artist "${artist.name}" (was a verbatim copy of root)`);
+          }
         }
-        migratedCount++;
-        console.log(`[migrate] ${file} → ${artist.name}`);
-      }
-      if (migratedCount > 0) {
-        console.log(`[migrate] Copied ${migratedCount} root file(s) to artist "${artist.name}" (${artist.id})`);
       }
     }
   } catch (e) {
