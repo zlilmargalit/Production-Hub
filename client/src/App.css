@@ -524,6 +524,9 @@ body {
   border-radius: 0;
 }
 .seg-btn:first-child { border-left: none; }
+/* Calendar MONTH/WEEK toggle: thin black outline only — no offset shadow */
+.mcal-topbar .seg { box-shadow: none; }
+[data-theme="dark"] .mcal-topbar .seg { box-shadow: none; }
 .mcal-topbar .seg-btn {
   padding: 7px 18px;
   font-size: 0.75rem;
