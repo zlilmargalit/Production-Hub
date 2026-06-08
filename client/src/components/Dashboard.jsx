@@ -542,7 +542,10 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
           <div className="mytasks-grid">
             {myTasks.map((task) => {
               const show   = task.showId ? allShows.find((s) => s.id === task.showId) : null;
-              const artist = show ? artists.find((a) => a.id === show?.artistId) : null;
+              // Prefer the task's own artist tag (aggregated on Global Home) so
+              // every task is labelled even when it isn't linked to a show.
+              const artist = (task.artistId && artists.find((a) => a.id === task.artistId))
+                || (show ? artists.find((a) => a.id === show?.artistId) : null);
               const overdue = task.dueDate && task.dueDate < today;
               return (
                 <div key={task.id} className={`mytask-row${overdue ? ' mytask-row--overdue' : ''}`}>
@@ -589,6 +592,10 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
   const [allShows, setAllShows]       = useState([]);
   const [loadingShows, setLoading]    = useState(true);
   const [selectedArtists, setSelected] = useState([]);
+  // Global Home aggregates tasks across EVERY artist (not just the one you
+  // happened to come from). Each task is tagged with its owning artist so the
+  // shared home view always shows everyone's tasks with the right label.
+  const [allTasks, setAllTasks] = useState([]);
 
   useEffect(() => {
     if (!artists.length) { setAllShows([]); setLoading(false); return; }
@@ -603,9 +610,39 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
     ).then((results) => { setAllShows(results.flat()); setLoading(false); });
   }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!artists.length) { setAllTasks([]); return; }
+    Promise.all(
+      artists.map((a) =>
+        fetch(`/api/tasks?artistId=${encodeURIComponent(a.id)}`, { credentials: 'include' })
+          .then((r) => r.ok ? r.json() : [])
+          .then((ts) => ts.map((t) => ({ ...t, artistId: a.id, artistName: a.name, color: a.color, soft: a.soft })))
+          .catch(() => [])
+      )
+    ).then((results) => setAllTasks(results.flat()));
+  }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Toggle a task using ITS OWN artist scope (not the current workspace's), so
+  // completing any artist's task from the shared home hits the right file.
+  const toggleGlobalTask = useCallback((taskId, completed) => {
+    const task = allTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    setAllTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed } : t)));
+    fetch(`/api/tasks/${taskId}?artistId=${encodeURIComponent(task.artistId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ completed }),
+    }).then((r) => {
+      if (!r.ok) setAllTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: !completed } : t)));
+    }).catch(() => {
+      setAllTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed: !completed } : t)));
+    });
+  }, [allTasks]);
+
   const today      = todayStr();
   const now        = new Date();
-  const openTasks  = tasks.filter((t) => !t.completed);
+  const openTasks  = allTasks.filter((t) => !t.completed);
   const allUpcoming = allShows.filter((s) => !s.archived);
 
   const toggleArtist = useCallback((id) => {
@@ -708,7 +745,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
             <MasterCalendar allShows={allShows} artists={artists} selectedArtists={selectedArtists} onOpenShow={onOpenShow} />
             <UpNext allShows={allShows} artists={artists} selectedArtists={selectedArtists} onOpenShow={onOpenShow} />
           </div>
-          <MyTasks tasks={tasks} allShows={allShows} artists={artists} onToggleTask={onToggleTask} />
+          <MyTasks tasks={allTasks} allShows={allShows} artists={artists} onToggleTask={toggleGlobalTask} />
         </>
       )}
     </div>

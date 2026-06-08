@@ -26,9 +26,37 @@ function sh(cmd) {
   }
 }
 
+// Scan the Nix store directly for a runnable chromium wrapper. On nixpacks
+// runtime the `default` profile symlink and even PATH frequently don't include
+// the build-time packages, so /nix/store is the only reliable source. We prefer
+// the *wrapped* `chromium` (sets up LD_LIBRARY_PATH/fontconfig) over the bare
+// `chromium-unwrapped`, which can't launch on its own.
+function scanNixStore() {
+  let entries;
+  try { entries = fss.readdirSync('/nix/store'); } catch { return null; }
+  const cands = entries
+    .filter((n) => /chromium/i.test(n) && !/unwrapped/i.test(n))
+    .map((n) => `/nix/store/${n}/bin/chromium`)
+    .filter((p) => fss.existsSync(p));
+  if (cands.length) {
+    // Newest-looking last; any working wrapper is fine.
+    return cands.sort().pop();
+  }
+  return null;
+}
+
 function resolveChromePath() {
-  // Explicit override wins
-  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+  // Explicit override wins — but ONLY if it actually exists. A stale/wrong
+  // CHROME_PATH (e.g. a profile symlink that nixpacks doesn't create at
+  // runtime) would otherwise be handed to puppeteer-core, which then throws
+  // "Browser was not found at the configured executablePath".
+  if (process.env.CHROME_PATH) {
+    if (fss.existsSync(process.env.CHROME_PATH)) {
+      console.log(`[pdf] Chrome via CHROME_PATH: ${process.env.CHROME_PATH}`);
+      return process.env.CHROME_PATH;
+    }
+    console.warn(`[pdf] CHROME_PATH set but not found on disk (${process.env.CHROME_PATH}) — ignoring and auto-discovering.`);
+  }
 
   // macOS: local Chrome
   if (process.platform === 'darwin') {
@@ -68,11 +96,18 @@ function resolveChromePath() {
     }
   }
 
+  // Last resort on nixpacks: walk the Nix store for a wrapped chromium binary.
+  const nixHit = scanNixStore();
+  if (nixHit) {
+    console.log(`[pdf] Chrome via /nix/store scan: ${nixHit}`);
+    return nixHit;
+  }
+
   // Nothing found — throw a clear error rather than passing a non-path string
   throw new Error(
     'Chromium/Chrome not found on this server. ' +
-    'Add  CHROME_PATH=/nix/var/nix/profiles/default/bin/chromium  ' +
-    'as an environment variable on Railway.'
+    'nixpacks should install it via nixPkgs=["chromium"]; verify the build, ' +
+    'or set CHROME_PATH to an existing chromium binary.'
   );
 }
 
