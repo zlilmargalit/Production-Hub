@@ -28,6 +28,25 @@ function scheduleToString(schedule) {
 
 const execFileP = promisify(execFile);
 
+// Embedded Hebrew web font (Heebo, OFL). The Nixpacks/Railway Chromium image
+// ships with NO Hebrew-capable system font, so every Hebrew text node rendered
+// invisibly in the generated PDF (CSS boxes drew, glyphs didn't). Embedding the
+// font as a base64 @font-face makes rendering self-contained — Chromium no
+// longer depends on system fontconfig finding a Hebrew face. Loaded once.
+let _heeboDataUrl = null;
+function getHeeboDataUrl() {
+  if (_heeboDataUrl === null) {
+    try {
+      const b64 = fs.readFileSync(path.join(__dirname, '../assets/Heebo.ttf')).toString('base64');
+      _heeboDataUrl = `data:font/ttf;base64,${b64}`;
+    } catch (e) {
+      console.error('[pdf] Heebo font not found, falling back to system fonts:', e.message);
+      _heeboDataUrl = '';
+    }
+  }
+  return _heeboDataUrl;
+}
+
 // Crew roles that represent musicians — covers English and legacy Hebrew values.
 const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
 
@@ -745,12 +764,18 @@ router.post('/:id/pdf', async (req, res) => {
 <head>
 <meta charset="UTF-8">
 <style>
+  ${getHeeboDataUrl() ? `@font-face {
+    font-family: 'Heebo';
+    font-weight: 100 900;
+    font-style: normal;
+    src: url('${getHeeboDataUrl()}') format('truetype');
+  }` : ''}
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   /* Flex column so .img-fill can claim remaining space after all text */
   html, body { height: 297mm; }
   body {
-    font-family: Arial, Helvetica, sans-serif; font-size: 11pt;
+    font-family: 'Heebo', Arial, Helvetica, sans-serif; font-size: 11pt;
     color: #1a1a1a; direction: rtl;
     padding: 2cm 2.5cm;
     display: flex; flex-direction: column;
