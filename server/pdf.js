@@ -10,7 +10,18 @@
 // path always fails that check → "Browser was not found at the configured
 // directory."  We now always resolve to an absolute path or throw clearly.
 
-const puppeteer = require('puppeteer-core');
+// puppeteer-core v23+ ships as an ES module with NO CommonJS build, so a static
+// `require('puppeteer-core')` throws ERR_REQUIRE_ESM under Node < 20.19 / 22.12.
+// We load it lazily via dynamic import() inside the async launch path, which is
+// supported from CommonJS on every Node version.
+let _puppeteer = null;
+async function loadPuppeteer() {
+  if (!_puppeteer) {
+    const mod = await import('puppeteer-core');
+    _puppeteer = mod.default || mod;
+  }
+  return _puppeteer;
+}
 const fss       = require('fs');
 const { execSync } = require('child_process');
 
@@ -122,6 +133,7 @@ let browserPromise = null;
 
 async function launchBrowser() {
   const cp = getChromePath();
+  const puppeteer = await loadPuppeteer();
   console.log('[pdf] Launching browser:', cp);
   const browser = await puppeteer.launch({
     executablePath: cp,
