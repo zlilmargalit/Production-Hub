@@ -27,7 +27,7 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
     if (!sentinel || !('IntersectionObserver' in window)) return;
     const obs = new IntersectionObserver(
       ([entry]) => setStuck(!entry.isIntersecting),
-      { rootMargin: '-73px 0px 0px 0px', threshold: 0 },
+      { rootMargin: '-73px 0px 0px 0px', threshold: 0 }, /* 72px header + 1px border */
     );
     obs.observe(sentinel);
     return () => obs.disconnect();
@@ -61,7 +61,7 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
                 <div key={i} className="pg-bar-stat">
                   <span className="pg-bar-stat-val">
                     {typeof m.value === 'number'
-                      ? String(m.value).padStart(2, '0')
+                      ? String(m.value).padStart(2, '00')
                       : m.value}
                   </span>
                   <span className="pg-bar-stat-lbl">{m.label}</span>
@@ -74,15 +74,15 @@ export default function PageBar({ title, accentColor, count, countLabel, metrics
 
         {/* Full-width 2px ink divider */}
         <div className="pg-bar-divider" />
-
-        {/* Row 2 — tabs (left) + actions (right) */}
-        {(children || actions) && (
-          <div className="pg-bar-tabs">
-            <div className="pg-bar-tabs-left">{children}</div>
-            {actions && <div className="pg-bar-actions">{actions}</div>}
-          </div>
-        )}
       </div>
+
+      {/* Row 2 — tabs/filter (left) + actions (right) — outside sticky bar */}
+      {(children || actions) && (
+        <div className="pg-bar-sub">
+          <div className="pg-bar-tabs-left">{children}</div>
+          {actions && <div className="pg-bar-actions">{actions}</div>}
+        </div>
+      )}
     </>
   );
 }

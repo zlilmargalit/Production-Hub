@@ -139,7 +139,8 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
   );
 }
 
-function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew, workspaceRole }) {
+function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew, workspaceRole,
+                    onSync, syncStatus, onApplyCrew, applyStatus }) {
   const [filter,      setFilter]      = useState('upcoming');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterType,  setFilterType]  = useState('');
@@ -212,9 +213,39 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
         title="Shows"
         count={thisMonthCount}
         countLabel={`in ${monthName}`}
-        headerAction={onNew && (
-          <button className="btn-primary" onClick={onNew}>+ New</button>
-        )}
+        headerAction={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onSync && (
+              <button
+                className="btn-sync"
+                onClick={onSync}
+                disabled={syncStatus === 'loading'}
+                title="Sync new shows from Excel spreadsheet"
+              >
+                {syncStatus === 'loading' ? 'Syncing…'
+                  : syncStatus?.error ? 'Error'
+                  : syncStatus?.added != null ? `+${syncStatus.added} added`
+                  : 'Sync'}
+              </button>
+            )}
+            {onApplyCrew && (
+              <button
+                className="btn-sync"
+                onClick={onApplyCrew}
+                disabled={applyStatus === 'loading'}
+                title="Auto-assign crew to active shows based on event type templates"
+              >
+                {applyStatus === 'loading' ? 'Applying…'
+                  : applyStatus?.error ? 'Error'
+                  : applyStatus?.updated != null ? `${applyStatus.updated} updated`
+                  : 'Apply Crew'}
+              </button>
+            )}
+            {onNew && (
+              <button className="btn-primary" onClick={onNew}>+ New</button>
+            )}
+          </div>
+        }
       />
 
       <div className="filter-bar-row">

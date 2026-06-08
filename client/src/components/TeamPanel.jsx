@@ -152,14 +152,11 @@ function InlinePermissions({ userId, perms, onSave }) {
     <div className="tm-inline-perms">
       {/* Change 2: compact View/Edit matrix */}
       <div className="tm-perm-matrix">
-        {/* Header row */}
+        {/* Header row — 3-column grid matches data rows */}
         <div className="tm-perm-matrix-head">
           <span className="tm-perm-matrix-area-col">Area</span>
           <span className="tm-perm-matrix-cell-col">View</span>
           <span className="tm-perm-matrix-cell-col">Edit</span>
-          <button className="tm-perm-matrix-save" onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
         </div>
         {/* Data rows */}
         {ALL_RUBRICS.map(rubric => {
@@ -190,6 +187,11 @@ function InlinePermissions({ userId, perms, onSave }) {
             </div>
           );
         })}
+      </div>
+      <div className="tm-perm-footer">
+        <button className="tm-perm-matrix-save" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
       <SavedPill show={saved} />
     </div>

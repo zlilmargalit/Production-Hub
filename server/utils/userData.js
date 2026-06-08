@@ -31,6 +31,7 @@ const DEFAULTS = {
   'field-templates.json':'{}',
   'tasks.json':          '[]',
   'event-type-checklists.json': '{}',
+  'timelog.json':        '[]',
 };
 
 /**

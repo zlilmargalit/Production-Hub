@@ -3,9 +3,10 @@
    ═══════════════════════════════════════════════════════════ */
 
 .auto-page {
-  display: flex; flex-direction: column; gap: 48px;
+  display: flex; flex-direction: column; gap: 0;
 }
 .auto-section { display: flex; flex-direction: column; gap: 18px; }
+.auto-section + .auto-section { margin-top: 48px; }
 .auto-section-lbl { font-family: 'Bricolage Grotesque', 'Assistant', sans-serif; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2); display: flex; align-items: center; gap: 12px; }
 .auto-section-lbl::before,
 .auto-section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }

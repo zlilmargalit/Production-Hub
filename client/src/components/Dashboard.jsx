@@ -429,7 +429,7 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
 
       {view === 'month' ? (
         <div className="mcal-grid">
-          {['S','M','T','W','T','F','S'].map((d, i) => (
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
             <div key={i} className="mcal-day-hdr">{d}</div>
           ))}
           {cells.map(({ date, dateStr, isCurrentMonth, isToday, shows }) => (
@@ -584,7 +584,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
 }
 
 // ── Dashboard root ─────────────────────────────────────────────────────────────
-export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {} }) {
+export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {}, onOpenTimeLog }) {
   const artists = withColor(rawArtists);
   const [allShows, setAllShows]       = useState([]);
   const [loadingShows, setLoading]    = useState(true);

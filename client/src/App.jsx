@@ -13,6 +13,7 @@ import TechSpecParser    from './components/TechSpecParser';
 import AutomationsPage  from './components/automations/AutomationsPage';
 import BacklinerDashboard from './components/backliner/BacklinerDashboard';
 import Dashboard from './components/Dashboard';
+import TimeLog from './components/TimeLog';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -26,6 +27,7 @@ function App({ demoMode = false }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState('home');
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
   const [applyStatus, setApplyStatus] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('ph-theme') || 'light');
@@ -53,6 +55,11 @@ function App({ demoMode = false }) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('ph-theme', theme);
   }, [theme]);
+
+  // Scroll to top on page change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [page]);
 
   const toggleTheme = useCallback(() => {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
@@ -483,6 +490,7 @@ function App({ demoMode = false }) {
   return (
     <div className="app">
       {demoMode && <DemoBanner />}
+      {quickLogOpen && <QuickLogModal onClose={() => setQuickLogOpen(false)} />}
 
       <header className="app-header">
         {/* Brand — always left; clicking goes to Home */}
@@ -505,8 +513,8 @@ function App({ demoMode = false }) {
           <h1>Production Hub</h1>
         </div>
 
-        {/* Nav: home mode shows nothing; artist mode shows all tabs */}
-        <nav className="page-nav">{page === 'home' ? null : (<>
+        {/* Nav: home + timelog are global pages — no artist nav */}
+        <nav className="page-nav">{(page === 'home' || page === 'timelog') ? null : (<>
           <button
             className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
             onClick={() => setPage('shows')}
@@ -586,35 +594,6 @@ function App({ demoMode = false }) {
               />
             </div>
           )}
-          {page === 'shows' && !demoMode && (
-            <>
-              {/* Sync — admin-only, hidden in demo mode and on mobile */}
-              {userRole === 'admin' && (
-                <button
-                  className="btn-sync header-desktop-only"
-                  onClick={syncShows}
-                  disabled={syncStatus === 'loading'}
-                  title="Sync new shows from Excel spreadsheet"
-                >
-                  {syncStatus === 'loading' ? 'Syncing…'
-                    : syncStatus?.error ? 'Error'
-                    : syncStatus?.added != null ? `+${syncStatus.added} added`
-                    : 'Sync'}
-                </button>
-              )}
-              <button
-                className="btn-sync header-desktop-only"
-                onClick={applyCrewTemplates}
-                disabled={applyStatus === 'loading'}
-                title="Auto-assign crew to active shows based on event type templates"
-              >
-                {applyStatus === 'loading' ? 'Applying…'
-                  : applyStatus?.error ? 'Error'
-                  : applyStatus?.updated != null ? `${applyStatus.updated} updated`
-                  : 'Apply Crew'}
-              </button>
-            </>
-          )}
           {/* Notification bell — join requests + assigned tasks */}
           {!demoMode && userRole !== 'admin' && (
             <NotificationBell
@@ -624,22 +603,28 @@ function App({ demoMode = false }) {
             />
           )}
           {!demoMode && (
+            <button
+              className="header-log-btn"
+              onClick={() => setQuickLogOpen(true)}
+              title="Log time"
+              aria-label="Log time"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.6"/>
+                <path d="M8 4.5v3.8l2.2 1.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+          {!demoMode && (
             <WorkspaceSelector
               page={page}
               artists={artists}
               currentArtist={currentArtist}
               onSwitch={handleWorkspaceSwitch}
               onGoHome={() => setPage('home')}
+              onOpenTimeLog={() => setPage('timelog')}
             />
           )}
-          <button
-            className="btn-theme-toggle"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? '☀' : '◑'}
-          </button>
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
       </header>
@@ -668,6 +653,8 @@ function App({ demoMode = false }) {
             onToggleTask={toggleTask}
             eventTypeChecklists={eventTypeChecklists}
           />
+        ) : page === 'timelog' ? (
+          <TimeLog onBack={() => setPage('home')} />
         ) : page === 'shows' ? (
           <ShowList
             shows={shows}
@@ -680,6 +667,10 @@ function App({ demoMode = false }) {
             readOnly={userRole !== 'admin'}
             onNew={userRole === 'admin' ? () => setShowForm(true) : null}
             workspaceRole={workspaceRole}
+            onSync={userRole === 'admin' && !demoMode ? syncShows : null}
+            syncStatus={syncStatus}
+            onApplyCrew={!demoMode ? applyCrewTemplates : null}
+            applyStatus={applyStatus}
           />
         ) : page === 'automations' ? (
           <AutomationsPage />
@@ -778,6 +769,8 @@ function App({ demoMode = false }) {
           userRole={userRole}
           onChangeWorkspaceRole={(r) => setWorkspaceRole(r)}
           onAvatarChange={(url) => setAvatarUrl(url)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
       )}
 
@@ -831,6 +824,148 @@ function ToolsDropdown({ activeTool, onSelectTool }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Quick Log Time modal (global, available on every page) ───────────────────
+const QUICK_LOG_ARTISTS = [
+  { id: 'assaf',   name: 'Assaf Amdursky', color: '#3852B4' },
+  { id: 'hila',    name: 'Hila Ruach',     color: '#F08D39' },
+  { id: 'general', name: 'General',        color: '#6B6259' },
+];
+
+function QuickLogModal({ onClose }) {
+  const todayISO  = new Date().toISOString().slice(0, 10);
+  const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const [artist, setArtist] = useState('assaf');
+  const [desc,   setDesc]   = useState('');
+  const [hours,  setHours]  = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err,    setErr]    = useState('');
+
+  // "DD-MM" from ISO date
+  const todayDDMM = (() => {
+    const [, m, d] = todayISO.split('-');
+    return `${d}-${m}`;
+  })();
+
+  const save = async (andClose) => {
+    const h = parseFloat(hours);
+    if (!desc.trim()) { setErr('תיאור חסר'); return; }
+    if (!(h > 0))     { setErr('שעות חייבות להיות > 0'); return; }
+    setSaving(true); setErr('');
+    try {
+      const res = await fetch('/api/timelog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ date: todayDDMM, artist, desc: desc.trim(), hours: h, billed: false }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'שמירה נכשלה');
+      }
+      if (andClose) {
+        onClose();
+      } else {
+        // Save & Stay: reset form, keep artist
+        setDesc('');
+        setHours('');
+        setSaving(false);
+      }
+    } catch (e) {
+      setErr(e.message);
+      setSaving(false);
+    }
+  };
+
+  // Close on backdrop click
+  const handleBackdrop = (e) => { if (e.target === e.currentTarget) onClose(); };
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const activeArtist = QUICK_LOG_ARTISTS.find((a) => a.id === artist);
+
+  return (
+    <div className="ql-backdrop" onMouseDown={handleBackdrop}>
+      <div className="ql-modal" role="dialog" aria-modal="true" aria-label="Log Time">
+        {/* Header */}
+        <div className="ql-header">
+          <div className="ql-header-left">
+            <svg className="ql-clock-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="7.2" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M9 5.5v4l2.6 1.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+            <span className="ql-title">Log Time</span>
+          </div>
+          <span className="ql-date">{dateLabel}</span>
+        </div>
+
+        {/* Body */}
+        <div className="ql-body">
+          {/* Artist */}
+          <div className="ql-field">
+            <span className="ql-label">Artist</span>
+            <div className="ql-artist-select-wrap">
+              <span className="ql-artist-dot" style={{ background: activeArtist?.color }} />
+              <select
+                className="ql-select"
+                value={artist}
+                onChange={(e) => setArtist(e.target.value)}
+              >
+                {QUICK_LOG_ARTISTS.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Description + Hours */}
+          <div className="ql-row">
+            <div className="ql-field ql-field--grow">
+              <span className="ql-label">Description</span>
+              <input
+                className="ql-input"
+                type="text"
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="Soundcheck attendance…"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) save(false); }}
+              />
+            </div>
+            <div className="ql-field ql-field--hours">
+              <span className="ql-label">Hours</span>
+              <input
+                className="ql-input ql-input--hours"
+                type="number"
+                step="0.25"
+                min="0"
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                placeholder="2.5"
+              />
+            </div>
+          </div>
+
+          {err && <p className="ql-err">{err}</p>}
+        </div>
+
+        {/* Actions */}
+        <div className="ql-actions">
+          <button className="ql-cancel" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="ql-save" onClick={() => save(false)} disabled={saving}>
+            {saving ? 'Saving…' : 'Save & Stay'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -920,11 +1055,12 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
 // ── Workspace Selector ────────────────────────────────────────────────────────
 const WS_PALETTE = ['#3852B4', '#F08D39', '#C79A3F', '#4E7265'];
 
-function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome }) {
+function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, onOpenTimeLog }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  const isHome = page === 'home';
+  const isHome = page === 'home' || page === 'timelog';
+  const isTimeLog = page === 'timelog';
   const activeColor = !isHome && currentArtist
     ? WS_PALETTE[artists.findIndex((a) => a.id === currentArtist.id) % WS_PALETTE.length] || '#3852B4'
     : null;
@@ -954,7 +1090,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome })
         <span className="ws-trigger-text">
           <span className="ws-trigger-eyebrow">WORKSPACE</span>
           <span className="ws-trigger-label">
-            {isHome ? 'Global Home' : (currentArtist?.name || 'Global Home')}
+            {isTimeLog ? 'Time Log' : isHome ? 'Global Home' : (currentArtist?.name || 'Global Home')}
           </span>
         </span>
         <span className="ws-trigger-caret">▾</span>
@@ -966,7 +1102,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome })
 
           {/* Global Home row */}
           <button
-            className={`ws-dropdown-item${isHome ? ' ws-dropdown-item--active' : ''}`}
+            className={`ws-dropdown-item${page === 'home' ? ' ws-dropdown-item--active' : ''}`}
             onClick={() => { onGoHome(); setOpen(false); }}
           >
             <span className="ws-dropdown-item-globe" />
@@ -974,7 +1110,25 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome })
               <span className="ws-dropdown-item-name">Global Home</span>
               <span className="ws-dropdown-item-sub">All artists</span>
             </span>
-            {isHome && <span className="ws-dropdown-check">✓</span>}
+            {page === 'home' && <span className="ws-dropdown-check">✓</span>}
+          </button>
+
+          {/* Time Log row */}
+          <button
+            className={`ws-dropdown-item${isTimeLog ? ' ws-dropdown-item--active' : ''}`}
+            onClick={() => { onOpenTimeLog?.(); setOpen(false); }}
+          >
+            <span className="ws-dropdown-item-clock">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M7 4v3.2l2 1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </span>
+            <span className="ws-dropdown-item-text">
+              <span className="ws-dropdown-item-name">Time Log</span>
+              <span className="ws-dropdown-item-sub">Sessions &amp; billing</span>
+            </span>
+            {isTimeLog ? <span className="ws-dropdown-check">✓</span> : <span className="ws-dropdown-arrow">→</span>}
           </button>
 
           {/* Artist rows */}
@@ -1247,7 +1401,7 @@ const TIMEZONES = [
 ];
 
 // ── User Settings Modal ───────────────────────────────────────────────────────
-function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWorkspaceRole, onAvatarChange }) {
+function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWorkspaceRole, onAvatarChange, theme, onToggleTheme }) {
   // ── Push notifications ────────────────────────────────────────────────────
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushMsg,     setPushMsg]     = useState('');
@@ -1559,6 +1713,46 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
         <div className="user-settings-header">
           <h3 className="user-settings-title">Settings</h3>
           <button className="user-settings-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        {/* ── Appearance ── */}
+        <div className="user-settings-section">
+          <h4 className="user-settings-section-title">Appearance</h4>
+          <div className="user-settings-row">
+            <div className="user-settings-row-info">
+              <span className="user-settings-row-label">Theme</span>
+              <span className="user-settings-row-desc">Light or dark interface for this device.</span>
+            </div>
+            <div className="ust-theme-seg" role="radiogroup" aria-label="Theme">
+              <button
+                type="button"
+                className={`ust-theme-opt${theme !== 'dark' ? ' is-active' : ''}`}
+                role="radio"
+                aria-checked={theme !== 'dark'}
+                onClick={() => { if (theme === 'dark') onToggleTheme(); }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="8" r="3.2" fill="currentColor"/>
+                  <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                    <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/>
+                  </g>
+                </svg>
+                Light
+              </button>
+              <button
+                type="button"
+                className={`ust-theme-opt${theme === 'dark' ? ' is-active' : ''}`}
+                role="radio"
+                aria-checked={theme === 'dark'}
+                onClick={() => { if (theme !== 'dark') onToggleTheme(); }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8 5.6 5.6 0 1 0 13.2 9.6z" fill="currentColor"/>
+                </svg>
+                Dark
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* ── Account ── */}
