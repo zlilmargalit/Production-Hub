@@ -171,6 +171,15 @@ async function htmlToPdfBuffer(html, options = {}) {
     const page    = await browser.newPage();
     try {
       await page.setContent(html, { waitUntil: 'load', timeout: 45000 });
+      // Wait for embedded @font-face fonts to finish loading before capturing.
+      // The 'load' event can fire before web fonts are ready; with the default
+      // font-display: block the text stays invisible until the font loads, so
+      // capturing too early yields a PDF with boxes but no glyphs. document.fonts.ready
+      // resolves once all faces are loaded (or after a short timeout fallback).
+      await Promise.race([
+        page.evaluate('document.fonts.ready'),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]).catch(() => {});
       const buffer = await page.pdf({
         format:          options.format || 'A4',
         printBackground: true,
