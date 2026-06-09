@@ -10145,3 +10145,169 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .tm-email-edit .btn-action,
   .tm-email-edit .btn-ghost { min-height: 44px; min-width: 44px; }
 }
+
+/* ── Task Notifications ──────────────────────────────────────────────────────
+   Design tokens: bg #F1EEE9 · surface #FDFAF5 · ink #1A1714 · ink-2 #6B6259
+   · ink-3 #A39A91 · blue #3852B4 · rule #D4CEC6.  Square corners everywhere
+   except the toggle pills (999px). */
+
+/* NOTIFICATIONS button in the Tasks page-bar */
+.gtask-notif-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: transparent;
+  border: 1.5px solid #1A1714;
+  color: #1A1714;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+}
+.gtask-notif-btn:hover { background: #1A1714; color: #FDFAF5; }
+.gtask-notif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #3852B4;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+/* Settings screen */
+.nset-screen {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 4px 64px;
+  color: #1A1714;
+}
+.nset-loading { padding: 48px; text-align: center; color: #A39A91; }
+
+.nset-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.nset-back {
+  background: transparent; border: none; color: #6B6259;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 4px 0;
+}
+.nset-back:hover { color: #1A1714; }
+.nset-title { font-size: 1.6rem; font-weight: 700; margin: 0; }
+
+/* Lock-screen preview */
+.nset-preview { display: flex; justify-content: center; margin-bottom: 28px; }
+.nset-preview-phone {
+  width: 280px;
+  padding: 22px 16px;
+  background: linear-gradient(160deg, #2a2723, #1A1714);
+  border-radius: 22px;
+}
+.nset-preview-time { color: #fff; font-size: 1.6rem; font-weight: 300; text-align: center; margin-bottom: 16px; }
+.nset-preview-card {
+  background: rgba(253, 250, 245, 0.92);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.nset-preview-app { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; color: #6B6259; text-transform: uppercase; margin-bottom: 4px; }
+.nset-preview-body { font-size: 0.85rem; color: #1A1714; }
+
+/* Rules */
+.nset-rules { display: flex; flex-direction: column; gap: 0; border-top: 1px solid #D4CEC6; }
+.nset-rule, .nset-channel {
+  padding: 16px 4px;
+  border-bottom: 1px solid #D4CEC6;
+}
+.nset-rule-head, .nset-channel-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+}
+.nset-rule-name { font-size: 0.95rem; font-weight: 700; }
+.nset-rule-desc { font-size: 0.78rem; color: #6B6259; margin-top: 2px; }
+.nset-rule-sub {
+  display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap;
+}
+.nset-rule-sub--col { flex-direction: column; align-items: flex-start; }
+.nset-sub-row { display: flex; align-items: center; gap: 12px; }
+.nset-sub-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #A39A91; }
+
+.nset-time {
+  padding: 6px 10px; border: 1.5px solid #D4CEC6; background: #FDFAF5;
+  font-size: 0.85rem; border-radius: 0; color: #1A1714;
+}
+.nset-time:focus { outline: none; border-color: #3852B4; }
+
+/* Stepper */
+.nset-stepper { display: inline-flex; align-items: center; border: 1.5px solid #1A1714; }
+.nset-stepper button {
+  width: 34px; height: 32px; background: transparent; border: none; cursor: pointer;
+  font-size: 1.1rem; color: #1A1714;
+}
+.nset-stepper button:hover { background: #1A1714; color: #FDFAF5; }
+.nset-stepper span { min-width: 42px; text-align: center; font-weight: 700; font-size: 0.85rem; }
+
+/* Day chips */
+.nset-day-chips { display: flex; gap: 6px; }
+.nset-day-chip {
+  width: 34px; height: 34px; border: 1.5px solid #D4CEC6; background: #FDFAF5;
+  font-size: 0.78rem; font-weight: 700; cursor: pointer; border-radius: 0; color: #6B6259;
+}
+.nset-day-chip.on { background: #3852B4; border-color: #3852B4; color: #fff; }
+
+/* Toggle pill */
+.nset-toggle {
+  position: relative; width: 46px; height: 26px; flex: 0 0 auto;
+  background: #D4CEC6; border: none; border-radius: 999px; cursor: pointer;
+  transition: background 0.15s;
+}
+.nset-toggle.on { background: #3852B4; }
+.nset-toggle-knob {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+  background: #fff; border-radius: 999px; transition: transform 0.15s;
+}
+.nset-toggle.on .nset-toggle-knob { transform: translateX(20px); }
+
+/* Channels */
+.nset-section-label {
+  margin: 26px 0 4px; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: #A39A91;
+}
+.nset-channels { border-top: 1px solid #D4CEC6; }
+.nset-link-btn {
+  margin-top: 12px; background: transparent; border: none; color: #3852B4;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer; padding: 0;
+}
+.nset-link-btn:hover { text-decoration: underline; }
+.nset-email {
+  margin-top: 12px; width: 100%; max-width: 320px; padding: 8px 12px;
+  border: 1.5px solid #D4CEC6; background: #FDFAF5; font-size: 0.85rem; border-radius: 0;
+}
+.nset-email:focus { outline: none; border-color: #3852B4; }
+
+/* Footer */
+.nset-msg { margin-top: 20px; padding: 10px 14px; font-size: 0.82rem; font-weight: 600; border-radius: 0; }
+.nset-msg--ok { background: #e7ecdf; color: #3a5a2a; border: 1px solid #b9caa5; }
+.nset-msg--err { background: #f6e3e0; color: #8a3526; border: 1px solid #e0b3aa; }
+
+.nset-footer { display: flex; align-items: center; gap: 14px; margin-top: 24px; }
+.nset-test-btn {
+  padding: 10px 20px; background: transparent; border: 1.5px solid #1A1714;
+  color: #1A1714; font-weight: 700; font-size: 0.82rem; cursor: pointer; border-radius: 0;
+}
+.nset-test-btn:hover { background: #1A1714; color: #FDFAF5; }
+.nset-save-btn {
+  padding: 10px 22px; background: #3852B4; border: 1.5px solid #3852B4; color: #fff;
+  font-weight: 700; font-size: 0.82rem; cursor: pointer; border-radius: 0;
+  box-shadow: 3px 3px 0 #1A1714;
+}
+.nset-save-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #1A1714; }
+.nset-save-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+@media (max-width: 640px) {
+  .nset-rule-head, .nset-channel-head { gap: 10px; }
+  .nset-footer { flex-direction: column-reverse; align-items: stretch; }
+  .nset-save-btn, .nset-test-btn { width: 100%; }
+}

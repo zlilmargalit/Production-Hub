@@ -116,4 +116,4 @@ async function ensureArtistDir(userId, artistId) {
   }
 }
 
-module.exports = { dataPath, cacheKey, ensureUserDir, ensureArtistDir, artistScopedId, DATA_DIR };
+module.exports = { dataPath, cacheKey, ensureUserDir, ensureArtistDir, artistScopedId, parseUserId, DATA_DIR };

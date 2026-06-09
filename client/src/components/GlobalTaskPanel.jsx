@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import PageBar from './ui/PageBar';
+import NotificationSettingsScreen from './NotificationSettingsScreen';
 
 const fmtDate = (d) => {
   if (!d) return null;
@@ -339,7 +340,11 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const [editingId,   setEditingId]   = useState(null);
   const [expandedId,  setExpandedId]  = useState(null);
   const [noteDraft,   setNoteDraft]   = useState('');
+  const [screen,      setScreen]      = useState('tasks'); // 'tasks' | 'settings'
   const noteSaveTimer = useRef(null);
+
+  // Count of timed, open tasks that currently have an alert armed.
+  const armedCount = tasks.filter((t) => !t.completed && (t.dueTime || t.reminder)).length;
 
   const handleAdd = () => {
     const trimmed = text.trim();
@@ -394,6 +399,14 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const countActive = ownTasks.filter((t) => !t.completed).length;
   const countDone   = ownTasks.filter((t) =>  t.completed).length;
 
+  if (screen === 'settings') {
+    return (
+      <div className="gtask-page">
+        <NotificationSettingsScreen onClose={() => setScreen('tasks')} />
+      </div>
+    );
+  }
+
   return (
     <div className="gtask-page">
       <PageBar
@@ -405,6 +418,12 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
           { value: countDone,                         label: 'Done' },
           { value: ownTasks.filter(t=>t.dueDate).length, label: 'With date' },
         ]}
+        headerAction={
+          <button className="gtask-notif-btn" onClick={() => setScreen('settings')} title="Notification settings">
+            <span className="gtask-notif-bell">Notifications</span>
+            {armedCount > 0 && <span className="gtask-notif-badge">{armedCount}</span>}
+          </button>
+        }
       />
 
       {/* Add-task form */}

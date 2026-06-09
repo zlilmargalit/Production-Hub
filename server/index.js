@@ -38,6 +38,7 @@ const tasksRouter         = require('./routes/tasks');
 const timelogRouter       = require('./routes/timelog');
 const spotifyRouter       = require('./routes/spotify');
 const { router: automationsRouter, publicRouter: automationsPublicRouter, startCron: startAutomationsCron } = require('./routes/automations');
+const { router: notificationsRouter, startNotificationCron } = require('./routes/notifications');
 const driveRouter             = require('./routes/drive');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
 const { readJsonCached, writeJsonAndCache, clearAll: clearCache } = require('./cache');
@@ -1482,6 +1483,7 @@ app.use('/api/timelog',        timelogRouter);
 app.use('/api/spotify',        spotifyRouter);
 app.use('/api/drive',          driveRouter);
 app.use('/api/automations',    automationsRouter);
+app.use('/api',                notificationsRouter);
 app.use('/api/tools',          techSpecRouter);
 
 // ── Error handler ────────────────────────────────────────────────────────────
@@ -1665,4 +1667,5 @@ app.listen(PORT, () => {
   migrateRootDataToArtists(); // fire-and-forget — non-blocking
   startGmailPolling();
   startAutomationsCron();    // daily 09:00 early-coordination alerts
+  startNotificationCron();   // every 15 min — task reminders, digest, overdue
 });

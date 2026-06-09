@@ -3,6 +3,7 @@ const router  = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { dataPath, cacheKey } = require('../utils/userData');
+const { notifyAssigned } = require('./notifications');
 
 const readTasks  = (userId) =>
   readJsonCached(cacheKey(userId, 'tasks'), dataPath(userId, 'tasks.json'), []);
@@ -19,7 +20,7 @@ router.get('/', async (req, res, next) => {
 // POST /api/tasks
 router.post('/', async (req, res, next) => {
   try {
-    const { text, notes, dueDate, dueTime, assignedTo, showId, showIds, assigneeId, assigneeName } = req.body || {};
+    const { text, notes, dueDate, dueTime, assignedTo, showId, showIds, assigneeId, assigneeName, reminder } = req.body || {};
     if (!text?.trim()) return res.status(400).json({ error: 'text required' });
     const tasks = await readTasks(req.userId);
     // normalise show references — prefer the new showIds array
@@ -38,11 +39,14 @@ router.post('/', async (req, res, next) => {
       assignedTo:      assignedTo   || null,
       assigneeId:      assigneeId   || null,
       assigneeName:    assigneeName || null,
+      reminder:        reminder     || null,
       createdAt:       new Date().toISOString(),
       pushNotifiedAt:  null,
     };
     await writeTasks(req.userId, [...tasks, task]);
     res.status(201).json(task);
+    // Fire-and-forget: notify on assignment at creation time.
+    if (task.assigneeId) notifyAssigned(req.userId, task).catch(() => {});
   } catch (err) { next(err); }
 });
 
@@ -52,9 +56,14 @@ router.put('/:id', async (req, res, next) => {
     const tasks = await readTasks(req.userId);
     const idx = tasks.findIndex((t) => t.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Task not found' });
-    const updated = { ...tasks[idx], ...req.body, id: tasks[idx].id };
+    const prev = tasks[idx];
+    const updated = { ...prev, ...req.body, id: prev.id };
     await writeTasks(req.userId, tasks.map((t, i) => (i === idx ? updated : t)));
     res.json(updated);
+    // Fire-and-forget: notify when a task becomes newly assigned to someone.
+    if (updated.assigneeId && updated.assigneeId !== prev.assigneeId) {
+      notifyAssigned(req.userId, updated).catch(() => {});
+    }
   } catch (err) { next(err); }
 });
 
