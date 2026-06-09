@@ -607,18 +607,6 @@ function App({ demoMode = false }) {
 
         {/* Action buttons (right — admin tools hidden on mobile) */}
         <div className="header-right">
-          {/* Mobile-only: artist switcher moves here from the nav row */}
-          {!demoMode && (
-            <div className="header-artist-mobile">
-              <ArtistSwitcher
-                artists={artists}
-                currentArtist={currentArtist}
-                onSwitch={switchToArtist}
-                onAddNew={() => setNewArtistModal(true)}
-                onDelete={deleteArtist}
-              />
-            </div>
-          )}
           {/* Notification bell — join requests + assigned tasks */}
           {!demoMode && userRole !== 'admin' && (
             <NotificationBell
