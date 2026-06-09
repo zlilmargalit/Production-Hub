@@ -155,6 +155,20 @@ function TaskManager({ show, onUpdate, artistId }) {
     onUpdate(show.id, { ...show, guestList: text });
   };
 
+  // Sort the guest list lines alphabetically (Hebrew-aware), preserving any
+  // trailing "+1" / count suffixes since they're part of the line text.
+  const sortGuestList = () => {
+    const sorted = guestText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'he'))
+      .join('\n');
+    if (sorted === guestText) return;
+    setGuestText(sorted);
+    saveGuestList(sorted);
+  };
+
   const [inviteStatus, setInviteStatus] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
 
@@ -388,6 +402,16 @@ function TaskManager({ show, onUpdate, artistId }) {
           <h4 className="fixed-task-title">Guest List</h4>
           {countGuests(guestText) > 0 && (
             <span className="guest-count-badge">{countGuests(guestText)}</span>
+          )}
+          {guestText.trim() && (
+            <button
+              type="button"
+              className="guest-sort-btn"
+              onClick={sortGuestList}
+              title="Sort the guest list alphabetically (א–ב)"
+            >
+              Sort א–ב
+            </button>
           )}
         </div>
         <textarea

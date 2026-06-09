@@ -9164,6 +9164,28 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: 20px;
   letter-spacing: 0.03em;
 }
+.guest-sort-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.guest-sort-btn:hover {
+  color: var(--text);
+  border-color: var(--text-3);
+  background: var(--surface-sunk);
+}
 .guest-list-textarea {
   width: 100%;
   resize: vertical;
@@ -9390,7 +9412,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .tlog-grid-head {
   display: grid;
-  grid-template-columns: 62px 168px 1fr 96px 30px;
+  grid-template-columns: 62px 168px 1fr 96px 30px 34px;
   align-items: center;
   gap: 18px;
   padding: 10px 22px;
@@ -9409,7 +9431,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 .tlog-row {
   display: grid;
-  grid-template-columns: 62px 168px 1fr 96px 30px;
+  grid-template-columns: 62px 168px 1fr 96px 30px 34px;
   align-items: center;
   gap: 18px;
   padding: 15px 22px;
@@ -9452,6 +9474,26 @@ html, body { max-width: 100%; overflow-x: hidden; }
   color: var(--text-3);
 }
 .tlog-row-check { display: flex; justify-content: center; }
+.tlog-row-edit { display: flex; justify-content: center; }
+.tlog-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.tlog-edit-btn:hover {
+  color: var(--text);
+  border-color: var(--text-3);
+  background: var(--surface-sunk);
+}
 
 /* ── Artist tag ── */
 .tlog-tag {
@@ -9585,7 +9627,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 @media (max-width: 720px) {
   .tlog-title-row { flex-wrap: wrap; }
-  .tlog-grid-head, .tlog-row { grid-template-columns: 50px 110px 1fr 70px 26px; gap: 10px; padding-left: 14px; padding-right: 14px; }
+  .tlog-grid-head, .tlog-row { grid-template-columns: 50px 110px 1fr 70px 26px 30px; gap: 10px; padding-left: 14px; padding-right: 14px; }
   .tlog-tag { font-size: 0.68rem; padding: 3px 7px; }
   /* Description column: header right-aligned to match Hebrew RTL content */
   .tlog-grid-head-label:nth-child(3) { text-align: right; }

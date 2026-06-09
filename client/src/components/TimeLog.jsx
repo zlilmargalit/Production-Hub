@@ -18,6 +18,14 @@ function isoToDDMM(iso) {
   return `${d}-${m}`;
 }
 
+/* "DD-MM" (stored) → "YYYY-MM-DD" (date input). Year isn't stored, so the
+   current year is assumed — consistent with how new entries drop the year. */
+function ddmmToIso(ddmm) {
+  const [d, m] = String(ddmm || '').split('-');
+  if (!d || !m) return new Date().toISOString().slice(0, 10);
+  return `${new Date().getFullYear()}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
+
 /* ── Artist tag inside a grid row ───────────────────────────────────────── */
 function ArtistTag({ artist }) {
   const a = ARTISTS[artist] || ARTISTS.general;
@@ -51,8 +59,26 @@ function BilledCheck({ on, onClick }) {
   );
 }
 
+/* ── Edit (pencil) button ───────────────────────────────────────────────── */
+function EditButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Edit session"
+      title="Edit session"
+      className="tlog-edit-btn"
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M9.5 1.8l2.7 2.7M1 13l.6-2.9 7.4-7.4 2.3 2.3-7.4 7.4L1 13z"
+          stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
 /* ── Time grid row ──────────────────────────────────────────────────────── */
-function TimeRow({ e, last, onToggle }) {
+function TimeRow({ e, last, onToggle, onEdit }) {
   return (
     <div className={`tlog-row${last ? ' tlog-row--last' : ''}`}>
       <span className="tlog-row-date">{e.date}</span>
@@ -65,17 +91,21 @@ function TimeRow({ e, last, onToggle }) {
       <div className="tlog-row-check">
         <BilledCheck on={e.billed} onClick={() => onToggle(e.id)} />
       </div>
+      <div className="tlog-row-edit">
+        <EditButton onClick={() => onEdit(e)} />
+      </div>
     </div>
   );
 }
 
-/* ── Add Time form (modal) ──────────────────────────────────────────────── */
-function AddTimeModal({ onClose, onSave }) {
+/* ── Add / Edit Time form (modal) ───────────────────────────────────────── */
+function TimeModal({ entry, onClose, onSave }) {
+  const editing = !!entry;
   const today = new Date().toISOString().slice(0, 10);
-  const [date, setDate]     = useState(today);
-  const [artist, setArtist] = useState('general');
-  const [desc, setDesc]     = useState('');
-  const [hours, setHours]   = useState('');
+  const [date, setDate]     = useState(editing ? ddmmToIso(entry.date) : today);
+  const [artist, setArtist] = useState(editing ? entry.artist : 'general');
+  const [desc, setDesc]     = useState(editing ? entry.desc : '');
+  const [hours, setHours]   = useState(editing ? String(entry.hours) : '');
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
 
@@ -86,7 +116,8 @@ function AddTimeModal({ onClose, onSave }) {
     if (!(h > 0))       { setErr('Hours must be greater than 0.'); return; }
     setSaving(true); setErr('');
     try {
-      await onSave({ date: isoToDDMM(date), artist, desc: desc.trim(), hours: h, billed: false });
+      // Preserve the billed flag when editing; new entries start unbilled.
+      await onSave({ date: isoToDDMM(date), artist, desc: desc.trim(), hours: h, billed: editing ? entry.billed : false });
       onClose();
     } catch (e) {
       setErr(e.message || 'Could not save the session.');
@@ -97,7 +128,7 @@ function AddTimeModal({ onClose, onSave }) {
   return (
     <div className="tlog-modal-backdrop" onClick={onClose}>
       <div className="tlog-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="tlog-modal-title">Add Time<span className="tlog-period">.</span></h2>
+        <h2 className="tlog-modal-title">{editing ? 'Edit Time' : 'Add Time'}<span className="tlog-period">.</span></h2>
         <form onSubmit={submit} className="tlog-form">
           <label className="tlog-field">
             <span className="tlog-field-label">Date</span>
@@ -136,7 +167,7 @@ function AddTimeModal({ onClose, onSave }) {
           <div className="tlog-form-actions">
             <button type="button" className="btn secondary sz-md" onClick={onClose} disabled={saving}>Cancel</button>
             <button type="submit" className="btn primary sz-md" disabled={saving}>
-              {saving ? 'Saving…' : 'Add Time'}
+              {saving ? 'Saving…' : (editing ? 'Save Changes' : 'Add Time')}
             </button>
           </div>
         </form>
@@ -151,6 +182,7 @@ export default function TimeLog({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState('all');
   const [adding, setAdding]   = useState(false);
+  const [editing, setEditing] = useState(null);
 
   // Load sessions (mirrors Dashboard.jsx's fetch pattern)
   useEffect(() => {
@@ -198,6 +230,21 @@ export default function TimeLog({ onBack }) {
     }
     const created = await res.json();
     setEntries((es) => [...es, created]);
+  }, []);
+
+  const updateEntry = useCallback(async (id, fields) => {
+    const res = await fetch(`/api/timelog/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Could not save the changes.');
+    }
+    const updated = await res.json();
+    setEntries((es) => es.map((e) => (e.id === id ? updated : e)));
   }, []);
 
   const visible = useMemo(
@@ -324,6 +371,7 @@ export default function TimeLog({ onBack }) {
           <span className="tlog-grid-head-label">Description</span>
           <span className="tlog-grid-head-label tlog-right">Hours</span>
           <span className="tlog-grid-head-label tlog-center">Bld</span>
+          <span className="tlog-grid-head-label" aria-hidden="true" />
         </div>
         {loading ? (
           <div className="tlog-empty">Loading sessions…</div>
@@ -331,7 +379,7 @@ export default function TimeLog({ onBack }) {
           <div className="tlog-empty">No sessions for this filter.</div>
         ) : (
           visible.map((e, i) => (
-            <TimeRow key={e.id} e={e} last={i === visible.length - 1} onToggle={toggle} />
+            <TimeRow key={e.id} e={e} last={i === visible.length - 1} onToggle={toggle} onEdit={setEditing} />
           ))
         )}
       </div>
@@ -344,7 +392,14 @@ export default function TimeLog({ onBack }) {
         </span>
       </div>
 
-      {adding && <AddTimeModal onClose={() => setAdding(false)} onSave={addEntry} />}
+      {adding && <TimeModal onClose={() => setAdding(false)} onSave={addEntry} />}
+      {editing && (
+        <TimeModal
+          entry={editing}
+          onClose={() => setEditing(null)}
+          onSave={(fields) => updateEntry(editing.id, fields)}
+        />
+      )}
     </div>
   );
 }
