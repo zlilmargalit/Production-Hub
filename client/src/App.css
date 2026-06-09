@@ -3940,26 +3940,34 @@ html, body { max-width: 100%; overflow-x: hidden; }
   }
   .header-brand h1 { font-size: 1.125rem; }
 
-  /* nav wraps to its own full-width row — tabs share space equally, nothing scrolls */
+  /* nav becomes a horizontal scroll strip — tabs keep natural width & legible
+     text instead of being crushed to ~10px; the strip scrolls under the thumb */
   .page-nav {
     order: 99;
     flex: 0 0 100%;
     margin-left: 0;
-    gap: 0;
+    gap: 2px;
     border-top: 1px solid var(--border-light);
     padding: 4px 4px 6px;
     align-items: center;
     flex-wrap: nowrap;
-    justify-content: space-between;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
   }
+  .page-nav::-webkit-scrollbar { display: none; }
   .nav-btn {
-    flex: 1;
-    padding: 7px 1px;
-    font-size: 0.625rem;
+    flex: 0 0 auto;
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 0.75rem;
     letter-spacing: 0;
     margin: 0;
     white-space: nowrap;
     text-align: center;
+    scroll-snap-align: start;
   }
   /* Artist switcher: hide from nav, show in header-right */
   .nav-artist-desktop  { display: none; }
@@ -9924,7 +9932,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     min-height: 44px;
     justify-content: center;
   }
-  .template-header-actions .btn-icon {
+  .template-header-actions .icon-btn {
     grid-column: 1 / -1;
     min-height: 44px;
     width: 100%;
@@ -10034,4 +10042,61 @@ html, body { max-width: 100%; overflow-x: hidden; }
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mobile bug-fix round 2 — targets the REAL class names confirmed in the
+   components (earlier rules referenced selectors that don't exist, so the
+   live bugs persisted). Six fixes, all additive, ≤768px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* ── #2 · Shows list filter row: UPCOMING/PAST seg + Filter overlapped ───────
+     Each control carries a hard 3px offset shadow; on a narrow row the shadows
+     fell under the neighbour and read as overlap. Stack the row, give the seg
+     its own full-width line, and tame the shadows to 2px. Real classes:
+     .filter-bar-row > (.seg + .filter-drop); seg buttons are .seg-btn. */
+  .filter-bar-row { flex-wrap: wrap; gap: 14px; }
+  .seg {
+    display: flex;
+    width: 100%;
+    box-shadow: 2px 2px 0 var(--text);
+  }
+  .seg-btn { flex: 1; justify-content: center; padding: 13px 8px; min-height: 44px; }
+  .filter-drop { margin-left: auto; }
+  .filter-drop-btn { box-shadow: 2px 2px 0 var(--text); min-height: 44px; }
+
+  /* ── #3 · Technical coordination: Rental/Supplier inputs tiny & clipped ──────
+     Each modality (.hub-tech-row) keeps 3 desktop columns [toggle][rental]
+     [supplier] on mobile, so the two inputs collapse to ~70px and placeholders
+     clip. Let the row wrap and make the toggle + each input group full-width.
+     NB: the first .fixed-input-group carries an inline style={{flex:2}} (desktop
+     column ratio), so the override here MUST use !important to win over it —
+     without it the Rental field stays crushed to ~38px on mobile. */
+  .hub-tech-row { flex-wrap: wrap; gap: 10px; }
+  .hub-tech-row .hub-coord-toggle { flex: 1 1 100% !important; min-height: 44px; }
+  .hub-tech-row .fixed-input-group { flex: 1 1 100% !important; min-width: 0; }
+  .hub-tech-row .fixed-input { width: 100%; min-height: 44px; box-sizing: border-box; }
+
+  /* ── #5 · Automations: huge empty band under the title ───────────────────────
+     The real culprit was automations.css's own mobile rule:
+     .auto-page { padding: 32px 20px 72px; gap: 44px } — the 44px flex-column gap
+     (between the sticky title bar and the first section) plus 32px top padding
+     created the empty band. Fixed at source in automations.css (16px / 16px).
+     Here we just tighten the inter-section margin to match. */
+  .auto-page .auto-section + .auto-section { margin-top: 24px; }
+
+  /* ── #6 · Teams: editing a member email overflowed onto the role badge ───────
+     .tm-email-edit (input + Save + ✕) sat inside the name column and pushed its
+     buttons sideways over the .tm-role-badge. Let the row wrap, give the input
+     its own full-width line, and keep Save/✕ as 44px targets below it. */
+  .tm-member-row { flex-wrap: wrap; row-gap: 10px; }
+  .tm-email-edit { flex-wrap: wrap; gap: 6px; width: 100%; }
+  .tm-email-edit .team-email-input {
+    flex: 1 1 100%;
+    min-width: 0;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  .tm-email-edit .btn-action,
+  .tm-email-edit .btn-ghost { min-height: 44px; min-width: 44px; }
 }
