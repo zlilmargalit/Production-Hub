@@ -225,7 +225,7 @@ function ShowDayBanner({ show, checklist }) {
   const arriveTime   = show.loadIn || (schedLines[1]?.time || '');
 
   return (
-    <div className="showday-banner">
+    <div className="showday-banner" style={{ background: show.color || 'var(--text)' }}>
       <div className="showday-hdr" onClick={toggleOpen} role="button" tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && toggleOpen()}>
         <div className="showday-hdr-left">

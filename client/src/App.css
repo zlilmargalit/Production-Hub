@@ -183,6 +183,9 @@ body {
    which scrolls the page sideways and (in RTL) clips the leading/right edge,
    hiding primary actions. This stops it globally without affecting desktop. */
 html, body { max-width: 100%; overflow-x: hidden; }
+/* overflow-x:hidden on html/body is ignored by iOS touch-scroll; clip on .app
+   creates a visual clip boundary without breaking position:sticky or position:fixed */
+.app { overflow-x: clip; }
 
 /* ─── Layout ───────────────────────────────────────────────────────────── */
 .app { min-height: 100vh; }
@@ -9576,6 +9579,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .tlog-title-row { flex-wrap: wrap; }
   .tlog-grid-head, .tlog-row { grid-template-columns: 50px 110px 1fr 70px 26px; gap: 10px; padding-left: 14px; padding-right: 14px; }
   .tlog-tag { font-size: 0.68rem; padding: 3px 7px; }
+  /* Description column: header right-aligned to match Hebrew RTL content */
+  .tlog-grid-head-label:nth-child(3) { text-align: right; }
+  .tlog-row-desc { text-align: right; direction: rtl; }
+  /* Prevent timelog grid from causing horizontal scroll */
+  .tlog-grid { overflow-x: hidden; }
 }
 
 /* ══ Header clock button — separate circle, same diameter as ws-trigger ═══ */
@@ -9826,6 +9834,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .ql-row { flex-direction: column; }
   .ql-field--hours { width: 100%; }
   .header-log-btn { width: 40px; height: 40px; }
+  /* iOS auto-zooms on any input with font-size < 16px; set a 16px floor */
+  .ql-input, .ql-select { font-size: 16px; }
+  /* dvh = dynamic viewport height (adjusts when soft keyboard opens) */
+  .ql-backdrop { height: 100dvh; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
