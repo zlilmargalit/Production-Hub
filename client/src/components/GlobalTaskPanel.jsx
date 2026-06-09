@@ -7,6 +7,9 @@ const fmtDate = (d) => {
   return `${day}/${m}/${y}`;
 };
 
+// Format HH:MM (24h) → display string; returns null if empty
+const fmtTime = (t) => (t && /^\d{2}:\d{2}/.test(t) ? t.slice(0, 5) : null);
+
 const sortedShows = (shows) =>
   [...(shows || [])].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
 
@@ -78,6 +81,7 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
   const [text,       setText]       = useState(task.text);
   const [notes,      setNotes]      = useState(task.notes || '');
   const [dueDate,    setDueDate]    = useState(task.dueDate    || '');
+  const [dueTime,    setDueTime]    = useState(task.dueTime    || '');
   const [assignedTo, setAssignedTo] = useState(task.assignedTo || '');
   const [showIds,    setShowIds]    = useState(normalizeShowIds(task));
 
@@ -88,6 +92,7 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
       text: trimmed,
       notes: notes.trim() || null,
       dueDate: dueDate || null,
+      dueTime: dueTime || null,
       assignedTo: assignedTo || null,
       showIds,
       showId: showIds[0] || null,   // keep legacy field for backward compat
@@ -121,6 +126,13 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
+        <input
+          type="time"
+          className="gtask-time-input"
+          value={dueTime}
+          onChange={(e) => setDueTime(e.target.value)}
+          title="Time (optional)"
+        />
         <select className="gtask-select" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
           <option value="">Assign to…</option>
           {(crew || []).map((m) => (
@@ -138,8 +150,15 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
 }
 
 // ── Date pill for board view ──────────────────────────────────────────────────
-function DatePill({ dueDate, completed }) {
-  if (!dueDate) return null;
+function DatePill({ dueDate, dueTime, completed }) {
+  if (!dueDate && !dueTime) return null;
+  const time = fmtTime(dueTime);
+
+  // Time-only task (no date): plain neutral pill
+  if (!dueDate) {
+    return <span className="gtask-date-pill gtask-date-pill--future">{time}</span>;
+  }
+
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due   = new Date(dueDate);
   const isToday   = due.getTime() === today.getTime();
@@ -153,7 +172,7 @@ function DatePill({ dueDate, completed }) {
   return (
     <span className={className}>
       {isOverdue && <span aria-hidden="true">⚠ </span>}
-      {fmtDate(dueDate)}
+      {fmtDate(dueDate)}{time ? ` · ${time}` : ''}
     </span>
   );
 }
@@ -217,9 +236,9 @@ function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, set
           </div>
 
           {/* Pills row */}
-          {(t.dueDate || linkedShows.length > 0) && (
+          {(t.dueDate || t.dueTime || linkedShows.length > 0) && (
             <div className="gtask-board-row-pills">
-              <DatePill dueDate={t.dueDate} completed={t.completed} />
+              <DatePill dueDate={t.dueDate} dueTime={t.dueTime} completed={t.completed} />
               {linkedShows.map(s => (
                 <span key={s.id} className="gtask-pill gtask-pill--show">{s.name}</span>
               ))}
@@ -313,6 +332,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   const [notes,       setNotes]       = useState('');
   const [showNotes,   setShowNotes]   = useState(false);
   const [dueDate,     setDueDate]     = useState('');
+  const [dueTime,     setDueTime]     = useState('');
   const [assignedTo,  setAssignedTo]  = useState('');
   const [showIds,     setShowIds]     = useState([]);
   const [filter,      setFilter]      = useState('active');
@@ -328,12 +348,13 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
       text: trimmed,
       notes: notes.trim() || null,
       dueDate: dueDate || null,
+      dueTime: dueTime || null,
       assignedTo: assignedTo || null,
       showIds,
       showId: showIds[0] || null,
     });
     setText(''); setNotes(''); setShowNotes(false);
-    setDueDate(''); setAssignedTo(''); setShowIds([]);
+    setDueDate(''); setDueTime(''); setAssignedTo(''); setShowIds([]);
   };
 
   const handleSaveEdit = (id, data) => {
@@ -427,6 +448,13 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
             title="Due date (optional)"
             placeholder="dd/mm/yyyy — optional"
           />
+          <input
+            type="time"
+            className="gtask-time-input"
+            value={dueTime}
+            onChange={(e) => setDueTime(e.target.value)}
+            title="Time (optional)"
+          />
           <select className="gtask-select" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Assign to…</option>
             {(crew || []).map((m) => (
@@ -471,9 +499,9 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                     <span className="gtask-text" dir="auto">{t.text}</span>
                     <div className="gtask-pills">
                       <span className="gtask-pill gtask-pill--assigned">assigned</span>
-                      {t.dueDate && (
+                      {(t.dueDate || t.dueTime) && (
                         <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
-                          {overdue ? '⚠ ' : ''}{fmtDate(t.dueDate)}
+                          {overdue ? '⚠ ' : ''}{t.dueDate ? fmtDate(t.dueDate) : ''}{fmtTime(t.dueTime) ? `${t.dueDate ? ' · ' : ''}${fmtTime(t.dueTime)}` : ''}
                         </span>
                       )}
                     </div>
@@ -563,9 +591,9 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                               {s.name}
                             </span>
                           ))}
-                          {t.dueDate && (
+                          {(t.dueDate || t.dueTime) && (
                             <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
-                              {overdue ? '⚠ ' : ''}{fmtDate(t.dueDate)}
+                              {overdue ? '⚠ ' : ''}{t.dueDate ? fmtDate(t.dueDate) : ''}{fmtTime(t.dueTime) ? `${t.dueDate ? ' · ' : ''}${fmtTime(t.dueTime)}` : ''}
                             </span>
                           )}
                           {t.notes && !isExpanded && (

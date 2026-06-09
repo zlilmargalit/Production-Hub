@@ -19,7 +19,7 @@ router.get('/', async (req, res, next) => {
 // POST /api/tasks
 router.post('/', async (req, res, next) => {
   try {
-    const { text, notes, dueDate, assignedTo, showId, showIds, assigneeId, assigneeName } = req.body || {};
+    const { text, notes, dueDate, dueTime, assignedTo, showId, showIds, assigneeId, assigneeName } = req.body || {};
     if (!text?.trim()) return res.status(400).json({ error: 'text required' });
     const tasks = await readTasks(req.userId);
     // normalise show references — prefer the new showIds array
@@ -34,6 +34,7 @@ router.post('/', async (req, res, next) => {
       showId:          resolvedShowIds[0]  || null,   // legacy compat
       showIds:         resolvedShowIds,
       dueDate:         dueDate      || null,
+      dueTime:         dueTime      || null,
       assignedTo:      assignedTo   || null,
       assigneeId:      assigneeId   || null,
       assigneeName:    assigneeName || null,

@@ -4182,6 +4182,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex-wrap: wrap;
 }
 .gtask-date-input,
+.gtask-time-input,
 .gtask-select {
   padding: 7px 12px;
   border: 1px solid var(--border);
@@ -4194,7 +4195,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex: 1;
   min-width: 120px;
 }
+.gtask-time-input { min-width: 96px; flex: 0 0 auto; }
 .gtask-date-input:focus,
+.gtask-time-input:focus,
 .gtask-select:focus { outline: none; border-color: var(--accent); }
 
 /* Filter bar */
@@ -4525,7 +4528,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .gtask-list { padding-left: 16px; padding-right: 16px; margin-left: 0; margin-right: 0; }
   .gtask-add-card { margin-left: 16px; margin-right: 16px; }
   .gtask-add-meta { flex-direction: column; }
-  .gtask-date-input, .gtask-select { min-width: unset; }
+  .gtask-date-input, .gtask-time-input, .gtask-select { min-width: unset; }
   .crew-pick-grid { column-count: 2; }
   .gtask-board { grid-template-columns: 1fr; }
 }
