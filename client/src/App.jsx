@@ -186,6 +186,31 @@ function App({ demoMode = false }) {
     init();
   }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
 
+  // ── Refresh on focus/visibility ───────────────────────────────────────────
+  // iOS freezes a home-screen PWA and restores the old state without reloading,
+  // so without this the app shows stale data after reopening. Re-fetch scoped
+  // data whenever the app returns to the foreground (also keeps desktop tabs live).
+  useEffect(() => {
+    if (demoMode) return;
+    let last = Date.now();
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - last < 1500) return; // throttle duplicate focus/visibility fires
+      last = now;
+      Promise.all([
+        fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(),
+        fetchEventTypes(), fetchTasks(),
+      ]).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
+
   // ── Mutations — real (normal mode) ────────────────────────────────────────
   const saveFieldTemplate = useCallback(async (eventType, fields) => {
     if (demoMode) {
