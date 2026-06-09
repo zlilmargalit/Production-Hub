@@ -178,6 +178,12 @@ body {
 ::selection { background: rgba(56,82,180,0.16); color: var(--text); }
 [data-theme="dark"] ::selection { background: rgba(122,143,224,0.28); }
 
+/* ─── Mobile root-cause guard ───────────────────────────────────────────────
+   The single most common mobile failure is content wider than the viewport,
+   which scrolls the page sideways and (in RTL) clips the leading/right edge,
+   hiding primary actions. This stops it globally without affecting desktop. */
+html, body { max-width: 100%; overflow-x: hidden; }
+
 /* ─── Layout ───────────────────────────────────────────────────────────── */
 .app { min-height: 100vh; }
 
@@ -7177,6 +7183,10 @@ body {
 [data-theme="dark"] .tm-perm-cell--on { background: rgba(22,163,74,.15); }
 [data-theme="dark"] .tm-perm-cell--on:hover { background: rgba(22,163,74,.25); }
 
+/* Per-cell label — hidden on desktop (column header provides context); shown
+   when the matrix collapses into per-area cards on mobile (header is dropped). */
+.tm-perm-cell-lbl { display: none; }
+
 .tm-perm-footer { display: flex; justify-content: flex-end; }
 
 /* ── Expanded settings: two-column (artist access + permissions) ─────────── */
@@ -9816,4 +9826,200 @@ body {
   .ql-row { flex-direction: column; }
   .ql-field--hours { width: 100%; }
   .header-log-btn { width: 40px; height: 40px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS — design handoff fixes (per-screen)
+   Global root-cause guard lives near the top: html,body{overflow-x:hidden}.
+   Below: targeted reflows so no element is pushed past the right edge at ≤390px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* ── Screen 1: Show detail (expanded card) ─────────────────────────────────
+     Per handoff: inline field grids already stack (.details-grid / .tech-grid /
+     .custom-fields-grid → 1fr above). Here we add the 44px thumb-target floor,
+     turn the Technical/Logistics switch into two equal full-width tabs, and let
+     the footer wrap so Brief/PDF (left) and Invoice/Receipt (right) never crush
+     each other on a narrow row. */
+  .show-expand-toggle { width: 100%; }
+  .show-expand-btn { flex: 1; min-height: 44px; padding: 8px 10px; }
+  .show-card-footer { flex-wrap: wrap; row-gap: 10px; }
+  .footer-left { flex-wrap: wrap; }
+  .btn-brief, .btn-pdf { min-height: 44px; }
+  .footer-check { min-height: 44px; }
+  /* Coordination inputs/controls reach the tap floor; groups may shrink */
+  .fixed-input-group { min-width: 0; }
+  .fixed-input,
+  .tech-textarea,
+  .tech-checklist-input,
+  .tech-spec-upload-btn { min-height: 44px; box-sizing: border-box; }
+
+  /* ── Screen 2: Shows list — card anatomy ───────────────────────────────────
+     The show title was clamped to a single line with an ellipsis, hiding the
+     rest of long Hebrew names. Let it wrap and balance (still RTL, right-
+     aligned). The meta line already flex-wraps; raise the top-row Edit/Delete/
+     expand controls to real 44px tap targets. */
+  .show-card-header h2 {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-wrap: balance;
+    line-height: 1.14;
+  }
+  .show-card-top-row { gap: 8px; }
+  .btn-action {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+  }
+
+  /* ── Screen 3: Crew & Event Types ──────────────────────────────────────────
+     The page-bar sub-row (segmented tabs + "+ Add Member") didn't wrap, so the
+     CTA was shoved ~60px off the right edge. Stack it: tabs scroll on their own
+     row, the action becomes a full-width 44px button underneath. */
+  .pg-bar-sub { flex-wrap: wrap; gap: 10px; }
+  .pg-bar-tabs-left {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pg-bar-tabs-left::-webkit-scrollbar { display: none; }
+  .pg-bar-actions { flex: 1 1 100%; }
+  .pg-bar-actions .btn-primary { width: 100%; min-height: 44px; justify-content: center; }
+
+  /* Event-type cards: the Crew/Fields/Checklist/✕ row crushed the RTL type name
+     and clipped the ✕. Handoff "Stacked" pattern (B): name gets its own full
+     line on top, actions become a 2-col 44px button grid, Delete spans full. */
+  .template-card-header { flex-wrap: wrap; }
+  .template-type {
+    flex: 1 1 100%;
+    order: -1;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: right;
+    margin-bottom: 4px;
+  }
+  .template-header-actions {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .template-header-actions .btn-secondary {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .template-header-actions .btn-icon {
+    grid-column: 1 / -1;
+    min-height: 44px;
+    width: 100%;
+  }
+
+  /* Crew member cards: actions were position:absolute + opacity:0 revealed on
+     hover — unreachable on touch. Make them a persistent two-button footer with
+     44px targets. Tags already flex-wrap; hug the right (RTL) edge. */
+  .crew-card-actions {
+    position: static;
+    opacity: 1;
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 2px;
+  }
+  .crew-card-actions .btn-icon {
+    flex: 1;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .crew-tags-block { justify-content: flex-end; }
+
+  /* ── Screen 4: Tasks — RTL rows ────────────────────────────────────────────
+     The row scaffold is already LTR (checkbox · body · pills) with the title
+     dir="auto" and pills flex-wrapping. Two touch gaps remain: the board-row
+     actions were hover-only (invisible on touch) and tap targets were small.
+     Reveal the actions, grow the checkbox, and hug meta chips to the right. */
+  .gtask-item { min-height: 44px; align-items: center; }
+  .gtask-check { width: 22px; height: 22px; margin-top: 0; }
+  .gtask-pills,
+  .gtask-board-row-pills { justify-content: flex-end; }
+  .gtask-board-row-hover-actions { opacity: 1; }
+  .gtask-board-row-hover-actions .btn-action { min-height: 44px; }
+  .gtask-board-row-main { min-height: 44px; }
+
+  /* ── Screen 6: Teams & Permissions — member row ────────────────────────────
+     .tm-member-info was a fixed flex:0 0 160px; combined with role badge, last-
+     seen and the ⋯ menu the row ran ~52px past the edge, hiding the menu. Let
+     the name block shrink and drop the secondary "last seen" meta on narrow. */
+  .tm-member-info { flex: 1 1 auto; min-width: 0; }
+  .tm-last-seen { display: none; }
+
+  /* Content-permissions matrix → per-area cards. The desktop 3-col grid
+     (Area | View | Edit) gives 60px toggle columns that are hard to hit and,
+     on the original layout, ran off-screen. Drop the header, turn each row into
+     a card: area name/subtitle on top, then two large labeled View/Edit toggles
+     in a 1fr 1fr grid (44px). The toggle dependency rule (Edit⇒View on, View
+     off⇒Edit off) already lives in InlinePermissions.toggle, untouched. */
+  .tm-perm-matrix {
+    border: none;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .tm-perm-matrix-head { display: none; }
+  .tm-perm-matrix-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 12px 13px;
+  }
+  .tm-perm-matrix-area {
+    grid-column: 1 / -1;
+    padding: 0;
+  }
+  .tm-perm-cell {
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    min-height: 44px;
+    gap: 6px;
+  }
+  .tm-perm-cell-lbl {
+    display: inline;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-2);
+  }
+  .tm-perm-cell--on .tm-perm-cell-lbl { color: #16A34A; }
+  .tm-perm-matrix-save { min-height: 44px; }
+
+  /* Add-task row: select + input + Add overran the right edge. Stack it — the
+     event-type select on its own line, then the text input + Add on the next. */
+  .tm-add-task-row { flex-wrap: wrap; }
+  .tm-task-show-select { flex: 1 1 100%; max-width: none; min-height: 44px; }
+  .tm-task-input { flex: 1 1 auto; min-width: 0; min-height: 44px; }
+  .tm-add-task-row .btn-action { flex: 0 0 auto; min-height: 44px; }
+}
+
+/* ── Shared chrome: header-right cluster on very narrow phones (≤400px) ───────
+   At 360px the workspace selector's min-width:178px + artist switcher + avatar
+   summed ~18px past the edge (the only page overflow at that width, shared by
+   every screen). Shrink the workspace pill and tighten the gap so it fits. */
+@media (max-width: 400px) {
+  .header-right { gap: 4px; }
+  .ws-trigger { min-width: 0; padding: 0 6px 0 10px; gap: 6px; }
+  .ws-trigger-label {
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

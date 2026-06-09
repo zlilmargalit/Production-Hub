@@ -179,4 +179,29 @@
   .bldr-cond-row { flex-wrap: wrap; }
   .bldr-input { width: 100%; flex: 1 1 100%; }
   .intg-bar { flex-wrap: wrap; gap: 10px; }
+  .intg-bar-left { flex-wrap: wrap; min-width: 0; }
+  .intg-bar-icons { flex-wrap: wrap; }
+
+  /* Connected apps: "Manage integrations" becomes a full-width control so it
+     reads as the section's primary action rather than a cramped trailing pill. */
+  .intg-manage-btn { width: 100%; min-height: 44px; }
+
+  /* Recipe cards: flat, full-width CTA. The foot row wraps so the activate
+     button takes the full width and the edit link sits beneath it. */
+  .recipe-foot-row { flex-wrap: wrap; gap: 8px; }
+  .recipe-btn { flex: 1 1 100%; min-height: 44px; }
+  .recipe-edit-btn,
+  .recipe-cancel-btn { flex: 1 1 100%; text-align: center; min-height: 44px; }
+
+  /* Custom rule builder → vertical pipeline. Each step's keyword tag sits above
+     a full-width select/input instead of fighting it for horizontal space, and
+     the Save action spans the full width under the live preview. */
+  .bldr-block-label { flex-wrap: wrap; }
+  .bldr-select,
+  .bldr-select--sm,
+  .bldr-select--op { flex: 1 1 100%; min-width: 0; min-height: 44px; }
+  .bldr-cond-row .bldr-select--op { flex: 1 1 auto; }
+  .bldr-actions { flex-direction: column; align-items: stretch; }
+  .bldr-actions .btn { width: 100%; min-height: 44px; }
+  .bldr-kw { align-self: flex-start; }
 }

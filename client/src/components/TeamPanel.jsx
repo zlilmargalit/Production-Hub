@@ -174,6 +174,7 @@ function InlinePermissions({ userId, perms, onSave }) {
                 aria-pressed={canView}
                 aria-label={`${RUBRIC_LABELS[rubric]} View`}
               >
+                <span className="tm-perm-cell-lbl">View</span>
                 {canView && <span className="tm-perm-check">✓</span>}
               </button>
               <button
@@ -182,6 +183,7 @@ function InlinePermissions({ userId, perms, onSave }) {
                 aria-pressed={canEdit}
                 aria-label={`${RUBRIC_LABELS[rubric]} Edit`}
               >
+                <span className="tm-perm-cell-lbl">Edit</span>
                 {canEdit && <span className="tm-perm-check">✓</span>}
               </button>
             </div>
