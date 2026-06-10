@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_20", "chromium", "poppler_utils"]
 cmds = [
   "npm install",
   "npm install --prefix server",
-  "npm install --prefix client"
+  "npm install --prefix client --include=dev"
 ]
 dependsOn = ["setup"]
 
