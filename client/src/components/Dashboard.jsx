@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import SegmentedControl from './ui/SegmentedControl';
 
 // ── Artist colour palette (stable by index) ────────────────────────────────────
@@ -43,17 +43,25 @@ function guestListToText(gl) {
   return '';
 }
 
+// A "handed over" divider the user drops into the guest list to separate batches
+// already passed to the venue from names added afterwards.
+const GUEST_DIVIDER = '──────────';
+const isDividerLine = (line) => /^[-–—_─]+$/.test(line.trim());
+
 // Count total guests from a free-text guest list (mirrors TaskManager rules):
 //   זוג / זוגית → 2 · "+N" → 1+N · trailing number N → N · otherwise → 1
+// Divider lines are ignored.
 function countGuests(text) {
   if (!text || !text.trim()) return 0;
-  return text.split('\n').map((l) => l.trim()).filter(Boolean).reduce((total, line) => {
-    if (/זוג(ית)?/u.test(line)) return total + 2;
-    const plus = line.match(/\+\s*(\d+)/);
-    if (plus) return total + 1 + parseInt(plus[1], 10);
-    const trailing = line.match(/(\d+)\s*$/);
-    return total + (trailing ? parseInt(trailing[1], 10) : 1);
-  }, 0);
+  return text.split('\n').map((l) => l.trim()).filter(Boolean)
+    .filter((l) => !isDividerLine(l))
+    .reduce((total, line) => {
+      if (/זוג(ית)?/u.test(line)) return total + 2;
+      const plus = line.match(/\+\s*(\d+)/);
+      if (plus) return total + 1 + parseInt(plus[1], 10);
+      const trailing = line.match(/(\d+)\s*$/);
+      return total + (trailing ? parseInt(trailing[1], 10) : 1);
+    }, 0);
 }
 
 // Copy arbitrary text to the clipboard with a non-secure-context fallback.
@@ -192,47 +200,32 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
 function GuestListCard({ show, onSaveGuests }) {
   const [text, setText] = useState(() => guestListToText(show.guestList));
   const [copied, setCopied] = useState(false);
-  // How many guest lines have already been handed over to the venue. Everything
-  // above the divider line was passed on; new names typed below it are pending.
-  const [handed, setHanded] = useState(() => show.guestsHandedCount || 0);
-  const taRef = useRef(null);
-  const [metrics, setMetrics] = useState({ padTop: 8, lineH: 21 });
 
   // Re-seed when the underlying show changes (e.g. after a background refetch).
   useEffect(() => { setText(guestListToText(show.guestList)); }, [show.id, show.guestList]);
-  useEffect(() => { setHanded(show.guestsHandedCount || 0); }, [show.id, show.guestsHandedCount]);
 
-  // Measure the textarea's real padding + line-height so the divider lands exactly
-  // between two rows regardless of font scaling.
-  useLayoutEffect(() => {
-    if (!taRef.current) return;
-    const cs = getComputedStyle(taRef.current);
-    setMetrics({
-      padTop: parseFloat(cs.paddingTop) || 8,
-      lineH:  parseFloat(cs.lineHeight) || 21,
-    });
-  }, []);
+  const trimmed = text.trim();
+  const count   = countGuests(text);
 
-  const trimmed   = text.trim();
-  const count     = countGuests(text);
-  const lineCount = text.split(/\r?\n/).filter((l) => l.trim()).length;
-  const handedRow = Math.min(handed, lineCount); // clamp if names were removed
-
-  const save = () => {
-    if (text === guestListToText(show.guestList)) return; // unchanged → skip write
-    onSaveGuests(show, text);
+  const save = (value = text) => {
+    if (value === guestListToText(show.guestList)) return; // unchanged → skip write
+    onSaveGuests(show, value);
   };
 
+  // Copy only the names — divider lines are dropped so the venue gets a clean list.
   const copy = async () => {
-    if (!trimmed) return;
-    const ok = await copyText(trimmed);
+    const clean = text.split(/\r?\n/)
+      .filter((l) => l.trim() && !isDividerLine(l))
+      .join('\n');
+    if (!clean) return;
+    const ok = await copyText(clean);
     if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500); }
   };
 
-  // Sort lines alphabetically (Hebrew-aware), like the original Logistics list.
+  // Sort names alphabetically (Hebrew-aware); divider lines are removed on sort.
   const sort = () => {
     const sorted = text
-      .split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+      .split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !isDividerLine(l))
       .sort((a, b) => a.localeCompare(b, 'he'))
       .join('\n');
     if (sorted === text) return;
@@ -240,12 +233,18 @@ function GuestListCard({ show, onSaveGuests }) {
     onSaveGuests(show, sorted);
   };
 
-  // Mark every currently-listed guest as handed over: drop the divider under the
-  // last line. New names added afterwards appear below it (still pending).
-  const markHanded = () => {
-    const n = text.split(/\r?\n/).filter((l) => l.trim()).length;
-    setHanded(n);
-    onSaveGuests(show, text, { guestsHandedCount: n });
+  // Append a divider line under the last name. Names added afterwards sit below it,
+  // separating guests already handed to the venue from new ones. Multiple allowed.
+  const addDivider = () => {
+    const lines = text.split(/\r?\n/);
+    let lastIdx = -1;
+    for (let i = lines.length - 1; i >= 0; i--) { if (lines[i].trim()) { lastIdx = i; break; } }
+    if (lastIdx < 0) return;                       // nothing to divide yet
+    if (isDividerLine(lines[lastIdx])) return;     // already a divider at the end
+    const base = text.replace(/\n+$/, '');
+    const next = `${base}\n${GUEST_DIVIDER}\n`;
+    setText(next);
+    onSaveGuests(show, next);
   };
 
   return (
@@ -260,9 +259,9 @@ function GuestListCard({ show, onSaveGuests }) {
           <div className="guest-btn-group">
             <button
               type="button"
-              className="gl-copy-btn gl-handed-btn"
-              onClick={markHanded}
-              title="Mark all listed guests as handed over — a line is drawn under the last one"
+              className="gl-copy-btn"
+              onClick={addDivider}
+              title="Add a divider line under the last name — separates guests already handed over from new ones"
             >
               Handed
             </button>
@@ -270,7 +269,7 @@ function GuestListCard({ show, onSaveGuests }) {
               type="button"
               className={`gl-copy-btn${copied ? ' gl-copy-btn--ok' : ''}`}
               onClick={copy}
-              title="Copy the whole guest list"
+              title="Copy the guest names (divider lines excluded)"
             >
               {copied ? 'Copied ✓' : 'Copy'}
             </button>
@@ -286,26 +285,15 @@ function GuestListCard({ show, onSaveGuests }) {
         )}
       </div>
 
-      <div className="gl-textarea-wrap">
-        <textarea
-          ref={taRef}
-          className="gl-textarea"
-          dir="auto"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={save}
-          placeholder={'שם מוזמן\nשם מוזמן נוסף'}
-          rows={4}
-        />
-        {handedRow > 0 && (
-          <div
-            className="gl-handed-line"
-            style={{ top: `${metrics.padTop + handedRow * metrics.lineH}px` }}
-          >
-            <span className="gl-handed-tag" dir="rtl">נמסרו {handedRow} ✓</span>
-          </div>
-        )}
-      </div>
+      <textarea
+        className="gl-textarea"
+        dir="auto"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => save()}
+        placeholder={'שם מוזמן\nשם מוזמן נוסף'}
+        rows={4}
+      />
     </div>
   );
 }
