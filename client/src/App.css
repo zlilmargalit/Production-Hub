@@ -8836,40 +8836,30 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-color: #3D7A51;
   background: rgba(61,122,81,0.08);
 }
-.gl-empty {
-  font-family: 'Assistant', sans-serif;
-  font-size: 0.8125rem;
-  color: var(--text-3);
-}
-.gl-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 2px 18px;
-}
-.gl-line {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--border-light);
-}
-.gl-line-num {
-  flex-shrink: 0;
-  font-family: 'Bricolage Grotesque', sans-serif;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--text-3);
-  min-width: 16px;
-  text-align: right;
-}
-.gl-line-text {
-  flex: 1;
+/* Compact editable guest list on the home show-day card (mirrors Logistics) */
+.gl-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 84px;
   font-family: 'Assistant', sans-serif;
   font-size: 0.875rem;
+  line-height: 1.5;
   color: var(--text);
-  line-height: 1.4;
-  min-width: 0;
+  background: var(--surface-sunk);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
+.gl-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.gl-textarea::placeholder {
+  color: var(--text-3);
+}
+/* Keep both buttons tight inside the group (override .gl-copy-btn auto margin) */
+.gl-card-header .guest-btn-group { margin-left: auto; }
+.gl-card-header .guest-btn-group .gl-copy-btn { margin-left: 0; }
 
 /* Copy + Sort button group in the show-detail guest list */
 .guest-btn-group {

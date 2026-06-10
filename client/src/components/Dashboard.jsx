@@ -188,17 +188,37 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
   );
 }
 
-// ── Guest-List Card (read-only view + copy) ─────────────────────────────────────
-function GuestListCard({ show }) {
+// ── Guest-List Card (compact + editable — mirrors the Logistics guest list) ──────
+function GuestListCard({ show, onSaveGuests }) {
+  const [text, setText] = useState(() => guestListToText(show.guestList));
   const [copied, setCopied] = useState(false);
-  const text  = guestListToText(show.guestList).trim();
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  const count = countGuests(text);
+
+  // Re-seed when the underlying show changes (e.g. after a background refetch).
+  useEffect(() => { setText(guestListToText(show.guestList)); }, [show.id, show.guestList]);
+
+  const trimmed = text.trim();
+  const count   = countGuests(text);
+
+  const save = () => {
+    if (text === guestListToText(show.guestList)) return; // unchanged → skip write
+    onSaveGuests(show, text);
+  };
 
   const copy = async () => {
-    if (!text) return;
-    const ok = await copyText(text);
+    if (!trimmed) return;
+    const ok = await copyText(trimmed);
     if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500); }
+  };
+
+  // Sort lines alphabetically (Hebrew-aware), like the original Logistics list.
+  const sort = () => {
+    const sorted = text
+      .split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'he'))
+      .join('\n');
+    if (sorted === text) return;
+    setText(sorted);
+    onSaveGuests(show, sorted);
   };
 
   return (
@@ -209,36 +229,43 @@ function GuestListCard({ show }) {
           <span className="cl-card-time" dir="rtl">רשימת מוזמנים</span>
         </div>
         {count > 0 && <span className="gl-count-pill">{count}</span>}
-        {lines.length > 0 && (
-          <button
-            type="button"
-            className={`gl-copy-btn${copied ? ' gl-copy-btn--ok' : ''}`}
-            onClick={copy}
-            title="Copy the whole guest list"
-          >
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
+        {trimmed && (
+          <div className="guest-btn-group">
+            <button
+              type="button"
+              className={`gl-copy-btn${copied ? ' gl-copy-btn--ok' : ''}`}
+              onClick={copy}
+              title="Copy the whole guest list"
+            >
+              {copied ? 'Copied ✓' : 'Copy'}
+            </button>
+            <button
+              type="button"
+              className="gl-copy-btn"
+              onClick={sort}
+              title="Sort the guest list alphabetically (א–ב)"
+            >
+              Sort א–ב
+            </button>
+          </div>
         )}
       </div>
 
-      {lines.length === 0 ? (
-        <p className="gl-empty">No guests yet · אין מוזמנים</p>
-      ) : (
-        <div className="gl-list">
-          {lines.map((line, i) => (
-            <div key={i} className="gl-line" dir="auto">
-              <span className="gl-line-num">{i + 1}</span>
-              <span className="gl-line-text">{line}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <textarea
+        className="gl-textarea"
+        dir="auto"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={save}
+        placeholder={'שם מוזמן\nשם מוזמן נוסף'}
+        rows={4}
+      />
     </div>
   );
 }
 
 // ── Show-Day Banner ────────────────────────────────────────────────────────────
-function ShowDayBanner({ show, checklist }) {
+function ShowDayBanner({ show, checklist, onSaveGuests }) {
   const lsKey       = `ph-cl-${show.id}`;
   const collapseKey = `ph-cl-open-${show.id}-${todayStr()}`;
 
@@ -359,7 +386,7 @@ function ShowDayBanner({ show, checklist }) {
             isAdded={(item) => state.addedItems.some((a) => a.id === item.id)}
             onAdd={(text) => addItem('venue', text)}
           />
-          <GuestListCard show={show} />
+          <GuestListCard show={show} onSaveGuests={onSaveGuests} />
         </div>
       )}
     </div>
@@ -730,6 +757,19 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
     });
   }, [allTasks]);
 
+  // Persist guest-list edits from the home show-day card. Sends only the
+  // guestList field (partial PUT) so the server merge can't null out slimmed
+  // customField data. Optimistic; reverts handled by the next refetch.
+  const saveGuests = useCallback((show, text) => {
+    setAllShows((prev) => prev.map((s) => (s.id === show.id ? { ...s, guestList: text } : s)));
+    fetch(`/api/shows/${show.id}?artistId=${encodeURIComponent(show.artistId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ guestList: text }),
+    }).catch(() => {});
+  }, []);
+
   const today      = todayStr();
   const now        = new Date();
   const openTasks  = allTasks.filter((t) => !t.completed);
@@ -823,6 +863,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
           key={show.id}
           show={show}
           checklist={eventTypeChecklists[show.eventType] || null}
+          onSaveGuests={saveGuests}
         />
       ))}
 
