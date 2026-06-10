@@ -6282,6 +6282,39 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .tech-checklist-input:focus { outline: none; border-color: var(--accent, #3852B4); }
 
+.tech-checklist-paste-toggle {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent, #3852B4);
+  cursor: pointer;
+  text-decoration: underline;
+  align-self: flex-start;
+}
+.tech-checklist-paste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tech-checklist-paste-input {
+  width: 100%;
+  background: var(--surface-sunk, var(--surface-2));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  resize: vertical;
+}
+.tech-checklist-paste-input:focus { outline: none; border-color: var(--accent, #3852B4); }
+.tech-checklist-paste .btn-primary { align-self: flex-end; }
+
 /* Footer check labels — center column styling */
 .footer-check {
   font-size: 0.8rem;
@@ -8749,6 +8782,109 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 2px 0;
   outline: none;
   min-width: 0;
+}
+
+/* ── Guest-list card (full-width row under the two checklist cards) ───────── */
+.gl-card {
+  grid-column: 1 / -1;
+}
+.gl-card-header {
+  align-items: center;
+}
+.gl-card .cl-card-title-group {
+  flex: 0 1 auto;
+}
+.gl-card .cl-card-time {
+  text-align: start;
+}
+.gl-count-pill {
+  flex-shrink: 0;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 9px;
+  letter-spacing: 0.02em;
+}
+.gl-copy-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Assistant', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.gl-copy-btn:hover {
+  color: var(--text);
+  border-color: var(--text-3);
+  background: var(--surface-sunk);
+}
+.gl-copy-btn--ok {
+  color: #3D7A51;
+  border-color: #3D7A51;
+  background: rgba(61,122,81,0.08);
+}
+.gl-empty {
+  font-family: 'Assistant', sans-serif;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+.gl-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 2px 18px;
+}
+.gl-line {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.gl-line-num {
+  flex-shrink: 0;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-3);
+  min-width: 16px;
+  text-align: right;
+}
+.gl-line-text {
+  flex: 1;
+  font-family: 'Assistant', sans-serif;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.4;
+  min-width: 0;
+}
+
+/* Copy + Sort button group in the show-detail guest list */
+.guest-btn-group {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.guest-btn-group .guest-sort-btn {
+  margin-left: 0;
+}
+.guest-sort-btn--ok {
+  color: #3D7A51;
+  border-color: #3D7A51;
+  background: rgba(61,122,81,0.08);
 }
 
 /* ── Responsive tweaks ───────────────────────────────────────────────────── */

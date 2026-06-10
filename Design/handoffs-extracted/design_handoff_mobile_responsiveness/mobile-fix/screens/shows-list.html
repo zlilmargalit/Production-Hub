@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Shows list — fixed</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ph.css">
+<style>
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .toolbar .btn{flex:1;min-width:46%}
+  .toolbar .btn--primary{min-width:100%}
+  .filters{display:flex;gap:8px;margin-bottom:18px}
+  .filters .ph-seg{flex:1}
+  .filters .btn{flex-shrink:0}
+
+  .scard{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .scard-band{height:5px;background:var(--orange)}
+  .scard.blue .scard-band{background:var(--blue)}
+  .scard-body{padding:14px var(--gut)}
+  .scard-toprow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .scard-type{display:inline-flex;align-items:center;gap:7px;font-weight:800;font-size:.82rem;color:var(--clay)}
+  .scard.blue .scard-type{color:var(--blue)}
+  .scard-type .dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+  /* actions collapse into a single ⋯ button + sheet — no more overlap */
+  .scard-more{width:var(--tap);height:38px;border:1px solid var(--border);border-radius:9px;font-size:1.2rem;letter-spacing:1px;color:var(--ink-2);display:grid;place-items:center}
+  .scard h3{font-family:var(--font-display);font-weight:800;font-size:1.25rem;line-height:1.18;text-align:right;margin-bottom:8px}
+  .scard-meta{display:flex;flex-wrap:wrap;gap:5px 9px;align-items:center;color:var(--ink-2);font-size:.85rem;margin-bottom:12px}
+  .scard-meta strong{color:var(--ink)}
+  .scard-meta .t{color:var(--blue);font-weight:700}
+  .avatars{display:inline-flex;align-items:center}
+  .avatars span{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--surface);display:grid;place-items:center;color:#fff;font-size:.55rem;font-weight:800;margin-left:-6px}
+  .avatars span:first-child{margin-left:0}
+  .prog{display:flex;align-items:center;gap:10px}
+  .prog-track{flex:1;height:7px;border-radius:999px;background:var(--sunk);overflow:hidden}
+  .prog-fill{height:100%;border-radius:999px;background:var(--blue)}
+  .prog-pct{font-weight:800;font-size:.86rem;font-variant-numeric:tabular-nums}
+
+  /* footer wraps cleanly; doc buttons left, status checks right */
+  .scard-foot{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+    padding:12px var(--gut);border-top:1px solid var(--border);background:var(--surface-2)}
+  .scard-foot .docs{display:flex;gap:8px}
+  .scard-foot .checks{display:flex;gap:6px}
+  .chk{display:inline-flex;align-items:center;gap:7px;min-height:var(--tap);padding:0 12px;border:1px solid var(--border);border-radius:999px;font-weight:600;font-size:.84rem}
+  .chk input{width:18px;height:18px}
+</style>
+</head>
+<body>
+<div class="ph-app" id="app">
+  <div class="ph-statusbar">
+    <span>13:55</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1.5" width="3" height="10.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5C5.5 0.5 12.5 0.5 17 4.5M3.5 7.5C6.5 4.8 11.5 4.8 14.5 7.5M6 10.5C7.7 9 10.3 9 12 10.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2"/><rect x="24" y="4" width="2" height="5" rx="1" opacity=".4"/></svg>
+    </span>
+  </div>
+  <div class="ph-chrome">
+    <div class="ph-header">
+      <span class="ph-logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.4"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.4"/><circle cx="15" cy="24" r="2.2" fill="#F08D39"/></svg></span>
+      <span class="ph-wordmark">Production Hub</span>
+      <span class="ph-header-spacer"></span>
+      <span class="ph-avatar">ZL</span>
+    </div>
+    <div class="ph-switchers">
+      <span class="ph-pill ph-pill--ghost">ASSAF AMD… <span class="caret">▾</span></span>
+      <span class="ph-pill ph-pill--icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></span>
+      <span class="ph-pill"><span class="dot"></span>Assaf Amdursky <span class="caret">▾</span></span>
+    </div>
+    <div class="ph-nav">
+      <span class="ph-tab active">SHOWS</span>
+      <span class="ph-tab">CREW &amp; TYPES</span>
+      <span class="ph-tab">TASKS <span class="badge">10</span></span>
+      <span class="ph-tab">AUTOMATIONS</span>
+      <span class="ph-tab">TEAMS</span>
+      <span class="ph-tab">TOOLS ▾</span>
+    </div>
+  </div>
+
+  <div class="ph-body">
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+      <h1 class="ph-page-title">Shows<span class="dot">.</span></h1>
+      <span class="ph-page-sub">10 in June</span>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn">Sync</button>
+      <button class="btn">Apply crew</button>
+      <button class="btn btn--primary">+ New show</button>
+    </div>
+
+    <div class="filters">
+      <div class="ph-seg">
+        <button class="active">Upcoming <span class="cnt">13</span></button>
+        <button>Past <span class="cnt">3</span></button>
+      </div>
+      <button class="btn btn--sm" aria-label="Filter">⛛ Filter</button>
+    </div>
+
+    <!-- card 1 -->
+    <article class="scard fade-up">
+      <div class="scard-band"></div>
+      <div class="scard-body">
+        <div class="scard-toprow">
+          <span class="scard-type"><span class="dot"></span><span dir="auto">אני גיטרה</span></span>
+          <button class="scard-more" onclick="openSheet('אני גיטרה סגירת תערוכה')" aria-label="Show actions">⋯</button>
+        </div>
+        <h3 dir="rtl">אני גיטרה סגירת תערוכה יהורם גאון</h3>
+        <div class="scard-meta">
+          <strong>June 9, 2026</strong><span>·</span><span dir="auto">מגדל דוד</span><span>·</span><span class="t">17:15 – 21:15</span>
+          <span>·</span>
+          <span class="avatars"><span style="background:#1F2D6E">אמ</span><span style="background:#F08D39">נמ</span><span style="background:#5E7AC4">צמ</span></span>
+          <span style="font-weight:600">9 crew</span>
+        </div>
+        <div class="prog"><div class="prog-track"><div class="prog-fill" style="width:89%"></div></div><span class="prog-pct" style="color:var(--blue)">89%</span></div>
+      </div>
+      <div class="scard-foot">
+        <div class="docs"><button class="btn btn--sm">Brief</button><button class="btn btn--sm">PDF</button></div>
+        <div class="checks"><label class="chk"><input type="checkbox">Invoice</label><label class="chk"><input type="checkbox">Receipt</label></div>
+      </div>
+    </article>
+
+    <!-- card 2 -->
+    <article class="scard blue fade-up">
+      <div class="scard-band"></div>
+      <div class="scard-body">
+        <div class="scard-toprow">
+          <span class="scard-type"><span class="dot"></span><span dir="auto">להקה</span></span>
+          <button class="scard-more" onclick="openSheet('בארבי מנועים שקטים')" aria-label="Show actions">⋯</button>
+        </div>
+        <h3 dir="rtl">בארבי מנועים שקטים</h3>
+        <div class="scard-meta">
+          <strong>June 10, 2026</strong><span>·</span><span dir="auto">בארבי</span><span>·</span><span class="t">16:00 – 23:30</span>
+          <span>·</span>
+          <span class="avatars"><span style="background:#1F2D6E">נמ</span><span style="background:#F08D39">אד</span><span style="background:#C26C1F">צמ</span></span>
+          <span style="font-weight:600">8 crew</span>
+        </div>
+        <div class="prog"><div class="prog-track"><div class="prog-fill" style="width:56%;background:var(--orange)"></div></div><span class="prog-pct" style="color:var(--orange)">56%</span></div>
+      </div>
+      <div class="scard-foot">
+        <div class="docs"><button class="btn btn--sm">Brief</button><button class="btn btn--sm">PDF</button></div>
+        <div class="checks"><label class="chk"><input type="checkbox">Invoice</label><label class="chk"><input type="checkbox">Receipt</label></div>
+      </div>
+    </article>
+  </div>
+
+  <!-- action sheet -->
+  <div class="sheet-scrim" id="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-grip"></div>
+    <h4 id="sheet-title" dir="auto" style="text-align:right">Show</h4>
+    <p style="font-size:.8rem;color:var(--ink-3);margin-bottom:6px">Quick actions</p>
+    <button class="sheet-row"><span class="ic">✎</span>Edit show</button>
+    <button class="sheet-row"><span class="ic">＋</span>Add task</button>
+    <button class="sheet-row"><span class="ic">⧉</span>Duplicate</button>
+    <button class="sheet-row danger"><span class="ic">✕</span>Delete show</button>
+  </div>
+</div>
+
+<script>
+  const scrim=document.getElementById('scrim'), sheet=document.getElementById('sheet');
+  function openSheet(name){ document.getElementById('sheet-title').textContent=name; scrim.classList.add('open'); sheet.classList.add('open'); }
+  function closeSheet(){ scrim.classList.remove('open'); sheet.classList.remove('open'); }
+</script>
+</body>
+</html>

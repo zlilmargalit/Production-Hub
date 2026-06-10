@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Crew &amp; Types — fixed</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ph.css">
+<style>
+  /* pattern explorer pill */
+  .explorer{display:flex;gap:6px;align-items:center;background:var(--ink);color:var(--surface-2);
+    border-radius:10px;padding:6px;margin-bottom:16px;flex-wrap:wrap}
+  .explorer .lbl{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.6;padding:0 6px}
+  .explorer button{flex:1;min-width:88px;min-height:36px;border-radius:7px;font-weight:700;font-size:.74rem;color:var(--surface-2);opacity:.6}
+  .explorer button.on{background:var(--surface-2);color:var(--ink);opacity:1}
+
+  .grouplabel{display:flex;align-items:center;gap:10px;margin:6px 0 12px;font-weight:800;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+  .grouplabel .cnt{color:var(--ink-3)}
+  .grouplabel::after{content:"";flex:1;height:1px;background:var(--border)}
+
+  /* event-type card */
+  .etcard{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:12px}
+  .etcard-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .etcard-name{font-family:var(--font-display);font-weight:800;font-size:1.1rem;text-align:right;flex:1;min-width:0}
+  .etcard-more{width:var(--tap);height:38px;border:1px solid var(--border);border-radius:9px;font-size:1.2rem;color:var(--ink-2);flex-shrink:0;display:grid;place-items:center}
+
+  /* action group renders differently per mode */
+  .etactions{margin-top:12px}
+  /* mode: stacked */
+  .mode-stack .etcard-more{display:none}
+  .mode-stack .etactions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .mode-stack .etactions .x{grid-column:1/-1}
+  .mode-stack .eta{min-height:var(--tap);border:1px solid var(--border-strong);border-radius:9px;background:var(--surface-2);font-weight:700;font-size:.82rem;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .mode-stack .eta.danger{color:#B0473C;border-color:#E3C4BF}
+  /* mode: scroll chips */
+  .mode-scroll .etcard-more{display:none}
+  .mode-scroll .etactions{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .mode-scroll .etactions::-webkit-scrollbar{display:none}
+  .mode-scroll .eta{flex-shrink:0;min-height:var(--tap);padding:0 16px;border:1px solid var(--border-strong);border-radius:999px;background:var(--surface-2);font-weight:700;font-size:.82rem;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .mode-scroll .eta.danger{color:#B0473C}
+  /* mode: sheet — actions hidden, surfaced via ⋯ */
+  .mode-sheet .etactions{display:none}
+  .mode-sheet .etcard-more{display:grid}
+  /* default hide more btn except sheet */
+  .etcard-more{display:none}
+
+  .eta .cnt{font-size:.7rem;color:var(--ink-3)}
+
+  /* crew member card */
+  .crewcard{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:12px}
+  .crewcard-top{display:flex;gap:12px;align-items:flex-start}
+  .crew-av{width:46px;height:46px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;flex-shrink:0;font-size:.9rem}
+  .crew-namewrap{flex:1;min-width:0;text-align:right}
+  .crew-name{font-weight:800;font-size:1.05rem}
+  .crew-role{font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
+  .crew-contacts{margin-top:10px;display:grid;gap:5px}
+  .crew-contact{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:.9rem;direction:ltr;justify-content:flex-end}
+  /* tags wrap instead of overflowing off the right edge */
+  .crew-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:flex-end}
+  .crew-tag{padding:4px 11px;border:1px solid var(--border-strong);border-radius:999px;background:var(--sunk);font-size:.78rem;font-weight:600}
+  .crew-foot{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+  .crew-foot button{flex:1;min-height:var(--tap);border:1px solid var(--border-strong);border-radius:9px;background:var(--surface-2);font-weight:700;font-size:.84rem}
+  .crew-foot button.danger{color:#B0473C;border-color:#E3C4BF}
+</style>
+</head>
+<body>
+<div class="ph-app mode-sheet" id="app">
+  <div class="ph-statusbar">
+    <span>13:55</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1.5" width="3" height="10.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5C5.5 0.5 12.5 0.5 17 4.5M3.5 7.5C6.5 4.8 11.5 4.8 14.5 7.5M6 10.5C7.7 9 10.3 9 12 10.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2"/><rect x="24" y="4" width="2" height="5" rx="1" opacity=".4"/></svg>
+    </span>
+  </div>
+  <div class="ph-chrome">
+    <div class="ph-header">
+      <span class="ph-logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.4"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.4"/><circle cx="15" cy="24" r="2.2" fill="#F08D39"/></svg></span>
+      <span class="ph-wordmark">Production Hub</span>
+      <span class="ph-header-spacer"></span>
+      <span class="ph-avatar">ZL</span>
+    </div>
+    <div class="ph-switchers">
+      <span class="ph-pill ph-pill--ghost">ASSAF AMD… <span class="caret">▾</span></span>
+      <span class="ph-pill ph-pill--icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></span>
+      <span class="ph-pill"><span class="dot"></span>Assaf Amdursky <span class="caret">▾</span></span>
+    </div>
+    <div class="ph-nav">
+      <span class="ph-tab">SHOWS</span>
+      <span class="ph-tab active">CREW &amp; TYPES</span>
+      <span class="ph-tab">TASKS <span class="badge">10</span></span>
+      <span class="ph-tab">AUTOMATIONS</span>
+      <span class="ph-tab">TEAMS</span>
+      <span class="ph-tab">TOOLS ▾</span>
+    </div>
+  </div>
+
+  <div class="ph-body">
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px">
+      <h1 class="ph-page-title">Event Types<span class="dot">.</span></h1>
+      <span class="ph-page-sub">8 types</span>
+    </div>
+
+    <div class="ph-seg" style="margin-bottom:16px">
+      <button data-view="types" class="active" onclick="switchView('types',this)">Event Types <span class="cnt">8</span></button>
+      <button data-view="members" onclick="switchView('members',this)">Members <span class="cnt">26</span></button>
+    </div>
+
+    <!-- action pattern explorer -->
+    <div class="explorer">
+      <span class="lbl">Action UI</span>
+      <button data-mode="sheet" class="on" onclick="setMode('sheet',this)">⋯ Sheet</button>
+      <button data-mode="stack" onclick="setMode('stack',this)">Stacked</button>
+      <button data-mode="scroll" onclick="setMode('scroll',this)">Scroll</button>
+    </div>
+
+    <!-- EVENT TYPES VIEW -->
+    <div data-pane="types">
+      <p style="color:var(--ink-2);font-size:.9rem;margin-bottom:14px">Default crew and custom fields per event type.</p>
+
+      <div class="etcard fade-up">
+        <div class="etcard-head">
+          <button class="etcard-more" onclick="openSheet('אני גיטרה')">⋯</button>
+          <span class="etcard-name" dir="rtl">אני גיטרה</span>
+        </div>
+        <div class="etactions">
+          <button class="eta">Crew <span class="cnt">9</span></button>
+          <button class="eta">Fields</button>
+          <button class="eta">Checklist</button>
+          <button class="eta danger x">✕ Delete</button>
+        </div>
+      </div>
+
+      <div class="etcard fade-up">
+        <div class="etcard-head">
+          <button class="etcard-more" onclick="openSheet('סולו פסנתר')">⋯</button>
+          <span class="etcard-name" dir="rtl">סולו פסנתר</span>
+        </div>
+        <div class="etactions">
+          <button class="eta">Crew <span class="cnt">3</span></button>
+          <button class="eta">Fields</button>
+          <button class="eta">Checklist</button>
+          <button class="eta danger x">✕ Delete</button>
+        </div>
+      </div>
+
+      <div class="etcard fade-up">
+        <div class="etcard-head">
+          <button class="etcard-more" onclick="openSheet('החלונות הגבוהים')">⋯</button>
+          <span class="etcard-name" dir="rtl">החלונות הגבוהים</span>
+        </div>
+        <div class="etactions">
+          <button class="eta">Crew</button>
+          <button class="eta">Fields</button>
+          <button class="eta">Checklist</button>
+          <button class="eta danger x">✕ Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMBERS VIEW -->
+    <div data-pane="members" hidden>
+      <div class="grouplabel">Backline <span class="cnt">3</span></div>
+
+      <div class="crewcard fade-up">
+        <div class="crewcard-top">
+          <span class="crew-av" style="background:#3852B4">גש</span>
+          <div class="crew-namewrap">
+            <div class="crew-name" dir="auto">גור שפיגל</div>
+            <div class="crew-role">Backline</div>
+          </div>
+        </div>
+        <div class="crew-contacts"><div class="crew-contact">0546735043 <span>☎</span></div></div>
+        <div class="crew-foot"><button>✎ Edit</button><button class="danger">✕ Delete</button></div>
+      </div>
+
+      <div class="crewcard fade-up">
+        <div class="crewcard-top">
+          <span class="crew-av" style="background:#3852B4">נמ</span>
+          <div class="crew-namewrap">
+            <div class="crew-name" dir="auto">נועם משה</div>
+            <div class="crew-role">Backline</div>
+          </div>
+        </div>
+        <div class="crew-contacts">
+          <div class="crew-contact">0504509266 <span>☎</span></div>
+          <div class="crew-contact">soundbynoam@gmail.com <span>✉</span></div>
+        </div>
+        <div class="crew-tags">
+          <span class="crew-tag" dir="auto">אני גיטרה</span><span class="crew-tag" dir="auto">להקה</span>
+          <span class="crew-tag" dir="auto">סולו פסנתר</span><span class="crew-tag" dir="auto">סולו אקוסטי</span><span class="crew-tag" dir="auto">אירוח</span>
+        </div>
+        <div class="crew-foot"><button>✎ Edit</button><button class="danger">✕ Delete</button></div>
+      </div>
+
+      <div class="crewcard fade-up">
+        <div class="crewcard-top">
+          <span class="crew-av" style="background:#1F2D6E">עצ</span>
+          <div class="crew-namewrap">
+            <div class="crew-name" dir="auto">עידו צמרת</div>
+            <div class="crew-role">Backline</div>
+          </div>
+        </div>
+        <div class="crew-contacts">
+          <div class="crew-contact">0546143227 <span>☎</span></div>
+          <div class="crew-contact">ido.tsameret@gmail.com <span>✉</span></div>
+        </div>
+        <div class="crew-foot"><button>✎ Edit</button><button class="danger">✕ Delete</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-scrim" id="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-grip"></div>
+    <h4 id="sheet-title" dir="auto" style="text-align:right">Event type</h4>
+    <button class="sheet-row"><span class="ic">👥</span>Edit crew <span style="margin-left:auto;color:var(--ink-3)">9</span></button>
+    <button class="sheet-row"><span class="ic">▦</span>Custom fields</button>
+    <button class="sheet-row"><span class="ic">☑</span>Checklist</button>
+    <button class="sheet-row danger"><span class="ic">✕</span>Delete event type</button>
+  </div>
+</div>
+
+<script>
+  const app=document.getElementById('app');
+  function setMode(m,btn){
+    app.classList.remove('mode-sheet','mode-stack','mode-scroll');
+    app.classList.add('mode-'+m);
+    document.querySelectorAll('.explorer button').forEach(b=>b.classList.toggle('on', b===btn));
+  }
+  function switchView(v,btn){
+    document.querySelectorAll('.ph-seg [data-view]').forEach(b=>b.classList.toggle('active', b===btn));
+    document.querySelectorAll('[data-pane]').forEach(p=>p.hidden = p.dataset.pane!==v);
+    document.querySelector('.explorer').style.display = v==='types' ? 'flex' : 'none';
+  }
+  const scrim=document.getElementById('scrim'), sheet=document.getElementById('sheet');
+  function openSheet(name){ document.getElementById('sheet-title').textContent=name; scrim.classList.add('open'); sheet.classList.add('open'); }
+  function closeSheet(){ scrim.classList.remove('open'); sheet.classList.remove('open'); }
+</script>
+</body>
+</html>

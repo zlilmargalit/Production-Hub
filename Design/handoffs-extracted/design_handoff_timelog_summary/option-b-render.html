@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Option B render</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --bg:#F1EEE9; --surface:#FBF8F2; --surface-2:#FFFDF8; --sunk:#EBE7E0;
+    --border:#DDD7CE; --border-light:#E7E2D9; --border-strong:#C8C1B5;
+    --ink:#1A1714; --ink-2:#6B6259; --ink-3:#A39A91;
+    --orange:#F08D39; --orange-bg:#FCE3CC; --blue:#3852B4; --blue-bg:#E8ECF7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{ font-family:'Bricolage Grotesque',sans-serif; background:var(--bg); -webkit-font-smoothing:antialiased; }
+  button{font-family:inherit;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const DISPLAY="'Bricolage Grotesque', sans-serif", HEB="'Assistant', sans-serif";
+const fmt=h=>Number.isInteger(h)?`${h}.0`:`${h}`;
+const Eyebrow=({children,style})=>(<span style={{fontFamily:HEB,fontSize:'0.6rem',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--ink-3)',...style}}>{children}</span>);
+function StatPill({label,dot,hours}){
+  return (<button style={{display:'flex',alignItems:'center',gap:9,padding:'8px 8px 8px 14px',border:'1px solid var(--border)',background:'transparent',color:'var(--ink-2)',fontFamily:HEB,fontSize:'0.82rem',fontWeight:600,whiteSpace:'nowrap'}}>
+    {dot&&<span style={{width:8,height:8,borderRadius:'50%',background:dot,flexShrink:0}}/>}
+    {label}
+    <span style={{display:'inline-flex',alignItems:'baseline',gap:3,marginLeft:4,padding:'3px 9px',background:'var(--sunk)',borderRadius:999}}>
+      <span style={{fontFamily:DISPLAY,fontSize:'0.84rem',fontWeight:800,letterSpacing:'-0.02em',color:'var(--ink)'}}>{fmt(hours)}</span>
+      <span style={{fontSize:'0.6rem',color:'var(--ink-3)'}}>h</span></span>
+  </button>);
+}
+function OptionB(){
+  return (<div style={{maxWidth:1100,margin:'0 auto',padding:'34px 44px',background:'var(--bg)'}}>
+    <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:24,paddingBottom:18,borderBottom:'2px solid var(--ink)'}}>
+      <h1 style={{fontFamily:DISPLAY,fontSize:'3rem',fontWeight:800,letterSpacing:'-0.05em',lineHeight:0.9,whiteSpace:'nowrap'}}>Time Log<span style={{color:'var(--blue)'}}>.</span></h1>
+      <div style={{display:'flex',alignItems:'center',gap:20}}>
+        <div style={{textAlign:'right'}}>
+          <Eyebrow style={{color:'var(--blue)'}}>Unbilled · June</Eyebrow>
+          <div style={{display:'flex',alignItems:'baseline',gap:5,justifyContent:'flex-end',marginTop:3}}>
+            <span style={{fontFamily:DISPLAY,fontSize:'2.2rem',fontWeight:800,lineHeight:0.9,letterSpacing:'-0.04em',color:'var(--blue)'}}>{fmt(18.5)}</span>
+            <span style={{fontFamily:DISPLAY,fontSize:'0.85rem',fontWeight:700,color:'var(--ink-3)'}}>hrs</span></div>
+        </div>
+        <span style={{width:1,height:46,background:'var(--border)'}}/>
+        <div style={{textAlign:'right'}}>
+          <Eyebrow>Logged</Eyebrow>
+          <div style={{display:'flex',alignItems:'baseline',gap:5,justifyContent:'flex-end',marginTop:3}}>
+            <span style={{fontFamily:DISPLAY,fontSize:'2.2rem',fontWeight:800,lineHeight:0.9,letterSpacing:'-0.04em'}}>9</span>
+            <span style={{fontFamily:HEB,fontSize:'0.74rem',color:'var(--ink-3)'}}>sessions</span></div>
+        </div>
+      </div>
+    </div>
+    <div style={{display:'flex',alignItems:'center',gap:10,marginTop:24,flexWrap:'wrap'}}>
+      <Eyebrow style={{marginRight:2}}>Filter</Eyebrow>
+      <button style={{display:'flex',alignItems:'center',gap:8,padding:'8px 8px 8px 14px',border:'1px solid var(--ink)',background:'var(--ink)',color:'var(--surface)',fontFamily:HEB,fontSize:'0.82rem',fontWeight:600,whiteSpace:'nowrap'}}>
+        All artists
+        <span style={{display:'inline-flex',alignItems:'baseline',gap:3,marginLeft:4,padding:'3px 9px',background:'rgba(255,255,255,0.16)',borderRadius:999}}>
+          <span style={{fontFamily:DISPLAY,fontSize:'0.84rem',fontWeight:800}}>{fmt(41.5)}</span>
+          <span style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.7)'}}>h</span></span>
+      </button>
+      <StatPill label="Assaf Amdursky" dot="var(--blue)" hours={24.0}/>
+      <StatPill label="Hila Ruach" dot="var(--orange)" hours={11.5}/>
+      <StatPill label="General / Agency" dot="var(--ink-2)" hours={6.0}/>
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<OptionB/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Time Log Summary — Denser Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --bg:#F1EEE9; --surface:#FBF8F2; --surface-2:#FFFDF8; --sunk:#EBE7E0;
+    --border:#DDD7CE; --border-light:#E7E2D9; --border-strong:#C8C1B5;
+    --ink:#1A1714; --ink-2:#6B6259; --ink-3:#A39A91;
+    --orange:#F08D39; --orange-bg:#FCE3CC; --clay:#C26C1F;
+    --blue:#3852B4; --blue-bg:#E8ECF7; --accent-soft:#E8ECF7;
+    --gold:#C79A3F; --gold-bg:#F6EDD7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{ font-family:'Bricolage Grotesque','Assistant',sans-serif; background:#E7E2D9; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  button{font-family:inherit; cursor:pointer;}
+  .pill-btn:hover{ border-color:var(--border-strong); }
+  .pill-btn.on:hover{ border-color:var(--ink); }
+  .seg-art:hover{ background:var(--surface); }
+  .note{ font-family:'Assistant',sans-serif; font-size:0.8rem; line-height:1.55; color:var(--ink-2); }
+  .note b{ color:var(--ink); font-weight:700; }
+  .tag{ display:inline-block; font-family:'Assistant',sans-serif; font-size:0.6rem; font-weight:700; letter-spacing:0.09em;
+    text-transform:uppercase; padding:3px 9px; border-radius:999px; background:var(--sunk); color:var(--ink-2); margin-bottom:10px; }
+  .tag--rec{ background:var(--blue-bg); color:var(--blue); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+const { useState } = React;
+const DISPLAY = "'Bricolage Grotesque', sans-serif";
+const HEB = "'Assistant', sans-serif";
+
+// realistic month data
+const DATA = {
+  unbilled: 18.5, sessions: 9,
+  artists: [
+    { id:'assaf',   name:'Assaf Amdursky', color:'var(--blue)',   hours:24.0, count:4 },
+    { id:'hila',    name:'Hila Ruach',     color:'var(--orange)', hours:11.5, count:3 },
+    { id:'general', name:'General / Agency',color:'var(--ink-2)', hours:6.0,  count:2 },
+  ],
+};
+const fmt = h => Number.isInteger(h) ? `${h}.0` : `${h}`;
+const Eyebrow = ({children, style}) => (
+  <span style={{ fontFamily:HEB, fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.12em',
+    textTransform:'uppercase', color:'var(--ink-3)', ...style }}>{children}</span>
+);
+
+/* ── shared page chrome: title row, so each option reads in context ── */
+function TitleRow() {
+  return (
+    <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:24,
+      paddingBottom:16, borderBottom:'2px solid var(--ink)' }}>
+      <h1 style={{ fontFamily:DISPLAY, fontSize:'2.6rem', fontWeight:800, letterSpacing:'-0.05em', lineHeight:0.9, whiteSpace:'nowrap' }}>
+        Time Log<span style={{ color:'var(--blue)' }}>.</span></h1>
+      <div style={{ display:'flex', alignItems:'center', gap:10, fontFamily:HEB, fontSize:'0.8rem', color:'var(--ink-2)' }}>
+        <span style={{ fontFamily:DISPLAY, fontWeight:700, color:'var(--ink)' }}>{DATA.sessions}</span>
+        <span>sessions logged</span>
+        <span style={{ width:28, height:1, background:'var(--ink-3)' }} />
+        <span>June 2026</span>
+      </div>
+    </div>
+  );
+}
+
+/* filter pill (current style) */
+function Pill({ label, dot, count, on }) {
+  return (
+    <button className={`pill-btn${on?' on':''}`} style={{ display:'flex', alignItems:'center', gap:8,
+      padding:'7px 14px', border:`1px solid ${on?'var(--ink)':'var(--border)'}`, background:on?'var(--ink)':'transparent',
+      color:on?'var(--surface)':'var(--ink-2)', fontFamily:HEB, fontSize:'0.82rem', fontWeight:600 }}>
+      {dot && <span style={{ width:8, height:8, borderRadius:'50%', background:dot, flexShrink:0 }} />}
+      {label}
+      {count!=null && <span style={{ fontSize:'0.68rem', fontWeight:700, color:on?'rgba(255,255,255,0.7)':'var(--ink-3)' }}>{count}</span>}
+    </button>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CURRENT — three tall cards + duplicate filter row
+   ════════════════════════════════════════════════════════════════ */
+function MetricBox({ num, label, dot, accentNum }) {
+  return (
+    <div style={{ border:'1.5px solid var(--ink)', background:'var(--surface-2)', padding:'22px 24px',
+      display:'flex', flexDirection:'column', gap:12, boxShadow:'4px 4px 0 var(--sunk)' }}>
+      <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+        <span style={{ fontFamily:DISPLAY, fontSize:'2.7rem', fontWeight:800, lineHeight:1, letterSpacing:'-0.04em', color:accentNum||'var(--ink)' }}>{num}</span>
+        <span style={{ fontFamily:DISPLAY, fontSize:'0.95rem', fontWeight:700, color:'var(--ink-3)' }}>hrs</span>
+      </div>
+      <Eyebrow style={{ fontSize:'0.68rem', letterSpacing:'0.1em', display:'flex', alignItems:'center', gap:7 }}>
+        {dot && <span style={{ width:7, height:7, borderRadius:'50%', background:dot }} />}{label}</Eyebrow>
+    </div>
+  );
+}
+function Current() {
+  return (
+    <div style={{ padding:'28px 36px', background:'var(--bg)' }}>
+      <TitleRow />
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20, marginTop:24 }}>
+        <MetricBox num={fmt(DATA.unbilled)} label="Total Unbilled Hours" accentNum="var(--blue)" />
+        <MetricBox num={fmt(24.0)} label="Assaf Amdursky · This Month" dot="var(--blue)" />
+        <MetricBox num={fmt(11.5)} label="Hila Ruach · This Month" dot="var(--orange)" />
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:22, paddingTop:16, borderTop:'1px solid var(--border)' }}>
+        <Eyebrow style={{ marginRight:2 }}>Filter</Eyebrow>
+        <Pill label="All artists" count={9} on />
+        <Pill label="Assaf Amdursky" dot="var(--blue)" count={4} />
+        <Pill label="Hila Ruach" dot="var(--orange)" count={3} />
+        <Pill label="General / Agency" dot="var(--ink-2)" count={2} />
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   OPTION A — Ledger bar: one hero number + inline artist breakdown
+   ════════════════════════════════════════════════════════════════ */
+function LedgerBar() {
+  return (
+    <div style={{ display:'flex', alignItems:'stretch', border:'1.5px solid var(--ink)',
+      background:'var(--surface-2)', boxShadow:'4px 4px 0 var(--sunk)', marginTop:24 }}>
+      {/* hero */}
+      <div style={{ padding:'18px 26px', display:'flex', flexDirection:'column', gap:6, justifyContent:'center', minWidth:230 }}>
+        <Eyebrow style={{ color:'var(--blue)' }}>Total unbilled · June</Eyebrow>
+        <div style={{ display:'flex', alignItems:'baseline', gap:7 }}>
+          <span style={{ fontFamily:DISPLAY, fontSize:'2.7rem', fontWeight:800, lineHeight:0.9, letterSpacing:'-0.04em', color:'var(--blue)' }}>{fmt(DATA.unbilled)}</span>
+          <span style={{ fontFamily:DISPLAY, fontSize:'0.9rem', fontWeight:700, color:'var(--ink-3)' }}>hrs</span>
+        </div>
+      </div>
+      {/* artist breakdown */}
+      <div style={{ display:'flex', flex:1, borderLeft:'1.5px solid var(--ink)' }}>
+        {DATA.artists.map((a,i)=>(
+          <div key={a.id} style={{ flex:1, padding:'18px 22px', display:'flex', flexDirection:'column', gap:8, justifyContent:'center',
+            borderLeft: i? '1px solid var(--border)':'none' }}>
+            <span style={{ display:'flex', alignItems:'center', gap:7 }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background:a.color, flexShrink:0 }} />
+              <span style={{ fontFamily:HEB, fontSize:'0.78rem', fontWeight:700, color:'var(--ink)' }}>{a.name}</span>
+            </span>
+            <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+              <span style={{ fontFamily:DISPLAY, fontSize:'1.5rem', fontWeight:800, letterSpacing:'-0.03em', color:'var(--ink)' }}>{fmt(a.hours)}</span>
+              <span style={{ fontFamily:HEB, fontSize:'0.68rem', color:'var(--ink-3)' }}>hrs · {a.count} sessions</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function OptionA() {
+  return (
+    <div style={{ padding:'28px 36px', background:'var(--bg)' }}>
+      <TitleRow />
+      <LedgerBar />
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:22, paddingTop:16, borderTop:'1px solid var(--border)' }}>
+        <Eyebrow style={{ marginRight:2 }}>Filter</Eyebrow>
+        <Pill label="All artists" count={9} on />
+        <Pill label="Assaf Amdursky" dot="var(--blue)" count={4} />
+        <Pill label="Hila Ruach" dot="var(--orange)" count={3} />
+        <Pill label="General / Agency" dot="var(--ink-2)" count={2} />
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   OPTION B — Zero band: hero stat inline in title, hours folded into filters
+   ════════════════════════════════════════════════════════════════ */
+function StatPill({ a, on }) {
+  return (
+    <button className={`pill-btn${on?' on':''}`} style={{ display:'flex', alignItems:'center', gap:9,
+      padding:'8px 8px 8px 14px', border:`1px solid ${on?'var(--ink)':'var(--border)'}`, background:on?'var(--ink)':'transparent',
+      color:on?'var(--surface)':'var(--ink-2)', fontFamily:HEB, fontSize:'0.82rem', fontWeight:600 }}>
+      {a.dot && <span style={{ width:8, height:8, borderRadius:'50%', background:a.dot, flexShrink:0 }} />}
+      {a.label}
+      <span style={{ display:'inline-flex', alignItems:'baseline', gap:3, marginLeft:4, padding:'3px 9px',
+        background:on?'rgba(255,255,255,0.16)':'var(--sunk)', borderRadius:999 }}>
+        <span style={{ fontFamily:DISPLAY, fontSize:'0.84rem', fontWeight:800, letterSpacing:'-0.02em',
+          color:on?'var(--surface)':'var(--ink)' }}>{fmt(a.hours)}</span>
+        <span style={{ fontSize:'0.6rem', color:on?'rgba(255,255,255,0.7)':'var(--ink-3)' }}>h</span>
+      </span>
+    </button>
+  );
+}
+function OptionB() {
+  return (
+    <div style={{ padding:'28px 36px', background:'var(--bg)' }}>
+      {/* title with hero stat folded into the meta line */}
+      <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:24,
+        paddingBottom:16, borderBottom:'2px solid var(--ink)' }}>
+        <h1 style={{ fontFamily:DISPLAY, fontSize:'2.6rem', fontWeight:800, letterSpacing:'-0.05em', lineHeight:0.9, whiteSpace:'nowrap' }}>
+          Time Log<span style={{ color:'var(--blue)' }}>.</span></h1>
+        <div style={{ display:'flex', alignItems:'center', gap:18 }}>
+          <div style={{ textAlign:'right' }}>
+            <Eyebrow style={{ color:'var(--blue)' }}>Unbilled · June</Eyebrow>
+            <div style={{ display:'flex', alignItems:'baseline', gap:5, justifyContent:'flex-end', marginTop:2 }}>
+              <span style={{ fontFamily:DISPLAY, fontSize:'2rem', fontWeight:800, lineHeight:0.9, letterSpacing:'-0.04em', color:'var(--blue)' }}>{fmt(DATA.unbilled)}</span>
+              <span style={{ fontFamily:DISPLAY, fontSize:'0.8rem', fontWeight:700, color:'var(--ink-3)' }}>hrs</span>
+            </div>
+          </div>
+          <span style={{ width:1, height:42, background:'var(--border)' }} />
+          <div style={{ textAlign:'right' }}>
+            <Eyebrow>Logged</Eyebrow>
+            <div style={{ display:'flex', alignItems:'baseline', gap:5, justifyContent:'flex-end', marginTop:2 }}>
+              <span style={{ fontFamily:DISPLAY, fontSize:'2rem', fontWeight:800, lineHeight:0.9, letterSpacing:'-0.04em' }}>{DATA.sessions}</span>
+              <span style={{ fontFamily:HEB, fontSize:'0.72rem', color:'var(--ink-3)' }}>sessions</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* filters now carry the per-artist hours */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:22, flexWrap:'wrap' }}>
+        <Eyebrow style={{ marginRight:2 }}>Filter</Eyebrow>
+        <button className="pill-btn on" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 8px 8px 14px',
+          border:'1px solid var(--ink)', background:'var(--ink)', color:'var(--surface)', fontFamily:HEB, fontSize:'0.82rem', fontWeight:600 }}>
+          All artists
+          <span style={{ display:'inline-flex', alignItems:'baseline', gap:3, marginLeft:4, padding:'3px 9px', background:'rgba(255,255,255,0.16)', borderRadius:999 }}>
+            <span style={{ fontFamily:DISPLAY, fontSize:'0.84rem', fontWeight:800 }}>{fmt(41.5)}</span>
+            <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.7)' }}>h</span>
+          </span>
+        </button>
+        <StatPill a={{ label:'Assaf Amdursky', dot:'var(--blue)', hours:24.0 }} />
+        <StatPill a={{ label:'Hila Ruach', dot:'var(--orange)', hours:11.5 }} />
+        <StatPill a={{ label:'General / Agency', dot:'var(--ink-2)', hours:6.0 }} />
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="problem" title="The problem" subtitle="Three tall cards — and the per-artist ones duplicate the filter pills below">
+        <DCArtboard id="cur" label="Current" width={900} height={360}>
+          <Current />
+        </DCArtboard>
+        <DCArtboard id="diag" label="Why it wastes space" width={420} height={360}>
+          <div style={{ padding:'26px 26px', background:'var(--surface)', height:'100%' }}>
+            <p className="note" style={{ margin:0 }}>
+              The band is <b>~150px tall</b> for three numbers. Worse, <b>"Assaf · This Month"</b> and
+              <b> "Hila · This Month"</b> restate exactly what the <b>filter pills</b> directly below already
+              represent — the same artists, same data, twice. Only <b>Total Unbilled</b> is a genuinely new,
+              actionable number.
+            </p>
+            <p className="note" style={{ marginTop:14 }}>
+              <b>The fix:</b> keep one hero number, and let the per-artist hours live where you act on them.
+            </p>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="a" title="Option A · Ledger bar" subtitle="One slim band: hero unbilled number + inline per-artist breakdown">
+        <DCArtboard id="a-art" label="A · In context" width={900} height={300}>
+          <OptionA />
+        </DCArtboard>
+        <DCArtboard id="a-note" label="Rationale" width={420} height={300}>
+          <div style={{ padding:'26px', background:'var(--surface)', height:'100%' }}>
+            <span className="tag tag--rec">Recommended</span>
+            <p className="note" style={{ margin:0 }}>
+              Collapses three stacked cards into <b>one ~90px band</b> — roughly <b>40% less height</b>.
+              The hero unbilled total keeps its prominence on the left; the three artists sit as compact
+              cells on the right, each with hours <i>and</i> session count. Keeps the bold border + offset
+              shadow you already use, so it still feels like the same app.
+            </p>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="b" title="Option B · Zero band" subtitle="No card band at all — hero stat in the title, hours folded into the filters">
+        <DCArtboard id="b-art" label="B · In context" width={900} height={250}>
+          <OptionB />
+        </DCArtboard>
+        <DCArtboard id="b-note" label="Rationale" width={420} height={250}>
+          <div style={{ padding:'26px', background:'var(--surface)', height:'100%' }}>
+            <p className="note" style={{ margin:0 }}>
+              The most space-efficient: <b>removes the band entirely</b>. The two real numbers (unbilled,
+              logged) ride in the title's meta area; each <b>filter pill carries its artist's hours</b>, so
+              the data lives exactly where you click to act on it. Densest, and zero duplication.
+            </p>
+          </div>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

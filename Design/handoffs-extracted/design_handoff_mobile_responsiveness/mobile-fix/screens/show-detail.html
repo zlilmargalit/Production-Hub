@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Show Detail — fixed</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ph.css">
+<style>
+  /* show-detail specific */
+  .sd-hubwrap{background:var(--sunk);border:1px dashed var(--border-strong);border-radius:14px;padding:6px;margin-top:6px}
+  .sd-hubhead{background:var(--ink);color:var(--surface-2);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .sd-hubhead .eyebrow{font-size:.6rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;opacity:.6}
+  .sd-hubhead .h{font-family:var(--font-display);font-weight:800;font-size:1.1rem;letter-spacing:-.02em}
+
+  .sd-tabs{display:flex;gap:0;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;margin-bottom:14px}
+  .sd-tabs button{flex:1;min-height:var(--tap);font-weight:800;font-size:.82rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+  .sd-tabs button.active{background:var(--ink);color:var(--surface-2)}
+
+  .sd-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+  .sd-block-lbl{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .sd-block-lbl::after{content:"";flex:1;height:1px;background:var(--border)}
+
+  /* transport segmented — proper 44px targets, evenly split */
+  .seg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+  .seg3 button{min-height:var(--tap);border:1.5px solid var(--border-strong);border-radius:10px;background:var(--surface-2);font-weight:700;color:var(--ink-2)}
+  .seg3 button.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+
+  /* responsive field pair: 2-up on wider phones, stacks under ~360 */
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:359px){ .pair{grid-template-columns:1fr} }
+
+  /* technical coordination — each modality is a self-contained stacked block */
+  .tc-mod{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;background:var(--surface)}
+  .tc-mod-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;min-height:var(--tap)}
+  .tc-toggle{display:inline-flex;align-items:center;gap:9px;font-weight:800;font-size:.95rem}
+  .tc-toggle .sw{width:42px;height:25px;border-radius:999px;background:var(--border-strong);position:relative;transition:background .18s;flex-shrink:0}
+  .tc-toggle .sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s}
+  .tc-mod.on .tc-toggle .sw{background:var(--blue)}
+  .tc-mod.on .tc-toggle .sw::after{transform:translateX(17px)}
+  .tc-mod.on .tc-toggle{color:var(--blue)}
+  .tc-fields{padding:0 14px 14px;display:grid;gap:12px}
+  .tc-mod:not(.on) .tc-fields{display:none}
+
+  .checkrow{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+  .checkrow .fld{flex:1}
+</style>
+</head>
+<body>
+<div class="ph-app" id="app">
+  <!-- status bar -->
+  <div class="ph-statusbar">
+    <span>13:55</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1.5" width="3" height="10.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5C5.5 0.5 12.5 0.5 17 4.5M3.5 7.5C6.5 4.8 11.5 4.8 14.5 7.5M6 10.5C7.7 9 10.3 9 12 10.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2"/><rect x="24" y="4" width="2" height="5" rx="1" opacity=".4"/></svg>
+    </span>
+  </div>
+
+  <!-- chrome -->
+  <div class="ph-chrome">
+    <div class="ph-header">
+      <span class="ph-logo">
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.4"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.4"/><circle cx="15" cy="24" r="2.2" fill="#F08D39"/></svg>
+      </span>
+      <span class="ph-wordmark">Production Hub</span>
+      <span class="ph-header-spacer"></span>
+      <span class="ph-avatar">ZL</span>
+    </div>
+    <div class="ph-switchers">
+      <span class="ph-pill ph-pill--ghost">ASSAF AMD… <span class="caret">▾</span></span>
+      <span class="ph-pill ph-pill--icon" aria-label="Time log">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+      </span>
+      <span class="ph-pill"><span class="dot"></span>Assaf Amdursky <span class="caret">▾</span></span>
+    </div>
+    <div class="ph-nav" id="nav">
+      <span class="ph-tab active">SHOWS</span>
+      <span class="ph-tab">CREW &amp; TYPES</span>
+      <span class="ph-tab">TASKS <span class="badge">10</span></span>
+      <span class="ph-tab">AUTOMATIONS</span>
+      <span class="ph-tab">TEAMS</span>
+      <span class="ph-tab">TOOLS ▾</span>
+    </div>
+  </div>
+
+  <!-- body: an expanded show card -->
+  <div class="ph-body">
+    <div class="ph-card fade-up" style="border-top:5px solid var(--orange)">
+      <div style="padding:14px var(--gut)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-weight:800;color:var(--clay);font-size:.82rem" dir="auto">אני גיטרה</span>
+          <span style="display:flex;gap:4px">
+            <button class="seg-mini" style="min-width:var(--tap);min-height:36px;border:1px solid var(--border);border-radius:8px;font-size:1.1rem">−</button>
+          </span>
+        </div>
+        <h2 dir="rtl" style="font-family:var(--font-display);font-weight:800;font-size:1.45rem;line-height:1.15;margin:6px 0 8px;text-align:right">אני גיטרה סגירת תערוכה יהורם גאון</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;color:var(--ink-2);font-size:.86rem">
+          <strong style="color:var(--ink)">June 9, 2026</strong><span>·</span><span dir="auto">מגדל דוד</span><span>·</span><span style="color:var(--blue);font-weight:700">17:15 – 21:15</span>
+        </div>
+      </div>
+
+      <!-- internal Production Hub panel -->
+      <div style="padding:0 var(--gut) 16px">
+        <div class="sd-hubwrap">
+          <div class="sd-hubhead">
+            <div class="eyebrow">Internal</div>
+            <div class="h">Production Hub</div>
+          </div>
+
+          <div class="sd-tabs" id="hubtabs">
+            <button class="active" data-tab="tech">Technical</button>
+            <button data-tab="log">Logistics</button>
+          </div>
+
+          <!-- TECHNICAL -->
+          <div data-panel="tech">
+            <div class="sd-block-lbl" style="margin:0 2px 10px">Technical coordination</div>
+
+            <div class="tc-mod on" id="mod-sound">
+              <div class="tc-mod-head">
+                <button class="tc-toggle" onclick="toggleMod('sound')"><span class="sw"></span>Sound</button>
+                <span style="font-size:.7rem;font-weight:700;color:var(--green)">Coordinated ✓</span>
+              </div>
+              <div class="tc-fields">
+                <div><label class="fld-label">Rental needs</label><input class="fld" placeholder="Equipment to rent…"></div>
+                <div><label class="fld-label">Supplier</label><input class="fld" placeholder="Rental company"></div>
+              </div>
+            </div>
+
+            <div class="tc-mod on" id="mod-light">
+              <div class="tc-mod-head">
+                <button class="tc-toggle" onclick="toggleMod('light')"><span class="sw"></span>Lighting</button>
+                <span style="font-size:.7rem;font-weight:700;color:var(--green)">Coordinated ✓</span>
+              </div>
+              <div class="tc-fields">
+                <div><label class="fld-label">Rental needs</label><input class="fld" placeholder="Equipment to rent…"></div>
+                <div><label class="fld-label">Supplier</label><input class="fld" placeholder="Rental company"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LOGISTICS -->
+          <div data-panel="log" hidden>
+            <div class="sd-block">
+              <div class="sd-block-lbl">Transport</div>
+              <div class="seg3" id="transport">
+                <button onclick="pickMode(this)">Taxi</button>
+                <button class="on" onclick="pickMode(this)">Van</button>
+                <button onclick="pickMode(this)">Self</button>
+              </div>
+              <div class="pair">
+                <div><label class="fld-label">Driver</label><input class="fld" dir="auto" placeholder="Driver name"></div>
+                <div><label class="fld-label">Time</label><input class="fld" dir="ltr" value="15:35"></div>
+              </div>
+            </div>
+
+            <div class="sd-block">
+              <div class="sd-block-lbl">Food</div>
+              <div class="pair" style="margin-bottom:10px">
+                <div><label class="fld-label">Name</label><input class="fld" dir="auto" value="לילוש"></div>
+                <div><label class="fld-label">Phone</label><input class="fld" dir="ltr" placeholder="050-…"></div>
+              </div>
+              <div><label class="fld-label">Time</label><input class="fld" dir="ltr" value="15:00"></div>
+            </div>
+
+            <div class="sd-block">
+              <div class="sd-block-lbl">Calendar invite</div>
+              <label class="fld-label">Calendar</label>
+              <select class="fld" style="margin-bottom:12px"><option>amdurskymusic@gmail.com</option></select>
+              <div style="display:grid;gap:8px">
+                <button class="btn btn--full">Test invite (my email only)</button>
+                <button class="btn btn--blue btn--full">Invite all crew</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px var(--gut);border-top:1px solid var(--border);background:var(--surface-2)">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn--sm">Brief</button>
+          <button class="btn btn--sm">PDF</button>
+        </div>
+        <div style="display:flex;gap:16px">
+          <label style="display:inline-flex;gap:7px;align-items:center;font-weight:600;font-size:.9rem;min-height:var(--tap)"><input type="checkbox">Invoice</label>
+          <label style="display:inline-flex;gap:7px;align-items:center;font-weight:600;font-size:.9rem;min-height:var(--tap)"><input type="checkbox">Receipt</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const hubtabs = document.getElementById('hubtabs');
+  hubtabs.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    [...hubtabs.children].forEach(x=>x.classList.toggle('active', x===b));
+    document.querySelectorAll('[data-panel]').forEach(p=>p.hidden = p.dataset.panel !== b.dataset.tab);
+  });
+  function toggleMod(id){ document.getElementById('mod-'+id).classList.toggle('on'); }
+  function pickMode(btn){ [...document.getElementById('transport').children].forEach(b=>b.classList.toggle('on', b===btn)); }
+</script>
+</body>
+</html>

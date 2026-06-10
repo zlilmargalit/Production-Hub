@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 function TechnicalManager({ show, onUpdate }) {
   const [setlist,  setSetlist]  = useState(show.setlistNotes || '');
   const [newItem,  setNewItem]  = useState('');
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
   const [coord, setCoord] = useState({
     sound:                show.soundCoordinated        || false,
     lighting:             show.lightingCoordinated     || false,
@@ -55,12 +57,44 @@ function TechnicalManager({ show, onUpdate }) {
     saveCoord(next);
   };
 
+  // Split free text into one checklist item per non-empty line.
+  const textToItems = (text) =>
+    text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((label) => ({ id: crypto.randomUUID(), label, checked: false }));
+
+  const addItemsFromText = (text) => {
+    const items = textToItems(text);
+    if (!items.length) return false;
+    save({ equipmentChecklist: [...checklist, ...items] });
+    return true;
+  };
+
   const addChecklistItem = () => {
     const label = newItem.trim();
     if (!label) return;
     const updated = [...checklist, { id: crypto.randomUUID(), label, checked: false }];
     save({ equipmentChecklist: updated });
     setNewItem('');
+  };
+
+  // Paste of multi-line text into the single-item input → create several items.
+  const handleInputPaste = (e) => {
+    const text = e.clipboardData?.getData('text') || '';
+    if (/\r?\n/.test(text.trim())) {
+      e.preventDefault();
+      addItemsFromText(text);
+      setNewItem('');
+    }
+  };
+
+  const addPasteList = () => {
+    if (addItemsFromText(pasteText)) {
+      setPasteText('');
+      setPasteOpen(false);
+    }
   };
 
   const toggleChecklist = (id) => {
@@ -184,6 +218,7 @@ function TechnicalManager({ show, onUpdate }) {
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addChecklistItem()}
+              onPaste={handleInputPaste}
               placeholder="Add item..."
             />
             <button
@@ -192,6 +227,32 @@ function TechnicalManager({ show, onUpdate }) {
               disabled={!newItem.trim()}
             >+</button>
           </div>
+          <button
+            type="button"
+            className="tech-checklist-paste-toggle"
+            onClick={() => setPasteOpen((v) => !v)}
+          >
+            {pasteOpen ? 'Cancel' : 'Paste list'}
+          </button>
+          {pasteOpen && (
+            <div className="tech-checklist-paste">
+              <textarea
+                className="tech-checklist-paste-input"
+                dir="auto"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="Paste a list — one item per line"
+                rows={5}
+              />
+              <button
+                className="btn-primary btn-sm"
+                onClick={addPasteList}
+                disabled={!textToItems(pasteText).length}
+              >
+                Add {textToItems(pasteText).length || ''} items
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

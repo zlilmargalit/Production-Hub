@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home — Optimized</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  :root{
+    --bg:#F1EEE9; --surface:#FBF8F2; --surface-2:#FFFDF8; --sunk:#EBE7E0;
+    --border:#DDD7CE; --border-strong:#C8C1B5;
+    --ink:#1A1714; --ink-2:#6B6259; --ink-3:#A39A91;
+    --orange:#F08D39; --orange-bg:#FCE3CC; --clay:#C26C1F;
+    --blue:#3852B4; --blue-bg:#E8ECF7; --accent-soft:#E8ECF7;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Bricolage Grotesque','Assistant',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  button{font-family:inherit}
+  @keyframes mq { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  @media (prefers-reduced-motion: reduce){ .mq-track{ animation:none !important } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+function Marquee({ word, style={} }) {
+  const words = Array(10).fill(word);
+  return (
+    <div aria-hidden="true" style={{ overflow:'hidden', height:18,
+      WebkitMaskImage:'linear-gradient(to right, transparent, black 6%, black 94%, transparent)',
+      maskImage:'linear-gradient(to right, transparent, black 6%, black 94%, transparent)', ...style }}>
+      <div className="mq-track" style={{ display:'inline-flex', alignItems:'center', gap:14, whiteSpace:'nowrap', animation:'mq 70s linear infinite', opacity:0.55 }}>
+        {[...words,...words].map((w,i)=>(
+          <span key={i} style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'0.72rem', fontWeight:700,
+            letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--ink-3)' }}>
+            {w}<span style={{ margin:'0 7px', color:'var(--orange)' }}>•</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── compact home header ──────────────────────────────────── */
+function StatStrip() {
+  const stats = [['02','Artists'],['10','Shows'],['12','Tasks']];
+  return (
+    <div style={{ display:'flex', border:'1px solid var(--border-strong)', background:'var(--surface)', flexShrink:0 }}>
+      {stats.map(([n,l],i)=>(
+        <div key={l} style={{ padding:'7px 18px', borderLeft:i?'1px solid var(--border)':'none',
+          display:'flex', alignItems:'baseline', gap:8, background:i===0?'var(--accent-soft)':'transparent' }}>
+          <span style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'1.45rem', fontWeight:800,
+            letterSpacing:'-0.03em', color:i===0?'var(--blue)':'var(--ink)', fontVariantNumeric:'tabular-nums' }}>{n}</span>
+          <span style={{ fontSize:'0.7rem', fontWeight:600, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--ink-3)' }}>{l}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+function TitleDate() {
+  return (
+    <>
+      <h1 style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'clamp(2rem,3.2vw,2.55rem)',
+        fontWeight:800, letterSpacing:'-0.045em', lineHeight:0.95, flexShrink:0 }}>
+        Today<span style={{ color:'var(--blue)' }}>.</span>
+      </h1>
+      <span style={{ fontSize:'0.7rem', fontWeight:600, letterSpacing:'0.04em', color:'var(--ink-3)', flexShrink:0, whiteSpace:'nowrap' }}>Sunday, 7 June 2026</span>
+    </>
+  );
+}
+function ArtistFilter() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, paddingTop:12, borderTop:'2px solid var(--ink)', flexWrap:'wrap' }}>
+      <span style={{ fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--ink-3)', marginRight:2 }}>Artists</span>
+      {[['All artists',null,true],['Assaf Amdursky','13'],['Hila Ruach','6']].map(([t,b,on],i)=>(
+        <button key={t} style={{ display:'flex', alignItems:'center', gap:7, padding:'5px 12px',
+          border:`1px solid ${on?'var(--ink)':'var(--border)'}`, background:on?'var(--ink)':'transparent',
+          color:on?'var(--surface)':'var(--ink-2)', cursor:'pointer', fontSize:'0.76rem', fontWeight:600 }}>
+          {!on && <span style={{ width:7, height:7, borderRadius:'50%', background:i===1?'var(--blue)':'var(--orange)' }} />}
+          {t}{b && <span style={{ fontSize:'0.66rem', color:on?'#fff':'var(--ink-3)', fontVariantNumeric:'tabular-nums' }}>{b}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function HomeHeader({ mode }) {
+  return (
+    <div style={{ marginBottom:16 }}>
+      {mode==='eyebrow' ? (
+        /* OPTION 5 — title|strip row, then a separate eyebrow line with the marquee */
+        <>
+          <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:14, minWidth:0 }}>
+              <TitleDate />
+            </div>
+            <StatStrip />
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:11 }}>
+            <Marquee word="Production Hub" style={{ flex:1 }} />
+          </div>
+        </>
+      ) : (
+        /* OPTION 1 — inline: title + date + marquee fills gap + strip, all on one row */
+        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:20, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:14, flex:1, minWidth:260 }}>
+            <TitleDate />
+            <Marquee word="Production Hub" style={{ flex:1, minWidth:60, alignSelf:'center' }} />
+          </div>
+          <StatStrip />
+        </div>
+      )}
+      <ArtistFilter />
+    </div>
+  );
+}
+
+/* full-month calendar */
+function Calendar() {
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  // June 2026 — June 7 is Sunday, so the grid starts on Sun May 31
+  const cells=[
+    {n:31,muted:true},{n:1},{n:2},{n:3},{n:4},{n:5},{n:6},
+    {n:7,today:true},{n:8},{n:9},{n:10},{n:11},{n:12},{n:13},
+    {n:14},{n:15},{n:16},{n:17},{n:18},{n:19},{n:20},
+    {n:21},{n:22},{n:23},{n:24},{n:25},{n:26},{n:27},
+    {n:28},{n:29},{n:30},{n:1,muted:true},{n:2,muted:true},{n:3,muted:true},{n:4,muted:true},
+  ];
+  const ev={4:['רד אקסס','18:30 מוצא'],5:['חזרת להקה'],9:['אני גיטרה'],10:['בארבי'],11:['זאפה חיפה']};
+  return (
+    <div style={{ border:'1px solid var(--ink)', background:'var(--surface)', boxShadow:'4px 4px 0 var(--sunk)' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderBottom:'1px solid var(--border)' }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+          <span style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'1.25rem', fontWeight:800, letterSpacing:'-0.03em' }}>June</span>
+          <span style={{ fontSize:'0.78rem', color:'var(--ink-3)' }}>2026</span>
+        </div>
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <button style={{ border:'1px solid var(--border)', background:'var(--surface)', padding:'3px 8px', cursor:'pointer' }}>‹</button>
+          <button style={{ border:'1px solid var(--ink)', background:'var(--surface)', padding:'3px 10px', cursor:'pointer', fontSize:'0.72rem', fontWeight:600 }}>Today</button>
+          <button style={{ border:'1px solid var(--border)', background:'var(--surface)', padding:'3px 8px', cursor:'pointer' }}>›</button>
+          <div style={{ display:'flex', border:'1px solid var(--ink)', marginLeft:6 }}>
+            <span style={{ padding:'4px 12px', background:'var(--ink)', color:'var(--surface)', fontSize:'0.66rem', fontWeight:700 }}>MONTH</span>
+            <span style={{ padding:'4px 12px', fontSize:'0.66rem', fontWeight:700, color:'var(--ink-2)' }}>WEEK</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)' }}>
+        {days.map(d=><div key={d} style={{ padding:'6px 0', textAlign:'center', fontSize:'0.56rem', fontWeight:700, letterSpacing:'0.08em', color:'var(--ink-3)', borderBottom:'1px solid var(--border)' }}>{d.toUpperCase()}</div>)}
+        {cells.map((c,i)=>(
+          <div key={i} style={{ minHeight:50, borderRight:(i%7!==6)?'1px solid var(--border)':'none', borderBottom: i<28?'1px solid var(--border)':'none',
+            padding:'4px 5px', background: c.today?'var(--accent-soft)':'transparent' }}>
+            <div style={{ fontSize:'0.66rem', color:c.muted?'var(--ink-3)':c.today?'var(--blue)':'var(--ink-2)', fontWeight:c.today?800:500, fontVariantNumeric:'tabular-nums' }}>{c.n}</div>
+            {(ev[c.muted?-1:c.n]||[]).map((e,j)=>(
+              <div key={j} dir="rtl" style={{ marginTop:2, fontSize:'0.54rem', background:'var(--blue-bg)', color:'var(--blue)', padding:'1px 4px', borderRight:'2px solid var(--blue)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{e}</div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UpNext() {
+  // real upcoming shows across all artists — each row links to ITS OWN show (no ambiguity)
+  const items=[
+    ['9','JUN · TUE','אני גיטרה סגירת תערוכה','17:15 · מגדל דוד','Assaf Amdursky','var(--blue)'],
+    ['10','JUN · WED','בארבי מנועים שקטים','16:00 · בארבי','Assaf Amdursky','var(--blue)'],
+    ['11','JUN · THU','מנועים שקטים זאפה','16:45 · זאפה חיפה','Assaf Amdursky','var(--blue)'],
+    ['13','JUN · SAT','החלונות הגבוהים גן','20:00 · גן העצמאות','Hila Ruach','var(--orange)'],
+    ['14','JUN · SUN','אני גיטרה ריברסייד','18:30 · ריבר סייד','Assaf Amdursky','var(--blue)'],
+    ['18','JUN · THU','הילה רוח זאפה','21:00 · זאפה ת״א','Hila Ruach','var(--orange)']];
+  return (
+    <div style={{ border:'1px solid var(--ink)', background:'var(--surface)', boxShadow:'4px 4px 0 var(--sunk)', display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
+      <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'1.05rem', fontWeight:800, letterSpacing:'-0.03em', flexShrink:0 }}>Up Next</div>
+      {/* scrolls internally if there are more shows than fit — each row opens that specific show */}
+      <div style={{ flex:1, overflowY:'auto' }}>
+        {items.map((it,i)=>(
+          <div key={i} title={`Open: ${it[2]}`} style={{ display:'flex', gap:12, padding:'11px 16px', borderBottom:'1px solid var(--border)', alignItems:'flex-start', cursor:'pointer' }}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--sunk)'}
+            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{ textAlign:'center', flexShrink:0, width:30 }}>
+              <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'1.2rem', fontWeight:800, lineHeight:1 }}>{it[0]}</div>
+              <div style={{ fontSize:'0.46rem', fontWeight:700, letterSpacing:'0.05em', color:'var(--ink-3)', marginTop:2 }}>{it[1]}</div>
+            </div>
+            <div style={{ flex:1, borderLeft:`2px solid ${it[5]}`, paddingLeft:10, minWidth:0 }}>
+              <div style={{ fontSize:'0.56rem', fontWeight:700, letterSpacing:'0.06em', color:it[5], textTransform:'uppercase' }}>{it[4]}</div>
+              <div dir="rtl" style={{ fontFamily:"'Assistant',sans-serif", fontSize:'0.82rem', fontWeight:700, margin:'2px 0' }}>{it[2]}</div>
+              <div dir="rtl" style={{ fontSize:'0.7rem', color:'var(--ink-3)' }}>{it[3]}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MyTasks() {
+  const tasks=['לסגור עם לילוש תפריט לבארבי','פדל בורד','לו״ז לריברסייד','חגי לבארבי'];
+  return (
+    <div style={{ marginTop:18 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+        <span style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'1.15rem', fontWeight:800, letterSpacing:'-0.03em' }}>My Tasks</span>
+        <span style={{ fontSize:'0.62rem', fontWeight:800, background:'var(--ink)', color:'var(--surface)', padding:'2px 8px', fontVariantNumeric:'tabular-nums' }}>12</span>
+        <span style={{ fontSize:'0.72rem', color:'var(--ink-3)' }}>· assigned to you</span>
+        <div style={{ flex:1, height:1, background:'var(--border)' }} />
+      </div>
+      <div style={{ border:'1px solid var(--ink)', background:'var(--surface)', display:'grid', gridTemplateColumns:'1fr 1fr' }}>
+        {tasks.map((t,i)=>(
+          <div key={i} dir="rtl" style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 14px',
+            borderBottom: i<2?'1px solid var(--border)':'none', borderLeft: i%2===0?'1px solid var(--border)':'none' }}>
+            <span style={{ width:16, height:16, border:'1.5px solid var(--border-strong)', flexShrink:0 }} />
+            <span style={{ flex:1, fontFamily:"'Assistant',sans-serif", fontSize:'0.84rem', fontWeight:600 }}>{t}</span>
+            <span style={{ fontSize:'0.66rem', color:'var(--ink-3)' }}>06-07</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const IDEAS = [
+  ['Today קומפקטי','הכותרת מ-~6rem ל-2.4rem; התאריך כטקסט שקט לצידה — חוסך ~130px.'],
+  ['Production Hub זז','הטקסט הזז ממלא את הרווח בין התאריך לסטטיסטיקות — חותם מותגי במקום רווח ריק.'],
+  ['סטטיסטיקות לרוחב מלא','02 Artists · 10 Shows · 12 Tasks כרצועה בקצה ימין — לא טקסט מפוזר.'],
+  ['מסננים בשורת הקו','שורת ה-Artists מוזגה לקו המפריד — חוסכת שורה שלמה.'],
+  ['לוח + Up Next מעל הקפל','בזכות הראש הקומפקטי, הלוח וה-Up Next נכנסים בלי גלילה.'],
+  ['הצצה ל-My Tasks','כמה משימות נראות מיד בתחתית במקום הרבה מתחת לקפל.'],
+];
+
+function App() {
+  const [mode,setMode] = useState('eyebrow');
+  return (
+    <div style={{ minHeight:'100vh' }}>
+      <header style={{ background:'rgba(251,248,242,0.94)', backdropFilter:'blur(14px)', borderBottom:'1px solid var(--ink)',
+        padding:'0 36px', height:56, display:'flex', alignItems:'center', gap:14, position:'sticky', top:0, zIndex:100 }}>
+        <span style={{ fontWeight:800, fontSize:'1rem', letterSpacing:'-0.04em' }}>Production Hub</span>
+        <span style={{ width:1, height:18, background:'var(--border)' }} />
+        <span style={{ fontSize:'0.66rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--ink-3)' }}>Home — optimized</span>
+      </header>
+
+      <div style={{ maxWidth:1120, margin:'0 auto', padding:'40px 32px 90px' }}>
+        <h1 style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:'clamp(2.4rem,5vw,3.4rem)', fontWeight:800, letterSpacing:'-0.05em', lineHeight:0.9 }}>
+          Home, tightened<span style={{ color:'var(--orange)' }}>.</span>
+        </h1>
+        <p style={{ fontSize:'0.875rem', color:'var(--ink-2)', marginTop:14, maxWidth:560, lineHeight:1.6 }}>
+          אותה מערכת כותרת קומפקטית כמו שאר העמודים — והפעם הטקסט הזז כתוב בו <b>Production Hub</b> (רק בעמוד הזה). הלוח, ה-Up Next וההצצה למשימות נכנסים מעל הקפל.
+        </p>
+
+        {/* moving-text placement toggle */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:22, flexWrap:'wrap' }}>
+          <span style={{ fontSize:'0.64rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--ink-3)' }}>Moving text:</span>
+          <div style={{ display:'flex', border:'1px solid var(--ink)' }}>
+            {[['inline','Option 1 — Inline in bar'],['eyebrow','Option 5 — Eyebrow line']].map(([m,lbl],i)=>(
+              <button key={m} onClick={()=>setMode(m)} style={{
+                padding:'7px 15px', borderLeft:i?'1px solid var(--ink)':'none',
+                background: mode===m?'var(--blue)':'transparent', color: mode===m?'#fff':'var(--ink-2)',
+                cursor:'pointer', fontSize:'0.7rem', fontWeight:700, letterSpacing:'0.03em' }}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop:30, border:'1px solid var(--ink)', background:'var(--bg)' }}>
+          <div style={{ height:46, borderBottom:'1px solid var(--ink)', background:'var(--surface)', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px' }}>
+            <span style={{ fontWeight:800, fontSize:'0.82rem', letterSpacing:'-0.04em' }}>Production Hub</span>
+            <span style={{ fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.06em', color:'var(--ink-3)' }}>GLOBAL HOME</span>
+          </div>
+          <div style={{ padding:'20px 22px 24px' }}>
+            <HomeHeader mode={mode} />
+            <div style={{ display:'grid', gridTemplateColumns:'1.55fr 1fr', gap:18, alignItems:'stretch' }}>
+              <Calendar />
+              <UpNext />
+            </div>
+            <MyTasks />
+          </div>
+        </div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))', gap:8, marginTop:30 }}>
+          {IDEAS.map(([t,d])=>(
+            <div key={t} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderLeft:'3px solid var(--blue)', padding:'12px 14px' }}>
+              <div style={{ fontWeight:700, fontSize:'0.82rem', marginBottom:3 }}>{t}</div>
+              <div style={{ fontSize:'0.72rem', color:'var(--ink-2)', lineHeight:1.45 }}>{d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Automations — fixed</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ph.css">
+<style>
+  .sectlabel{display:flex;align-items:center;gap:12px;margin:24px 0 12px;font-weight:800;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+  .sectlabel::before,.sectlabel::after{content:"";flex:1;height:1px;background:var(--border)}
+  .sectsub{color:var(--ink-2);font-size:.9rem;margin:-4px 0 14px;text-align:center}
+
+  /* connected apps: pills wrap, never overflow */
+  .apps{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .apps-lbl{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+  .apps-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .apppill{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 13px;border-radius:999px;font-weight:700;font-size:.86rem;border:1px solid}
+  .apppill .d{width:7px;height:7px;border-radius:50%}
+  .apppill.gmail{color:#D14836;border-color:#F3C9C2;background:#FCEEEC}.apppill.gmail .d{background:#D14836}
+  .apppill.cal{color:#3852B4;border-color:#C3CCEA;background:#EDF0FA}.apppill.cal .d{background:#3852B4}
+  .apppill.drive{color:#2E7D52;border-color:#BEDDCB;background:#EAF4EE}.apppill.drive .d{background:#2E7D52}
+
+  /* recipe card — clean single column, accent strip on top */
+  .recipe{background:var(--surface-2);border:1px solid var(--border-strong);border-radius:14px;overflow:hidden;margin-bottom:12px}
+  .recipe-strip{height:5px}
+  .recipe-body{padding:16px}
+  .recipe h3{font-family:var(--font-display);font-weight:800;font-size:1.15rem;margin-bottom:8px}
+  .recipe p{color:var(--ink-2);font-size:.92rem;line-height:1.45;margin-bottom:10px}
+  .recipe .req{font-size:.84rem;font-weight:700;color:var(--clay);margin-bottom:12px}
+  .recipe .btn{width:100%}
+
+  /* builder — vertical trigger→condition→action pipeline */
+  .builder{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .bstep{padding:16px;border-top:1px solid var(--border);position:relative}
+  .bstep:first-child{border-top:none}
+  .bstep-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .btag{font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;padding:5px 10px;border-radius:6px}
+  .btag.trigger{background:var(--ink)}
+  .btag.cond{background:var(--blue)}
+  .btag.action{background:var(--orange)}
+  .bstep-hint{font-size:.82rem;color:var(--ink-3)}
+  .bconnector{display:flex;justify-content:center;color:var(--ink-3);font-size:1.1rem;padding:2px 0}
+  .badd{width:100%;min-height:var(--tap);border:1.5px dashed var(--border-strong);border-radius:10px;color:var(--ink-2);font-weight:700;font-size:.86rem;background:transparent}
+</style>
+</head>
+<body>
+<div class="ph-app" id="app">
+  <div class="ph-statusbar">
+    <span>13:56</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1.5" width="3" height="10.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5C5.5 0.5 12.5 0.5 17 4.5M3.5 7.5C6.5 4.8 11.5 4.8 14.5 7.5M6 10.5C7.7 9 10.3 9 12 10.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2"/><rect x="24" y="4" width="2" height="5" rx="1" opacity=".4"/></svg>
+    </span>
+  </div>
+  <div class="ph-chrome">
+    <div class="ph-header">
+      <span class="ph-logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.4"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.4"/><circle cx="15" cy="24" r="2.2" fill="#F08D39"/></svg></span>
+      <span class="ph-wordmark">Production Hub</span>
+      <span class="ph-header-spacer"></span>
+      <span class="ph-avatar">ZL</span>
+    </div>
+    <div class="ph-switchers">
+      <span class="ph-pill ph-pill--ghost">ASSAF AMD… <span class="caret">▾</span></span>
+      <span class="ph-pill ph-pill--icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></span>
+      <span class="ph-pill"><span class="dot"></span>Assaf Amdursky <span class="caret">▾</span></span>
+    </div>
+    <div class="ph-nav">
+      <span class="ph-tab">SHOWS</span>
+      <span class="ph-tab">CREW &amp; TYPES</span>
+      <span class="ph-tab">TASKS <span class="badge">10</span></span>
+      <span class="ph-tab active">AUTOMATIONS</span>
+      <span class="ph-tab">TEAMS</span>
+      <span class="ph-tab">TOOLS ▾</span>
+    </div>
+  </div>
+
+  <div class="ph-body">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <h1 class="ph-page-title">Automations<span class="dot">.</span></h1>
+      <span class="ph-page-sub">00 active rules</span>
+    </div>
+    <div class="ph-rule"></div>
+
+    <div class="sectlabel">Connected apps</div>
+    <div class="apps fade-up">
+      <div class="apps-lbl">Connected</div>
+      <div class="apps-row">
+        <span class="apppill gmail"><span class="d"></span>✉ Gmail</span>
+        <span class="apppill cal"><span class="d"></span>📅 Calendar</span>
+        <span class="apppill drive"><span class="d"></span>▲ Drive</span>
+      </div>
+      <button class="btn btn--full">Manage integrations</button>
+    </div>
+
+    <div class="sectlabel">Recipes</div>
+    <p class="sectsub">One-click automation templates — activate and go.</p>
+
+    <div class="recipe fade-up">
+      <div class="recipe-strip" style="background:#D14836"></div>
+      <div class="recipe-body">
+        <h3>Email → Show</h3>
+        <p>When a booking email arrives in Gmail, automatically create a new show with details extracted from the subject and body.</p>
+        <div class="req">Requires Gmail</div>
+        <button class="btn">Activate recipe</button>
+      </div>
+    </div>
+
+    <div class="recipe fade-up">
+      <div class="recipe-strip" style="background:var(--orange)"></div>
+      <div class="recipe-body">
+        <h3>Early Coordination Alert</h3>
+        <p>Get a push notification N days before every show so you have time to confirm sound, lighting, and logistics well in advance.</p>
+        <div class="req">Requires push notifications</div>
+        <button class="btn">Activate recipe</button>
+      </div>
+    </div>
+
+    <div class="sectlabel">Build a custom rule</div>
+    <p class="sectsub">Define your own trigger → condition → action pipeline.</p>
+
+    <div class="builder fade-up">
+      <div class="bstep">
+        <div class="bstep-head"><span class="btag trigger">Trigger</span><span class="bstep-hint">What starts this automation?</span></div>
+        <select class="fld"><option>Daily schedule check</option><option>New show created</option><option>Booking email received</option></select>
+      </div>
+      <div class="bconnector">↓</div>
+      <div class="bstep">
+        <div class="bstep-head"><span class="btag cond">Conditions</span><span class="bstep-hint">Optional filters — all must match</span></div>
+        <button class="badd">+ Add condition</button>
+      </div>
+      <div class="bconnector">↓</div>
+      <div class="bstep">
+        <div class="bstep-head"><span class="btag action">Action</span><span class="bstep-hint">What should happen?</span></div>
+        <select class="fld"><option>Send push notification</option><option>Create task</option><option>Send email</option></select>
+      </div>
+      <div class="bstep" style="background:var(--surface-2)">
+        <button class="btn btn--blue btn--full">Save automation</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -35,6 +35,46 @@ function getShowTime(show) {
   return show.loadIn || '';
 }
 
+// Normalise a show's guest list (free-text string or legacy [{name,notes}]) to text.
+function guestListToText(gl) {
+  if (!gl) return '';
+  if (typeof gl === 'string') return gl;
+  if (Array.isArray(gl)) return gl.map((g) => g.name + (g.notes ? ` — ${g.notes}` : '')).join('\n');
+  return '';
+}
+
+// Count total guests from a free-text guest list (mirrors TaskManager rules):
+//   זוג / זוגית → 2 · "+N" → 1+N · trailing number N → N · otherwise → 1
+function countGuests(text) {
+  if (!text || !text.trim()) return 0;
+  return text.split('\n').map((l) => l.trim()).filter(Boolean).reduce((total, line) => {
+    if (/זוג(ית)?/u.test(line)) return total + 2;
+    const plus = line.match(/\+\s*(\d+)/);
+    if (plus) return total + 1 + parseInt(plus[1], 10);
+    const trailing = line.match(/(\d+)\s*$/);
+    return total + (trailing ? parseInt(trailing[1], 10) : 1);
+  }, 0);
+}
+
+// Copy arbitrary text to the clipboard with a non-secure-context fallback.
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+}
+
 function parseScheduleLines(text) {
   if (!text) return [];
   return text.split('\n')
@@ -144,6 +184,55 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
           <button className="cl-add-btn" onClick={() => setAdding(true)}>+ Add task</button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Guest-List Card (read-only view + copy) ─────────────────────────────────────
+function GuestListCard({ show }) {
+  const [copied, setCopied] = useState(false);
+  const text  = guestListToText(show.guestList).trim();
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  const count = countGuests(text);
+
+  const copy = async () => {
+    if (!text) return;
+    const ok = await copyText(text);
+    if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500); }
+  };
+
+  return (
+    <div className="cl-card gl-card">
+      <div className="cl-card-header gl-card-header">
+        <div className="cl-card-title-group">
+          <span className="cl-card-title">Guest list</span>
+          <span className="cl-card-time" dir="rtl">רשימת מוזמנים</span>
+        </div>
+        {count > 0 && <span className="gl-count-pill">{count}</span>}
+        {lines.length > 0 && (
+          <button
+            type="button"
+            className={`gl-copy-btn${copied ? ' gl-copy-btn--ok' : ''}`}
+            onClick={copy}
+            title="Copy the whole guest list"
+          >
+            {copied ? 'Copied ✓' : 'Copy'}
+          </button>
+        )}
+      </div>
+
+      {lines.length === 0 ? (
+        <p className="gl-empty">No guests yet · אין מוזמנים</p>
+      ) : (
+        <div className="gl-list">
+          {lines.map((line, i) => (
+            <div key={i} className="gl-line" dir="auto">
+              <span className="gl-line-num">{i + 1}</span>
+              <span className="gl-line-text">{line}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -270,6 +359,7 @@ function ShowDayBanner({ show, checklist }) {
             isAdded={(item) => state.addedItems.some((a) => a.id === item.id)}
             onAdd={(text) => addItem('venue', text)}
           />
+          <GuestListCard show={show} />
         </div>
       )}
     </div>

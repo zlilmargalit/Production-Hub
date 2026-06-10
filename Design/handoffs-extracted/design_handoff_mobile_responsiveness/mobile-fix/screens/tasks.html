@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tasks — fixed</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ph.css">
+<style>
+  .tabs2{display:flex;gap:24px;border-bottom:1px solid var(--border);margin-bottom:6px}
+  .tabs2 button{padding:12px 2px;font-weight:800;font-size:1rem;color:var(--ink-3);border-bottom:3px solid transparent;display:inline-flex;align-items:center;gap:8px;min-height:var(--tap)}
+  .tabs2 button.active{color:var(--ink);border-bottom-color:var(--blue)}
+  .tabs2 .badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--blue);color:#fff;font-size:.72rem;font-weight:800}
+  .tabs2 button:not(.active) .badge{background:var(--sunk);color:var(--ink-2)}
+
+  .tgroup{background:var(--surface);border:1.5px solid var(--ink);border-radius:14px;overflow:hidden;margin-bottom:16px}
+  .tgroup-head{display:flex;align-items:center;gap:10px;padding:13px var(--gut);border-bottom:1px solid var(--border)}
+  .tgroup-head .gd{width:11px;height:11px;border-radius:50%}
+  .tgroup-head .gt{font-family:var(--font-display);font-weight:800;font-size:1.15rem}
+  .tgroup-head .gc{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;background:var(--ink);color:var(--surface-2);border-radius:7px;font-size:.78rem;font-weight:800}
+
+  /* task row: leading checkbox, RTL content block, trailing ⋯.
+     Everything aligns to its own writing direction — no baseline soup. */
+  .trow{display:flex;align-items:flex-start;gap:12px;padding:13px var(--gut);border-top:1px solid var(--border)}
+  .trow:first-child{border-top:none}
+  .tcheck{width:26px;height:26px;border:2px solid var(--border-strong);border-radius:8px;flex-shrink:0;margin-top:2px;display:grid;place-items:center;background:var(--surface-2)}
+  .tcheck.done{background:var(--blue);border-color:var(--blue);color:#fff}
+  .tcontent{flex:1;min-width:0}
+  .ttitle{font-weight:600;font-size:1rem;line-height:1.35;text-align:right}
+  .tmeta{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;justify-content:flex-end}
+  .tpill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .tpill.date{background:var(--sunk);color:var(--ink-2)}
+  .tpill.due{background:var(--orange-bg);color:var(--clay)}
+  .ttag{padding:4px 10px;border-radius:8px;font-size:.78rem;font-weight:600;background:var(--orange-bg);color:var(--clay)}
+  .tmore{width:var(--tap);height:36px;border:1px solid var(--border);border-radius:8px;color:var(--ink-3);flex-shrink:0;display:grid;place-items:center;font-size:1.1rem}
+</style>
+</head>
+<body>
+<div class="ph-app" id="app">
+  <div class="ph-statusbar">
+    <span>13:56</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1.5" width="3" height="10.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5C5.5 0.5 12.5 0.5 17 4.5M3.5 7.5C6.5 4.8 11.5 4.8 14.5 7.5M6 10.5C7.7 9 10.3 9 12 10.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2"/><rect x="24" y="4" width="2" height="5" rx="1" opacity=".4"/></svg>
+    </span>
+  </div>
+  <div class="ph-chrome">
+    <div class="ph-header">
+      <span class="ph-logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.4"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.4"/><circle cx="15" cy="24" r="2.2" fill="#F08D39"/></svg></span>
+      <span class="ph-wordmark">Production Hub</span>
+      <span class="ph-header-spacer"></span>
+      <span class="ph-avatar">ZL</span>
+    </div>
+    <div class="ph-switchers">
+      <span class="ph-pill ph-pill--ghost">ASSAF AMD… <span class="caret">▾</span></span>
+      <span class="ph-pill ph-pill--icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></span>
+      <span class="ph-pill"><span class="dot"></span>Assaf Amdursky <span class="caret">▾</span></span>
+    </div>
+    <div class="ph-nav">
+      <span class="ph-tab">SHOWS</span>
+      <span class="ph-tab">CREW &amp; TYPES</span>
+      <span class="ph-tab active">TASKS <span class="badge">10</span></span>
+      <span class="ph-tab">AUTOMATIONS</span>
+      <span class="ph-tab">TEAMS</span>
+      <span class="ph-tab">TOOLS ▾</span>
+    </div>
+  </div>
+
+  <div class="ph-body">
+    <div class="tabs2">
+      <button class="active">Active <span class="badge">10</span></button>
+      <button>Completed <span class="badge">5</span></button>
+    </div>
+    <div style="height:14px"></div>
+
+    <div class="tgroup fade-up">
+      <div class="tgroup-head"><span class="gd" style="background:var(--blue)"></span><span class="gt">Scheduled</span><span class="gc">3</span></div>
+      <div class="trow">
+        <span class="tcheck"></span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl">לסגור עם לילוש תפריט לבארבי</div>
+          <div class="tmeta">
+            <span class="tpill due">⚠ 07/06/2026</span>
+            <span class="ttag" dir="auto">בארבי מנועים שקטים</span>
+          </div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+      <div class="trow">
+        <span class="tcheck"></span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl">פדל בורד</div>
+          <div class="tmeta"><span class="tpill due">⚠ 07/06/2026</span></div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+      <div class="trow">
+        <span class="tcheck"></span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl">מחליף לחרמוני</div>
+          <div class="tmeta">
+            <span class="tpill date">14/06/2026</span>
+            <span class="ttag" dir="auto">סולו פסנתר בפסטיבל עין גב</span>
+          </div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+    </div>
+
+    <div class="tgroup fade-up">
+      <div class="tgroup-head"><span class="gd" style="background:var(--orange)"></span><span class="gt">No date</span><span class="gc">7</span></div>
+      <div class="trow">
+        <span class="tcheck"></span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl">לו״ז לריברסייד</div>
+          <div class="tmeta"><span class="ttag" dir="auto">אני גיטרה ריבר סייד תל אביב</span></div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+      <div class="trow">
+        <span class="tcheck"></span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl">להעביר מוזמנים ומספר רכב אסף לאור של מגדל דוד</div>
+          <div class="tmeta"><span class="ttag" dir="auto">אני גיטרה סגירת תערוכה יהורם גאון</span></div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+      <div class="trow">
+        <span class="tcheck done">✓</span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl" style="color:var(--ink-3);text-decoration:line-through">לבדוק עם גיל יוכל להקליט ערוצים במגדל דוד</div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+      <div class="trow">
+        <span class="tcheck"></span>
+        <div class="tcontent">
+          <div class="ttitle" dir="rtl">חגי לבארבי</div>
+        </div>
+        <button class="tmore">⋯</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-scrim" id="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-grip"></div>
+    <h4>Task</h4>
+    <button class="sheet-row"><span class="ic">✎</span>Edit task</button>
+    <button class="sheet-row"><span class="ic">📅</span>Set date</button>
+    <button class="sheet-row"><span class="ic">✓</span>Mark complete</button>
+    <button class="sheet-row danger"><span class="ic">✕</span>Delete task</button>
+  </div>
+</div>
+
+<script>
+  const scrim=document.getElementById('scrim'), sheet=document.getElementById('sheet');
+  document.querySelectorAll('.tmore').forEach(b=>b.addEventListener('click',()=>{scrim.classList.add('open');sheet.classList.add('open');}));
+  document.querySelectorAll('.tcheck').forEach(c=>c.addEventListener('click',()=>{
+    c.classList.toggle('done'); c.textContent=c.classList.contains('done')?'✓':'';
+    const t=c.parentElement.querySelector('.ttitle');
+    if(c.classList.contains('done')){t.style.color='var(--ink-3)';t.style.textDecoration='line-through';}
+    else{t.style.color='';t.style.textDecoration='';}
+  }));
+  function closeSheet(){ scrim.classList.remove('open'); sheet.classList.remove('open'); }
+</script>
+</body>
+</html>

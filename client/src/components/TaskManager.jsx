@@ -155,6 +155,28 @@ function TaskManager({ show, onUpdate, artistId }) {
     onUpdate(show.id, { ...show, guestList: text });
   };
 
+  // Copy the whole guest list to the clipboard (no manual selection needed).
+  const [guestCopied, setGuestCopied] = useState(false);
+  const copyGuestList = async () => {
+    const text = guestText.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for non-secure contexts / older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch {}
+      document.body.removeChild(ta);
+    }
+    setGuestCopied(true);
+    setTimeout(() => setGuestCopied(false), 1500);
+  };
+
   // Sort the guest list lines alphabetically (Hebrew-aware), preserving any
   // trailing "+1" / count suffixes since they're part of the line text.
   const sortGuestList = () => {
@@ -404,14 +426,24 @@ function TaskManager({ show, onUpdate, artistId }) {
             <span className="guest-count-badge">{countGuests(guestText)}</span>
           )}
           {guestText.trim() && (
-            <button
-              type="button"
-              className="guest-sort-btn"
-              onClick={sortGuestList}
-              title="Sort the guest list alphabetically (א–ב)"
-            >
-              Sort א–ב
-            </button>
+            <div className="guest-btn-group">
+              <button
+                type="button"
+                className={`guest-sort-btn${guestCopied ? ' guest-sort-btn--ok' : ''}`}
+                onClick={copyGuestList}
+                title="Copy the whole guest list"
+              >
+                {guestCopied ? 'Copied ✓' : 'Copy'}
+              </button>
+              <button
+                type="button"
+                className="guest-sort-btn"
+                onClick={sortGuestList}
+                title="Sort the guest list alphabetically (א–ב)"
+              >
+                Sort א–ב
+              </button>
+            </div>
           )}
         </div>
         <textarea

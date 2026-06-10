@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production Hub — Mobile Responsiveness Fixes</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1EEE9; --surface:#FBF8F2; --surface-2:#FFFDF8; --sunk:#EBE7E0;
+    --border:#DDD7CE; --border-strong:#C8C1B5;
+    --ink:#1A1714; --ink-2:#6B6259; --ink-3:#A39A91;
+    --orange:#F08D39; --orange-bg:#FCE3CC; --clay:#C26C1F;
+    --blue:#3852B4; --blue-bg:#E8ECF7;
+    --bad:#B0473C; --bad-bg:#F6E3DF;
+    --good:#4E7265;
+    --dw:390px;   /* device width, controlled by toggle */
+    --ph:760px;   /* visible phone height */
+    --font-display:'Bricolage Grotesque',system-ui,sans-serif;
+    --font-text:'Assistant',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--font-text);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+
+  /* ── masthead ── */
+  .mast{max-width:1240px;margin:0 auto;padding:54px 28px 16px}
+  .eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:10px}
+  .eyebrow .lg{display:inline-grid;place-items:center}
+  h1.title{font-family:var(--font-display);font-weight:800;letter-spacing:-.04em;line-height:.92;font-size:clamp(2.6rem,7vw,4.6rem);margin:16px 0 14px}
+  h1.title .dot{color:var(--blue)}
+  .lede{max-width:640px;font-size:1.05rem;color:var(--ink-2)}
+  .lede strong{color:var(--ink)}
+
+  /* ── sticky control bar ── */
+  .controls{position:sticky;top:0;z-index:50;background:rgba(241,238,233,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);margin-top:30px}
+  .controls-inner{max-width:1240px;margin:0 auto;padding:12px 28px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+  .ctl-lbl{font-size:.66rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .seg{display:flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden}
+  .seg button{padding:9px 15px;font-weight:700;font-size:.84rem;font-family:var(--mono);color:var(--ink-2);background:var(--surface-2);border:none;cursor:pointer;border-left:1px solid var(--border)}
+  .seg button:first-child{border-left:none}
+  .seg button.on{background:var(--ink);color:var(--surface-2)}
+  .legend{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap}
+  .legend span{font-size:.78rem;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+  .legend .mk{width:11px;height:11px;border-radius:3px}
+
+  /* ── jump nav ── */
+  .jump{max-width:1240px;margin:18px auto 0;padding:0 28px;display:flex;flex-wrap:wrap;gap:8px}
+  .jump a{font-size:.8rem;font-weight:700;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:7px 13px;text-decoration:none}
+  .jump a:hover{border-color:var(--ink);color:var(--ink)}
+
+  /* ── section ── */
+  section.fix{max-width:1240px;margin:0 auto;padding:46px 28px;border-top:1px solid var(--border)}
+  section.fix:first-of-type{border-top:none}
+  .sec-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:26px}
+  .sec-num{font-family:var(--mono);font-weight:600;font-size:.9rem;color:var(--surface-2);background:var(--ink);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+  .sec-titles h2{font-family:var(--font-display);font-weight:800;letter-spacing:-.03em;font-size:clamp(1.5rem,3.4vw,2rem);line-height:1.04}
+  .sec-titles p{color:var(--ink-2);margin-top:5px;max-width:620px}
+
+  .grid{display:grid;grid-template-columns:auto 1fr;gap:38px;align-items:start}
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;gap:26px} }
+
+  /* phone frame */
+  .phone-col{position:sticky;top:84px}
+  @media (max-width:860px){ .phone-col{position:static} }
+  .phone{width:calc(var(--dw) + 26px);max-width:100%;margin:0 auto;background:#15120F;border-radius:46px;padding:13px;box-shadow:0 30px 70px -28px rgba(26,23,20,.55),0 0 0 1px rgba(26,23,20,.06)}
+  .phone-screen{position:relative;width:100%;height:var(--ph);background:var(--surface);border-radius:34px;overflow:hidden}
+  .phone-notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:108px;height:30px;background:#15120F;border-radius:999px;z-index:5;pointer-events:none}
+  .phone iframe{width:100%;height:100%;border:none;display:block;background:var(--surface)}
+  .phone-cap{text-align:center;font-family:var(--mono);font-size:.72rem;color:var(--ink-3);margin-top:12px}
+  .phone-cap b{color:var(--blue)}
+
+  /* annotations */
+  .anno{display:flex;flex-direction:column;gap:20px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 22px}
+  .panel.broke{background:var(--bad-bg);border-color:#E6CCC6}
+  .panel-lbl{font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .panel.broke .panel-lbl{color:var(--bad)}
+  .panel.fixed .panel-lbl{color:var(--good)}
+  ul.issues{list-style:none;display:flex;flex-direction:column;gap:10px}
+  ul.issues li{display:flex;gap:10px;font-size:.94rem;line-height:1.45}
+  ul.issues li::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--bad);margin-top:7px;flex-shrink:0}
+  .panel.fixed ul.issues li::before{background:var(--good)}
+  ul.issues li b{font-weight:700}
+  ul.issues code{font-family:var(--mono);font-size:.82em;background:rgba(26,23,20,.06);padding:1px 5px;border-radius:4px}
+
+  /* code rules block */
+  .rules{margin-top:4px}
+  .rules-head{font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+  pre.code{font-family:var(--mono);font-size:.78rem;line-height:1.7;background:#1B1815;color:#E9E3D8;border-radius:12px;padding:16px 18px;overflow-x:auto}
+  pre.code .c{color:#8C8170}
+  pre.code .p{color:#E6A86B}
+  pre.code .v{color:#8FB7E8}
+  pre.code .s{color:#9CC8A6}
+
+  .tip{font-size:.86rem;color:var(--ink-2);background:var(--surface-2);border:1px dashed var(--border-strong);border-radius:12px;padding:13px 15px}
+  .tip b{color:var(--ink)}
+
+  /* global-fix banner */
+  .global{max-width:1240px;margin:0 auto;padding:0 28px}
+  .global-card{background:var(--ink);color:var(--surface);border-radius:20px;padding:30px 32px}
+  .global-card h3{font-family:var(--font-display);font-weight:800;font-size:1.5rem;letter-spacing:-.02em;margin-bottom:6px}
+  .global-card p{color:#C8C0B4;max-width:660px;margin-bottom:18px}
+  .global-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .gcell{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:15px 16px}
+  .gcell .gk{font-family:var(--mono);font-size:.8rem;color:var(--orange);margin-bottom:6px}
+  .gcell .gv{font-size:.88rem;color:#E9E3D8;line-height:1.5}
+
+  footer{max-width:1240px;margin:0 auto;padding:40px 28px 70px;color:var(--ink-3);font-size:.84rem}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="eyebrow">
+    <span class="lg"><svg width="22" height="22" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.6"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.6"/><circle cx="15" cy="24" r="2.4" fill="#F08D39"/></svg></span>
+    Production Hub · Mobile Responsiveness Audit
+  </div>
+  <h1 class="title">Responsive repair<span class="dot">.</span></h1>
+  <p class="lede">Six screens, rebuilt mobile-first. Each fixed screen below is <strong>live and tappable</strong> inside the phone — switch tabs, open action sheets, flip permission toggles. Every section pairs the redesign with the <strong>exact CSS rules</strong> to hand your developer.</p>
+</header>
+
+<div class="controls">
+  <div class="controls-inner">
+    <span class="ctl-lbl">Device width</span>
+    <div class="seg" id="dseg">
+      <button data-w="360">360 · small</button>
+      <button data-w="390" class="on">390 · iPhone</button>
+      <button data-w="430">430 · Max</button>
+    </div>
+    <div class="legend">
+      <span><span class="mk" style="background:var(--bad)"></span>Was breaking</span>
+      <span><span class="mk" style="background:var(--good)"></span>Fixed</span>
+    </div>
+  </div>
+</div>
+
+<nav class="jump">
+  <a href="#s1">1 · Show detail</a>
+  <a href="#s2">2 · Shows list</a>
+  <a href="#s3">3 · Crew &amp; Types</a>
+  <a href="#s4">4 · Tasks (RTL)</a>
+  <a href="#s5">5 · Automations</a>
+  <a href="#s6">6 · Teams &amp; Permissions</a>
+</nav>
+
+<!-- ============ GLOBAL FIX ============ -->
+<section class="fix" style="border-top:none;padding-bottom:8px">
+  <div class="global">
+    <div class="global-card">
+      <h3>The root cause, fixed once</h3>
+      <p>Almost every screenshot shows the same failure: content wider than the viewport, so the page scrolls sideways and clips its edge (worse in RTL, where the clip eats the right side). Four global rules stop it everywhere — then each screen gets its specific layout fix.</p>
+      <div class="global-grid">
+        <div class="gcell"><div class="gk">overflow-x: clip</div><div class="gv">On <code style="color:#E6A86B">html, body</code> + every page container. Nothing can push the page sideways.</div></div>
+        <div class="gcell"><div class="gk">min-width: 0</div><div class="gv">On all flex/grid children, so long Hebrew strings wrap instead of forcing overflow.</div></div>
+        <div class="gcell"><div class="gk">overflow-x: auto</div><div class="gv">Tab bars &amp; the account cluster become scroll tracks instead of overflowing.</div></div>
+        <div class="gcell"><div class="gk">min-height: 44px</div><div class="gv">Every button, checkbox &amp; toggle meets the iOS thumb-target floor.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S1 — SHOW DETAIL ============ -->
+<section class="fix" id="s1">
+  <div class="sec-head">
+    <span class="sec-num">01</span>
+    <div class="sec-titles">
+      <h2>Show detail — the expanded card</h2>
+      <p>Source: IMG_4689–4690. Sound/Lighting blocks, rental fields and the Taxi/Van/Self toggle were packed into widths they couldn't hold, clipping on the right.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen"><div class="phone-notch"></div><iframe src="mobile-fix/screens/show-detail.html" title="Show detail fixed" loading="lazy"></iframe></div></div>
+      <div class="phone-cap">Tap <b>Technical / Logistics</b> · toggle Sound &amp; Lighting</div>
+    </div>
+    <div class="anno">
+      <div class="panel broke">
+        <div class="panel-lbl">◆ What was breaking</div>
+        <ul class="issues">
+          <li><b>Sound / Lighting</b> coordination + their rental fields fought for one row and clipped.</li>
+          <li>Taxi / Van / Self pills were tiny and uneven — below the 44px target.</li>
+          <li>Inputs (Driver, Time, Rental company) ran past the right edge.</li>
+        </ul>
+      </div>
+      <div class="panel fixed">
+        <div class="panel-lbl">● The fix</div>
+        <ul class="issues">
+          <li>Each modality is a <b>self-contained block</b> — switch on top, its rental fields stacked underneath. Off → fields hide.</li>
+          <li>Transport is a <b>3-up equal grid</b> that collapses to a single column under 360px.</li>
+          <li>Field pairs are <code>grid 1fr 1fr</code>, stacking when there isn't room.</li>
+        </ul>
+      </div>
+      <div class="rules">
+        <div class="rules-head">Rules to apply</div>
+        <pre class="code"><span class="c">/* technical coordination — one block per modality */</span>
+<span class="p">.tc-fields</span> { display:<span class="v">grid</span>; gap:<span class="v">12px</span>; }
+<span class="p">.tc-mod:not(.on) .tc-fields</span> { display:<span class="v">none</span>; }
+
+<span class="c">/* transport: equal thirds, stack on tiny screens */</span>
+<span class="p">.seg3</span> { display:<span class="v">grid</span>;
+  grid-template-columns:<span class="v">1fr 1fr 1fr</span>; gap:<span class="v">8px</span>; }
+<span class="p">@media (max-width:359px)</span> {
+  <span class="p">.seg3</span> { grid-template-columns:<span class="v">1fr</span>; } }
+
+<span class="c">/* field pairs reflow */</span>
+<span class="p">.pair</span> { display:<span class="v">grid</span>;
+  grid-template-columns:<span class="v">1fr 1fr</span>; gap:<span class="v">10px</span>; }
+<span class="p">.seg3 button</span> { min-height:<span class="v">44px</span>; }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S2 — SHOWS LIST ============ -->
+<section class="fix" id="s2">
+  <div class="sec-head">
+    <span class="sec-num">02</span>
+    <div class="sec-titles">
+      <h2>Shows list — card anatomy</h2>
+      <p>Source: IMG_4691. Edit / Delete sat on top of the title, the meta line ran off-edge, and the Brief/PDF + Invoice/Receipt rows were cramped.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen"><div class="phone-notch"></div><iframe src="mobile-fix/screens/shows-list.html" title="Shows list fixed" loading="lazy"></iframe></div></div>
+      <div class="phone-cap">Tap the <b>⋯</b> on a card to open the action sheet</div>
+    </div>
+    <div class="anno">
+      <div class="panel broke">
+        <div class="panel-lbl">◆ What was breaking</div>
+        <ul class="issues">
+          <li><code>+ Edit Delete</code> overlapped the Hebrew title and were untappable.</li>
+          <li>Date · venue · time · crew ran as one un-wrapping line.</li>
+          <li>Footer doc buttons and Invoice/Receipt checks collided.</li>
+        </ul>
+      </div>
+      <div class="panel fixed">
+        <div class="panel-lbl">● The fix</div>
+        <ul class="issues">
+          <li>Card actions collapse to one <b>⋯ button → bottom sheet</b> (Edit, Add task, Duplicate, Delete).</li>
+          <li>Meta line is a <code>flex-wrap</code> row that flows onto 2 lines cleanly.</li>
+          <li>Footer wraps: doc buttons left, status chips right, full 44px targets.</li>
+        </ul>
+      </div>
+      <div class="rules">
+        <div class="rules-head">Rules to apply</div>
+        <pre class="code"><span class="c">/* one menu button replaces the action row */</span>
+<span class="p">.scard-toprow</span> { display:<span class="v">flex</span>;
+  justify-content:<span class="v">space-between</span>; }
+<span class="p">.scard-more</span> { width:<span class="v">44px</span>; height:<span class="v">38px</span>; }
+
+<span class="c">/* meta + footer wrap instead of overflow */</span>
+<span class="p">.scard-meta</span>, <span class="p">.scard-foot</span> {
+  display:<span class="v">flex</span>; flex-wrap:<span class="v">wrap</span>;
+  gap:<span class="v">12px</span>; min-width:<span class="v">0</span>; }
+<span class="p">.scard h3</span> { text-wrap:<span class="v">balance</span>; }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S3 — CREW ============ -->
+<section class="fix" id="s3">
+  <div class="sec-head">
+    <span class="sec-num">03</span>
+    <div class="sec-titles">
+      <h2>Crew &amp; Event Types — squashed actions</h2>
+      <p>Source: IMG_4692–4693. The CREW / FIELDS / CHECKLIST / X row crushed the Hebrew type name; crew cards clipped on the right and tags overflowed. <b>Use the “Action UI” switch in the phone</b> to compare three patterns.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen"><div class="phone-notch"></div><iframe src="mobile-fix/screens/crew.html" title="Crew fixed" loading="lazy"></iframe></div></div>
+      <div class="phone-cap">Switch <b>Sheet / Stacked / Scroll</b> · flip to <b>Members</b></div>
+    </div>
+    <div class="anno">
+      <div class="panel broke">
+        <div class="panel-lbl">◆ What was breaking</div>
+        <ul class="issues">
+          <li>Four actions + RTL name in one row → name squashed, X clipped off-screen.</li>
+          <li>Crew member cards bled past the viewport; Edit/Delete were hover-only (no hover on touch).</li>
+          <li>Event-type tags overflowed in a single non-wrapping line.</li>
+        </ul>
+      </div>
+      <div class="panel fixed">
+        <div class="panel-lbl">● Three patterns to choose from</div>
+        <ul class="issues">
+          <li><b>Sheet</b> (recommended) — name gets full width; actions live behind ⋯ in a bottom sheet.</li>
+          <li><b>Stacked</b> — a 2-col button grid below the name, Delete full-width.</li>
+          <li><b>Scroll</b> — a horizontal chip strip when you want them all visible.</li>
+          <li>Crew tags <code>flex-wrap</code>; Edit/Delete become a persistent footer.</li>
+        </ul>
+      </div>
+      <div class="rules">
+        <div class="rules-head">Rules to apply</div>
+        <pre class="code"><span class="c">/* A — sheet (default): hide inline actions */</span>
+<span class="p">.mode-sheet .etactions</span> { display:<span class="v">none</span>; }
+<span class="p">.mode-sheet .etcard-more</span> { display:<span class="v">grid</span>; }
+
+<span class="c">/* B — stacked 2-col grid */</span>
+<span class="p">.mode-stack .etactions</span> { display:<span class="v">grid</span>;
+  grid-template-columns:<span class="v">1fr 1fr</span>; gap:<span class="v">8px</span>; }
+
+<span class="c">/* C — horizontal scroll strip */</span>
+<span class="p">.mode-scroll .etactions</span> { display:<span class="v">flex</span>;
+  overflow-x:<span class="v">auto</span>; gap:<span class="v">8px</span>; }
+
+<span class="c">/* tags always wrap */</span>
+<span class="p">.crew-tags</span> { display:<span class="v">flex</span>; flex-wrap:<span class="v">wrap</span>; }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S4 — TASKS ============ -->
+<section class="fix" id="s4">
+  <div class="sec-head">
+    <span class="sec-num">04</span>
+    <div class="sec-titles">
+      <h2>Tasks — RTL Hebrew rows</h2>
+      <p>Source: IMG_4694. Date pills and event-type tags collided, and mixing RTL text with LTR layout produced ragged, mismatched baselines.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen"><div class="phone-notch"></div><iframe src="mobile-fix/screens/tasks.html" title="Tasks fixed" loading="lazy"></iframe></div></div>
+      <div class="phone-cap">Tap a checkbox to complete · <b>⋯</b> for task actions</div>
+    </div>
+    <div class="anno">
+      <div class="panel broke">
+        <div class="panel-lbl">◆ What was breaking</div>
+        <ul class="issues">
+          <li>Title, date pill and tag shared one cramped baseline and overlapped.</li>
+          <li>LTR row layout + RTL text → tags floated to the wrong side.</li>
+          <li>Edit/Delete (hover) overlapped the task text.</li>
+        </ul>
+      </div>
+      <div class="panel fixed">
+        <div class="panel-lbl">● The fix</div>
+        <ul class="issues">
+          <li>Row = <b>leading 44px checkbox · content block · trailing ⋯</b> — fixed LTR scaffold.</li>
+          <li>Inside, the text block is <code>dir="rtl"</code> and right-aligned; meta chips <code>flex-wrap</code> and align right.</li>
+          <li>Per-element direction keeps the scaffold steady while Hebrew reads correctly.</li>
+        </ul>
+      </div>
+      <div class="rules">
+        <div class="rules-head">Rules to apply</div>
+        <pre class="code"><span class="c">/* stable LTR scaffold, RTL content inside */</span>
+<span class="p">.trow</span> { display:<span class="v">flex</span>; align-items:<span class="v">flex-start</span>;
+  gap:<span class="v">12px</span>; }
+<span class="p">.ttitle</span> { text-align:<span class="v">right</span>; }
+<span class="p">.ttitle</span>[<span class="v">dir="rtl"</span>] <span class="c">/* in markup */</span>
+
+<span class="c">/* chips wrap and hug the right edge */</span>
+<span class="p">.tmeta</span> { display:<span class="v">flex</span>; flex-wrap:<span class="v">wrap</span>;
+  justify-content:<span class="v">flex-end</span>; gap:<span class="v">7px</span>; }
+<span class="p">.tcheck</span> { width:<span class="v">26px</span>; min-height:<span class="v">26px</span>; }
+<span class="p">.tmore</span> { width:<span class="v">44px</span>; }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S5 — AUTOMATIONS ============ -->
+<section class="fix" id="s5">
+  <div class="sec-head">
+    <span class="sec-num">05</span>
+    <div class="sec-titles">
+      <h2>Automations &amp; Recipes</h2>
+      <p>Source: IMG_4695–4696. Connected-app pills and recipe cards were cramped, and the custom-rule builder was visually overwhelming.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen"><div class="phone-notch"></div><iframe src="mobile-fix/screens/automations.html" title="Automations fixed" loading="lazy"></iframe></div></div>
+      <div class="phone-cap">Single-column scroll · the builder reads top-down</div>
+    </div>
+    <div class="anno">
+      <div class="panel broke">
+        <div class="panel-lbl">◆ What was breaking</div>
+        <ul class="issues">
+          <li>Gmail / Calendar / Drive pills sat on one line and clipped.</li>
+          <li>Recipe cards carried a heavy offset shadow that crowded the text.</li>
+          <li>TRIGGER → CONDITION → ACTION had no clear vertical hierarchy.</li>
+        </ul>
+      </div>
+      <div class="panel fixed">
+        <div class="panel-lbl">● The fix</div>
+        <ul class="issues">
+          <li>App pills <code>flex-wrap</code>; “Manage integrations” becomes a full-width button.</li>
+          <li>Recipe cards are flat, full-width, with a single accent strip on top.</li>
+          <li>Builder is a <b>vertical pipeline</b>: tagged steps joined by ↓ connectors.</li>
+        </ul>
+      </div>
+      <div class="rules">
+        <div class="rules-head">Rules to apply</div>
+        <pre class="code"><span class="c">/* pills wrap, never overflow */</span>
+<span class="p">.apps-row</span> { display:<span class="v">flex</span>; flex-wrap:<span class="v">wrap</span>;
+  gap:<span class="v">8px</span>; }
+
+<span class="c">/* builder reads top-to-bottom */</span>
+<span class="p">.builder</span> { display:<span class="v">flex</span>;
+  flex-direction:<span class="v">column</span>; }
+<span class="p">.bstep</span> { padding:<span class="v">16px</span>;
+  border-top:<span class="v">1px solid var(--border)</span>; }
+<span class="p">.btag</span> { padding:<span class="v">5px 10px</span>;
+  border-radius:<span class="v">6px</span>; <span class="c">/* TRIGGER/COND/ACTION */</span> }
+<span class="p">.recipe .btn</span> { width:<span class="v">100%</span>; }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S6 — TEAMS ============ -->
+<section class="fix" id="s6">
+  <div class="sec-head">
+    <span class="sec-num">06</span>
+    <div class="sec-titles">
+      <h2>Teams &amp; Permissions — the matrix</h2>
+      <p>Source: IMG_4697–4698. The Content Permissions table was cut off on the right (View/Edit columns unreachable) and the bottom tabs overlapped the add-task form.</p>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone-col">
+      <div class="phone"><div class="phone-screen"><div class="phone-notch"></div><iframe src="mobile-fix/screens/teams.html" title="Teams fixed" loading="lazy"></iframe></div></div>
+      <div class="phone-cap">Flip <b>View / Edit</b> toggles · switch the bottom tabs</div>
+    </div>
+    <div class="anno">
+      <div class="panel broke">
+        <div class="panel-lbl">◆ What was breaking</div>
+        <ul class="issues">
+          <li>3-column <code>Area / View / Edit</code> table was wider than the screen — the toggle columns were unreachable.</li>
+          <li>Assigned Tasks / Upcoming Shows / Recent Activity tabs overlapped the form below.</li>
+          <li>The add-task select + input + button were stacked on top of each other.</li>
+        </ul>
+      </div>
+      <div class="panel fixed">
+        <div class="panel-lbl">● The fix</div>
+        <ul class="issues">
+          <li>Matrix → <b>per-area cards</b>. Each area shows its sub-fields and two big <b>View / Edit toggles</b> (Edit auto-enables View).</li>
+          <li>Bottom tabs become an equal-width segmented control; the form sits clearly beneath it.</li>
+          <li>Add-task row stacks: select on its own line, input + Add on the next.</li>
+        </ul>
+      </div>
+      <div class="rules">
+        <div class="rules-head">Rules to apply</div>
+        <pre class="code"><span class="c">/* kill the table — one card per area */</span>
+<span class="p">.area</span> { border:<span class="v">1px solid var(--border)</span>;
+  border-radius:<span class="v">12px</span>; padding:<span class="v">13px 14px</span>; }
+<span class="p">.toggles</span> { display:<span class="v">grid</span>;
+  grid-template-columns:<span class="v">1fr 1fr</span>; gap:<span class="v">8px</span>; }
+<span class="p">.tg</span> { min-height:<span class="v">44px</span>; }
+
+<span class="c">/* tabs: equal segments, no overlap */</span>
+<span class="p">.mtabs button</span> { flex:<span class="v">1</span>; min-width:<span class="v">0</span>; }
+<span class="c">/* add-task stacks */</span>
+<span class="p">.addtask</span> { display:<span class="v">grid</span>; gap:<span class="v">8px</span>; }</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Production Hub · mobile responsiveness pass — 6 fixed screens, live &amp; tappable. Resize via the toggle above or open any screen directly from <code>mobile-fix/screens/</code>.
+</footer>
+
+<script>
+  const dseg=document.getElementById('dseg');
+  dseg.addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...dseg.children].forEach(x=>x.classList.toggle('on',x===b));
+    const w=b.dataset.w;
+    document.documentElement.style.setProperty('--dw', w+'px');
+    // taller frame for the bigger devices so proportions stay phone-like
+    const h = w==='360' ? 720 : w==='430' ? 800 : 760;
+    document.documentElement.style.setProperty('--ph', h+'px');
+    document.querySelectorAll('.phone-cap b').forEach(()=>{});
+  });
+</script>
+</body>
+</html>

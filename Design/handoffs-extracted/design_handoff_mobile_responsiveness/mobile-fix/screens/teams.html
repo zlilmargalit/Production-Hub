@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Teams — fixed</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../ph.css">
+<style>
+  .member{background:var(--surface);border:1.5px solid var(--blue);border-radius:14px;overflow:hidden}
+  .member-row{display:flex;align-items:center;gap:12px;padding:14px}
+  .m-av{width:46px;height:46px;border-radius:50%;background:#B07729;color:#fff;display:grid;place-items:center;font-weight:800;flex-shrink:0}
+  .m-info{flex:1;min-width:0}
+  .m-name{font-weight:800;font-size:1.05rem}
+  .m-email{font-size:.82rem;color:var(--ink-3);font-style:italic}
+  .m-role{font-size:.66rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--violet);background:var(--violet-bg);padding:5px 9px;border-radius:7px;flex-shrink:0}
+  .m-seen{font-size:.72rem;color:var(--ink-3);flex-shrink:0;white-space:nowrap}
+
+  .perm-wrap{padding:0 14px 14px}
+  .perm-lbl{font-size:.66rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin:6px 0 10px}
+
+  /* permissions: NO horizontal table. Each area is a self-contained row. */
+  .area{border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px;background:var(--surface-2)}
+  .area-name{font-weight:800;font-size:1rem}
+  .area-sub{font-size:.8rem;color:var(--ink-3);margin:2px 0 11px;line-height:1.4}
+  .toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tg{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:var(--tap);padding:0 12px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);font-weight:700;font-size:.86rem}
+  .sw{width:42px;height:25px;border-radius:999px;background:var(--border-strong);position:relative;transition:background .18s;flex-shrink:0}
+  .sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s}
+  .tg.on{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+  .tg.on .sw{background:var(--blue)}
+  .tg.on .sw::after{transform:translateX(17px)}
+  .perm-save{display:flex;justify-content:flex-end;margin-top:4px}
+
+  /* the bottom tabs — proper segmented row, no overlap with the form */
+  .mtabs{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:16px 0 12px}
+  .mtabs button{flex:1;min-width:0;min-height:var(--tap);font-weight:700;font-size:.8rem;color:var(--ink-2);padding:0 6px}
+  .mtabs button.active{background:var(--ink);color:var(--surface-2)}
+  .mtabs .badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--blue);color:#fff;font-size:.66rem;margin-left:5px}
+  .empty-note{color:var(--ink-3);font-style:italic;font-size:.9rem;padding:12px 2px}
+
+  /* add-task row stacks instead of overlapping */
+  .addtask{display:grid;gap:8px;margin-top:8px}
+  .addtask .inrow{display:flex;gap:8px}
+  .addtask .inrow .fld{flex:1}
+</style>
+</head>
+<body>
+<div class="ph-app" id="app">
+  <div class="ph-statusbar">
+    <span>13:56</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1.5" width="3" height="10.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="18" height="13" viewBox="0 0 18 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 4.5C5.5 0.5 12.5 0.5 17 4.5M3.5 7.5C6.5 4.8 11.5 4.8 14.5 7.5M6 10.5C7.7 9 10.3 9 12 10.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="13" viewBox="0 0 26 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="9" rx="2"/><rect x="24" y="4" width="2" height="5" rx="1" opacity=".4"/></svg>
+    </span>
+  </div>
+  <div class="ph-chrome">
+    <div class="ph-header">
+      <span class="ph-logo"><svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M3 24a12 12 0 0 1 24 0" stroke="#1A1714" stroke-width="2.4"/><path d="M8 24a7 7 0 0 1 14 0" stroke="#1A1714" stroke-width="2.4"/><circle cx="15" cy="24" r="2.2" fill="#F08D39"/></svg></span>
+      <span class="ph-wordmark">Production Hub</span>
+      <span class="ph-header-spacer"></span>
+      <span class="ph-avatar">ZL</span>
+    </div>
+    <div class="ph-switchers">
+      <span class="ph-pill ph-pill--ghost">ASSAF AMD… <span class="caret">▾</span></span>
+      <span class="ph-pill ph-pill--icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></span>
+      <span class="ph-pill"><span class="dot"></span>Assaf Amdursky <span class="caret">▾</span></span>
+    </div>
+    <div class="ph-nav">
+      <span class="ph-tab">SHOWS</span>
+      <span class="ph-tab">CREW &amp; TYPES</span>
+      <span class="ph-tab">TASKS <span class="badge">10</span></span>
+      <span class="ph-tab">AUTOMATIONS</span>
+      <span class="ph-tab active">TEAMS</span>
+      <span class="ph-tab">TOOLS ▾</span>
+    </div>
+  </div>
+
+  <div class="ph-body">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <h1 class="ph-page-title">Teams<span class="dot">.</span></h1>
+      <span class="ph-page-sub">01 members</span>
+    </div>
+    <div class="ph-rule"></div>
+
+    <div class="ph-seg" style="margin-bottom:18px">
+      <button class="active">Members <span class="cnt">1</span></button>
+      <button>Invite</button>
+      <button>Activity</button>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+      <h3 style="font-family:var(--font-display);font-weight:800;font-size:1.2rem">Active Members</h3>
+      <span style="font-size:.82rem;color:var(--ink-3)">1 member</span>
+    </div>
+
+    <div class="member fade-up">
+      <div class="member-row">
+        <span class="m-av">T</span>
+        <div class="m-info">
+          <div class="m-name">test</div>
+          <div class="m-email">No email — click to add</div>
+        </div>
+        <span class="m-role">Producer</span>
+      </div>
+
+      <div class="perm-wrap">
+        <div class="perm-lbl">Content Permissions</div>
+
+        <div class="area">
+          <div class="area-name">Schedule</div>
+          <div class="area-sub">Arrival times · Soundcheck · Door opening</div>
+          <div class="toggles">
+            <button class="tg" onclick="tg(this,'view')">View <span class="sw"></span></button>
+            <button class="tg" onclick="tg(this,'edit')">Edit <span class="sw"></span></button>
+          </div>
+        </div>
+
+        <div class="area">
+          <div class="area-name">Logistics</div>
+          <div class="area-sub">Travel · Vehicles · Hotels · Catering · Contacts</div>
+          <div class="toggles">
+            <button class="tg on" onclick="tg(this,'view')">View <span class="sw"></span></button>
+            <button class="tg" onclick="tg(this,'edit')">Edit <span class="sw"></span></button>
+          </div>
+        </div>
+
+        <div class="area">
+          <div class="area-name">Technical</div>
+          <div class="area-sub">Tech spec · Stages · Setlist · Equipment checklist</div>
+          <div class="toggles">
+            <button class="tg on" onclick="tg(this,'view')">View <span class="sw"></span></button>
+            <button class="tg on" onclick="tg(this,'edit')">Edit <span class="sw"></span></button>
+          </div>
+        </div>
+
+        <div class="perm-save"><button class="btn btn--primary btn--sm">Save</button></div>
+      </div>
+
+      <div style="padding:0 14px 16px;border-top:1px solid var(--border);margin-top:4px">
+        <div class="mtabs">
+          <button class="active" onclick="mtab(this,'tasks')">Assigned Tasks</button>
+          <button onclick="mtab(this,'shows')">Upcoming Shows</button>
+          <button onclick="mtab(this,'activity')">Recent Activity</button>
+        </div>
+
+        <div data-mpane="tasks">
+          <p class="empty-note">No open tasks assigned to test.</p>
+          <div class="addtask">
+            <select class="fld" dir="auto"><option>סולו פסנתר בפסטיבל עין גב</option><option>אני גיטרה סגירת תערוכה</option></select>
+            <div class="inrow">
+              <input class="fld" placeholder="New task…">
+              <button class="btn btn--blue">Add</button>
+            </div>
+          </div>
+        </div>
+        <div data-mpane="shows" hidden><p class="empty-note">No upcoming shows assigned.</p></div>
+        <div data-mpane="activity" hidden><p class="empty-note">No activity recorded yet.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function tg(btn,type){
+    const area=btn.closest('.area');
+    const [view,edit]=area.querySelectorAll('.tg');
+    btn.classList.toggle('on');
+    // Editing implies viewing; turning off View turns off Edit
+    if(type==='edit' && btn.classList.contains('on')) view.classList.add('on');
+    if(type==='view' && !btn.classList.contains('on')) edit.classList.remove('on');
+  }
+  function mtab(btn,pane){
+    btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b===btn));
+    document.querySelectorAll('[data-mpane]').forEach(p=>p.hidden=p.dataset.mpane!==pane);
+  }
+</script>
+</body>
+</html>

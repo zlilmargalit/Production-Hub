@@ -1,0 +1,166 @@
+/* ============================================================
+   Production Hub — shared mobile stylesheet
+   Used by every fixed-screen mockup. Genuinely responsive:
+   layouts reflow at container width, never overflow the viewport.
+   ============================================================ */
+:root{
+  --bg:#F1EEE9; --surface:#FBF8F2; --surface-2:#FFFDF8; --sunk:#EBE7E0;
+  --border:#DDD7CE; --border-strong:#C8C1B5;
+  --ink:#1A1714; --ink-2:#6B6259; --ink-3:#A39A91;
+  --orange:#F08D39; --orange-bg:#FCE3CC; --clay:#C26C1F;
+  --blue:#3852B4; --blue-bg:#E8ECF7; --accent-soft:#E8ECF7;
+  --green:#4E7265;
+  --violet:#6B4FA3; --violet-bg:#ECE6F5;
+  --tap:44px; /* minimum hit target */
+  --gut:16px; /* page gutter */
+  --font-display:'Bricolage Grotesque','Assistant',system-ui,sans-serif;
+  --font-text:'Assistant',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{
+  /* THE master fix: nothing is ever allowed to push the page sideways */
+  max-width:100%; overflow-x:hidden;
+}
+body{
+  font-family:var(--font-text); background:var(--bg); color:var(--ink);
+  -webkit-font-smoothing:antialiased; line-height:1.4;
+}
+button,input,select,textarea{font-family:inherit;font-size:1rem}
+button{cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ── App chrome ─────────────────────────────────────────── */
+.ph-app{display:flex;flex-direction:column;min-height:100%;background:var(--bg)}
+.ph-statusbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px 6px;font-weight:700;font-size:.95rem;flex-shrink:0;
+}
+.ph-statusbar .sb-icons{display:flex;align-items:center;gap:7px}
+
+/* sticky chrome: header + nav pinned, body scrolls under it */
+.ph-chrome{position:sticky;top:0;z-index:30;background:var(--bg)}
+.ph-header{
+  display:flex;align-items:center;gap:10px;
+  padding:4px var(--gut) 10px;
+}
+.ph-logo{width:30px;height:30px;flex-shrink:0;display:grid;place-items:center}
+.ph-wordmark{font-family:var(--font-display);font-weight:800;font-size:1.32rem;letter-spacing:-.02em;flex-shrink:0}
+.ph-header-spacer{flex:1;min-width:0}
+.ph-avatar{
+  width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:.82rem;flex-shrink:0;
+}
+
+/* Account / workspace switcher cluster — was overflowing.
+   FIX: it now lives on its own horizontally-scrollable row that
+   never widens the page. */
+.ph-switchers{
+  display:flex;align-items:center;gap:8px;
+  padding:0 var(--gut) 10px;
+  overflow-x:auto;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.ph-switchers::-webkit-scrollbar{display:none}
+.ph-pill{
+  display:inline-flex;align-items:center;gap:8px;flex-shrink:0;
+  height:40px;padding:0 14px;border:1px solid var(--border-strong);
+  border-radius:999px;background:var(--surface-2);font-weight:700;font-size:.84rem;
+  white-space:nowrap;
+}
+.ph-pill .dot{width:9px;height:9px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.ph-pill .caret{color:var(--ink-3);font-size:.7rem}
+.ph-pill--ghost{font-weight:600;color:var(--ink-2);font-size:.72rem;letter-spacing:.04em}
+.ph-pill--icon{width:40px;padding:0;justify-content:center}
+
+/* Tab nav — was breaking layout. FIX: single scroll track. */
+.ph-nav{
+  display:flex;align-items:stretch;gap:0;
+  border-top:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  background:var(--surface);
+}
+.ph-nav::-webkit-scrollbar{display:none}
+.ph-tab{
+  display:inline-flex;align-items:center;gap:7px;flex-shrink:0;
+  padding:13px 15px;font-weight:700;font-size:.82rem;letter-spacing:.02em;
+  color:var(--ink-2);white-space:nowrap;border-bottom:3px solid transparent;
+}
+.ph-tab.active{color:var(--ink);border-bottom-color:var(--blue)}
+.ph-tab .badge{
+  display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;
+  border-radius:999px;background:var(--blue);color:#fff;font-size:.72rem;font-weight:800;
+}
+
+/* ── Page body ──────────────────────────────────────────── */
+.ph-body{flex:1;padding:18px var(--gut) 90px;min-width:0}
+.ph-page-title{
+  font-family:var(--font-display);font-weight:800;letter-spacing:-.04em;
+  font-size:clamp(1.9rem,9vw,2.4rem);line-height:.95;
+}
+.ph-page-title .dot{color:var(--blue)}
+.ph-page-sub{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.ph-rule{height:2px;background:var(--ink);margin:12px 0 18px}
+
+/* segmented control (Members / Event Types / etc.) */
+.ph-seg{display:flex;gap:0;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.ph-seg button{
+  flex:1;min-width:0;min-height:var(--tap);padding:0 10px;font-weight:800;font-size:.8rem;
+  letter-spacing:.03em;text-transform:uppercase;display:inline-flex;align-items:center;
+  justify-content:center;gap:7px;color:var(--ink-2);
+}
+.ph-seg button.active{background:var(--ink);color:var(--surface-2)}
+.ph-seg .cnt{font-size:.72rem;opacity:.7}
+
+/* generic surface card */
+.ph-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+
+/* buttons */
+.btn{min-height:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:0 16px;border-radius:10px;font-weight:700;font-size:.86rem;border:1px solid var(--border-strong);background:var(--surface-2)}
+.btn--primary{background:var(--ink);color:var(--surface-2);border-color:var(--ink)}
+.btn--blue{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn--full{width:100%}
+.btn--sm{min-height:38px;font-size:.8rem;padding:0 12px}
+
+/* form fields */
+.fld-label{font-size:.66rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:6px}
+.fld{
+  width:100%;min-height:var(--tap);padding:11px 14px;border-radius:10px;
+  border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink);font-size:.95rem;
+}
+.fld::placeholder{color:var(--ink-3)}
+
+/* RTL helper: any element holding mixed/Hebrew text gets dir="auto",
+   and Hebrew uses the Assistant face which has full glyph coverage. */
+[dir="auto"],[dir="rtl"]{font-family:var(--font-text)}
+
+/* bottom action sheet (shared) */
+.sheet-scrim{
+  position:absolute;inset:0;background:rgba(26,23,20,.42);z-index:60;
+  opacity:0;pointer-events:none;transition:opacity .22s ease;
+}
+.sheet-scrim.open{opacity:1;pointer-events:auto}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:61;
+  background:var(--surface-2);border-top-left-radius:20px;border-top-right-radius:20px;
+  box-shadow:0 -12px 40px rgba(26,23,20,.18);
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.32,.72,0,1);
+  padding:10px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.sheet.open{transform:translateY(0)}
+.sheet-grip{width:38px;height:4px;border-radius:999px;background:var(--border-strong);margin:4px auto 12px}
+.sheet h4{font-family:var(--font-display);font-weight:800;font-size:1rem;margin-bottom:4px}
+.sheet-row{
+  display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:0 6px;
+  font-weight:600;font-size:.95rem;border-top:1px solid var(--border);text-align:left;
+}
+.sheet-row:first-of-type{border-top:none}
+.sheet-row.danger{color:#B0473C}
+.sheet-row .ic{width:22px;display:grid;place-items:center;color:var(--ink-3)}
+
+/* fade-in for entrance */
+@media (prefers-reduced-motion:no-preference){
+  .fade-up{animation:fadeUp .4s ease}
+  @keyframes fadeUp{from{transform:translateY(10px)}to{transform:none}}
+}
