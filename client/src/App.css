@@ -8861,6 +8861,40 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .gl-card-header .guest-btn-group { margin-left: auto; }
 .gl-card-header .guest-btn-group .gl-copy-btn { margin-left: 0; }
 
+/* "מסרתי" — mark all listed guests as handed over to the venue */
+.gl-handed-btn {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.gl-handed-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Divider line drawn over the textarea, under the last handed-over guest */
+.gl-textarea-wrap { position: relative; }
+.gl-handed-line {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 0;
+  border-top: 2px dashed var(--accent);
+  pointer-events: none;
+}
+.gl-handed-tag {
+  position: absolute;
+  top: -9px;
+  inset-inline-end: 4px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  white-space: nowrap;
+}
+
 /* Copy + Sort button group in the show-detail guest list */
 .guest-btn-group {
   margin-left: auto;

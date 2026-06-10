@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import SegmentedControl from './ui/SegmentedControl';
 
 // ── Artist colour palette (stable by index) ────────────────────────────────────
@@ -192,12 +192,31 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
 function GuestListCard({ show, onSaveGuests }) {
   const [text, setText] = useState(() => guestListToText(show.guestList));
   const [copied, setCopied] = useState(false);
+  // How many guest lines have already been handed over to the venue. Everything
+  // above the divider line was passed on; new names typed below it are pending.
+  const [handed, setHanded] = useState(() => show.guestsHandedCount || 0);
+  const taRef = useRef(null);
+  const [metrics, setMetrics] = useState({ padTop: 8, lineH: 21 });
 
   // Re-seed when the underlying show changes (e.g. after a background refetch).
   useEffect(() => { setText(guestListToText(show.guestList)); }, [show.id, show.guestList]);
+  useEffect(() => { setHanded(show.guestsHandedCount || 0); }, [show.id, show.guestsHandedCount]);
 
-  const trimmed = text.trim();
-  const count   = countGuests(text);
+  // Measure the textarea's real padding + line-height so the divider lands exactly
+  // between two rows regardless of font scaling.
+  useLayoutEffect(() => {
+    if (!taRef.current) return;
+    const cs = getComputedStyle(taRef.current);
+    setMetrics({
+      padTop: parseFloat(cs.paddingTop) || 8,
+      lineH:  parseFloat(cs.lineHeight) || 21,
+    });
+  }, []);
+
+  const trimmed   = text.trim();
+  const count     = countGuests(text);
+  const lineCount = text.split(/\r?\n/).filter((l) => l.trim()).length;
+  const handedRow = Math.min(handed, lineCount); // clamp if names were removed
 
   const save = () => {
     if (text === guestListToText(show.guestList)) return; // unchanged → skip write
@@ -219,6 +238,14 @@ function GuestListCard({ show, onSaveGuests }) {
     if (sorted === text) return;
     setText(sorted);
     onSaveGuests(show, sorted);
+  };
+
+  // Mark every currently-listed guest as handed over: drop the divider under the
+  // last line. New names added afterwards appear below it (still pending).
+  const markHanded = () => {
+    const n = text.split(/\r?\n/).filter((l) => l.trim()).length;
+    setHanded(n);
+    onSaveGuests(show, text, { guestsHandedCount: n });
   };
 
   return (
@@ -247,19 +274,38 @@ function GuestListCard({ show, onSaveGuests }) {
             >
               Sort א–ב
             </button>
+            <button
+              type="button"
+              className="gl-copy-btn gl-handed-btn"
+              onClick={markHanded}
+              title="סמן שמסרת את כל המוזמנים הרשומים עד עכשיו — קו יסומן מתחת לאחרון"
+            >
+              מסרתי
+            </button>
           </div>
         )}
       </div>
 
-      <textarea
-        className="gl-textarea"
-        dir="auto"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={save}
-        placeholder={'שם מוזמן\nשם מוזמן נוסף'}
-        rows={4}
-      />
+      <div className="gl-textarea-wrap">
+        <textarea
+          ref={taRef}
+          className="gl-textarea"
+          dir="auto"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={save}
+          placeholder={'שם מוזמן\nשם מוזמן נוסף'}
+          rows={4}
+        />
+        {handedRow > 0 && (
+          <div
+            className="gl-handed-line"
+            style={{ top: `${metrics.padTop + handedRow * metrics.lineH}px` }}
+          >
+            <span className="gl-handed-tag" dir="rtl">נמסרו {handedRow} ✓</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -760,13 +806,14 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
   // Persist guest-list edits from the home show-day card. Sends only the
   // guestList field (partial PUT) so the server merge can't null out slimmed
   // customField data. Optimistic; reverts handled by the next refetch.
-  const saveGuests = useCallback((show, text) => {
-    setAllShows((prev) => prev.map((s) => (s.id === show.id ? { ...s, guestList: text } : s)));
+  const saveGuests = useCallback((show, text, extra = {}) => {
+    const patch = { guestList: text, ...extra };
+    setAllShows((prev) => prev.map((s) => (s.id === show.id ? { ...s, ...patch } : s)));
     fetch(`/api/shows/${show.id}?artistId=${encodeURIComponent(show.artistId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ guestList: text }),
+      body: JSON.stringify(patch),
     }).catch(() => {});
   }, []);
 
