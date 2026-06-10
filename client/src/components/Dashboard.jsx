@@ -260,6 +260,14 @@ function GuestListCard({ show, onSaveGuests }) {
           <div className="guest-btn-group">
             <button
               type="button"
+              className="gl-copy-btn gl-handed-btn"
+              onClick={markHanded}
+              title="Mark all listed guests as handed over — a line is drawn under the last one"
+            >
+              Handed
+            </button>
+            <button
+              type="button"
               className={`gl-copy-btn${copied ? ' gl-copy-btn--ok' : ''}`}
               onClick={copy}
               title="Copy the whole guest list"
@@ -273,14 +281,6 @@ function GuestListCard({ show, onSaveGuests }) {
               title="Sort the guest list alphabetically (א–ב)"
             >
               Sort א–ב
-            </button>
-            <button
-              type="button"
-              className="gl-copy-btn gl-handed-btn"
-              onClick={markHanded}
-              title="סמן שמסרת את כל המוזמנים הרשומים עד עכשיו — קו יסומן מתחת לאחרון"
-            >
-              מסרתי
             </button>
           </div>
         )}
