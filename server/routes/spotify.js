@@ -185,6 +185,13 @@ async function searchTrack(song, artist, originalText, token) {
   };
 }
 
+// A line made only of dots/ellipsis (e.g. "...", "…", "·") is a section break the
+// user types between songs — never a song. It is skipped from search and counts.
+const SEPARATOR_RE = /^[.…·•\s]+$/;
+function isSeparatorLine(line) {
+  return SEPARATOR_RE.test(line) && /[.…·•]/.test(line);
+}
+
 // ── Duration annotation parser ───────────────────────────────────────────────
 // Matches: (9 דק׳)  (9 min)  (4:30)  (9:00)  (1:04:30)  (9 minutes)  (9 דקות)
 // Also plain numbers with units: (9 דק) (9 minute)
@@ -230,6 +237,21 @@ router.post('/setlist-duration', async (req, res) => {
   let totalDurationMs = 0;
 
   for (const line of lines) {
+    // ── Section break ("..." / "…") — keep as a divider, never a song ────────
+    if (isSeparatorLine(line)) {
+      tracks.push({
+        originalText:      line,
+        songName:          line,
+        artist:            '',
+        durationMs:        0,
+        durationFormatted: null,
+        spotifyUrl:        null,
+        isFound:           false,
+        isSeparator:       true,
+      });
+      continue;
+    }
+
     // ── Check for inline duration annotation first ──────────────────────────
     const annotation = parseAnnotation(line);
     // Strip the annotation from the line before further parsing

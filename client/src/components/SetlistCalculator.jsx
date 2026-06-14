@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// A line of only dots/ellipsis is a section break, not a song.
+const SEPARATOR_RE = /^[.…·•\s]+$/;
+const isSeparatorLine = (l) => SEPARATOR_RE.test(l) && /[.…·•]/.test(l);
+
 function parseManualTime(str) {
   if (!str || !str.trim()) return 0;
   const parts = str.trim().split(':').map(Number);
@@ -86,13 +90,15 @@ export default function SetlistCalculator({
 
   // ── Totals ─────────────────────────────────────────────────────────────────
   const totalMs = (tracks || []).reduce((sum, t, i) => {
+    if (t.isSeparator) return sum;
     if (t.isFound) return sum + t.durationMs;
     const manual = parseManualTime(manualTimes[i] || '');
     return sum + manual;
   }, 0);
 
-  const foundCount  = (tracks || []).filter((t) => t.isFound).length;
-  const missedCount = (tracks || []).length - foundCount;
+  const songTracks  = (tracks || []).filter((t) => !t.isSeparator);
+  const foundCount  = songTracks.filter((t) => t.isFound).length;
+  const missedCount = songTracks.length - foundCount;
   const manualCount = Object.values(manualTimes).filter((v) => v.trim()).length;
 
   // ── Save / Update ──────────────────────────────────────────────────────────
@@ -301,11 +307,10 @@ export default function SetlistCalculator({
             <div className="slc-field">
               <label className="slc-label">
                 Setlist
-                {setlistText.split('\n').filter((l) => l.trim()).length > 0 && (
-                  <span className="slc-song-count">
-                    {setlistText.split('\n').filter((l) => l.trim()).length} songs
-                  </span>
-                )}
+                {(() => {
+                  const n = setlistText.split('\n').filter((l) => l.trim() && !isSeparatorLine(l.trim())).length;
+                  return n > 0 && <span className="slc-song-count">{n} songs</span>;
+                })()}
               </label>
               <textarea
                 ref={textareaRef}
@@ -398,7 +403,7 @@ export default function SetlistCalculator({
                   <span className="slc-total-label">Total Setlist Duration</span>
                   <span className="slc-total-time">{fmtMsTotal(totalMs)}</span>
                   <span className="slc-summary-meta">
-                    {tracks.length} songs · {foundCount} found on Spotify
+                    {songTracks.length} songs · {foundCount} found on Spotify
                     {missedCount > 0 && ` · ${missedCount - manualCount} missing`}
                     {manualCount > 0 && ` · ${manualCount} manual`}
                   </span>
@@ -420,9 +425,16 @@ export default function SetlistCalculator({
                       </tr>
                     </thead>
                     <tbody>
-                      {tracks.map((t, i) => (
+                      {(() => { let n = 0; return tracks.map((t, i) => {
+                        if (t.isSeparator) return (
+                          <tr key={i} className="slc-row slc-row--sep">
+                            <td className="slc-td slc-td--sep" colSpan={4}><span className="slc-sep-line" /></td>
+                          </tr>
+                        );
+                        const num = ++n;
+                        return (
                         <tr key={i} className={`slc-row${t.isFound ? '' : ' slc-row--miss'}`}>
-                          <td className="slc-td slc-td--num">{i + 1}</td>
+                          <td className="slc-td slc-td--num">{num}</td>
                           <td className="slc-td slc-td--song">
                             {t.isAnnotated ? (
                               <span className="slc-dot slc-dot--annotated" title="Duration from annotation" />
@@ -463,7 +475,8 @@ export default function SetlistCalculator({
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      }); })()}
                     </tbody>
                   </table>
                 </div>

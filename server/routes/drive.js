@@ -69,8 +69,10 @@ function buildDocContent(artistName, tracks, totalDuration) {
   lines.push('');
   lines.push('#   Song                              Artist                  Duration');
   lines.push('─'.repeat(72));
-  tracks.forEach((t, i) => {
-    const num  = String(i + 1).padStart(2, ' ');
+  let n = 0;
+  tracks.forEach((t) => {
+    if (t.isSeparator) { lines.push('    ' + '·'.repeat(40)); return; }
+    const num  = String(++n).padStart(2, ' ');
     const song = (t.songName || '').padEnd(34, ' ').slice(0, 34);
     const art  = (t.artist   || '').padEnd(23, ' ').slice(0, 23);
     const dur  = t.isFound ? (t.durationFormatted || '') : '—';

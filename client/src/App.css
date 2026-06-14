@@ -5702,6 +5702,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .slc-row:hover { background: var(--surface-sunk); }
 [data-theme="dark"] .slc-row:hover { background: var(--surface); }
 .slc-row--miss { opacity: 0.72; }
+.slc-row--sep:hover { background: transparent; }
+.slc-td--sep { padding: 6px 14px; }
+.slc-sep-line {
+  display: block;
+  height: 0;
+  border-top: 1px dashed var(--border);
+  opacity: 0.7;
+}
 .slc-td { padding: 8px 14px; color: var(--text); vertical-align: middle; }
 .slc-td--num { color: var(--text-3); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .slc-td--song { display: flex; align-items: center; gap: 8px; }
