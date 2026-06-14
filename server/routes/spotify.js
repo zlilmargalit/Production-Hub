@@ -60,31 +60,67 @@ function fmtMsTotal(ms) {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// Search Spotify for a single track; returns best match or null.
-// Retries once on 429.
-async function searchTrack(song, artist, originalText, token, retried = false) {
-  const q   = `track:${encodeURIComponent(song)} artist:${encodeURIComponent(artist)}`;
-  const url = `https://api.spotify.com/v1/search?q=${q}&type=track&limit=10&market=US`;
+// ── Fuzzy title / artist matching ─────────────────────────────────────────────
+// Normalise a title for comparison: lowercase, strip Hebrew niqqud/cantillation,
+// drop punctuation (incl. geresh/gershayim), collapse whitespace.
+function normalizeTitle(s) {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[֑-ׇ]/g, '')                      // Hebrew diacritics
+    .replace(/[’'״׳"`.,!?:;()\[\]{}\-–—_/\\]/g, ' ')      // punctuation → space
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// 0..1 similarity between two titles (1 = identical after normalisation).
+function similarity(a, b) {
+  const x = normalizeTitle(a), y = normalizeTitle(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+  if (x.includes(y) || y.includes(x)) return 0.9;
+  const dist = levenshtein(x, y);
+  return 1 - dist / Math.max(x.length, y.length);
+}
+
+const TITLE_THRESHOLD = 0.72;   // reject candidates whose title is too different
+const ALBUM_RANK = { album: 3, single: 2, compilation: 1 };
+
+// Raw Spotify search for a free-text or field-scoped query. Retries once on 429.
+// Spotify rejects limit > 10 for this endpoint, so keep it at 10.
+async function spotifySearch(query, token, retried = false) {
+  const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10&market=US`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 
   if (resp.status === 429) {
-    if (retried) return null;
+    if (retried) return [];
     const wait = parseInt(resp.headers.get('retry-after') || '2', 10) * 1000;
     await new Promise((r) => setTimeout(r, Math.min(wait, 8000)));
-    const freshToken = await getToken();
-    return searchTrack(song, artist, originalText, freshToken, true);
+    const fresh = await getToken();
+    return spotifySearch(query, fresh, true);
   }
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  return data?.tracks?.items || [];
+}
 
-  if (!resp.ok) return null;
-
-  const data   = await resp.json();
-  const items  = data?.tracks?.items || [];
-  if (items.length === 0) return null;
-
-  // Filter out avoid-words unless user explicitly typed that word
+// Drop live/remix/karaoke/etc. unless the user explicitly typed that word.
+function applyAvoidFilter(items, originalText) {
   const filtered = items.filter((t) => {
     const name = t.name.toLowerCase();
     const albumName = (t.album?.name || '').toLowerCase();
@@ -95,18 +131,50 @@ async function searchTrack(song, artist, originalText, token, retried = false) {
     }
     return true;
   });
+  return filtered.length > 0 ? filtered : items;
+}
 
-  const pool = filtered.length > 0 ? filtered : items;
+const EXACT_SIM = 0.97;   // treat as the same title (post-normalisation)
 
-  // Prefer album type order: album > single > compilation
-  const rank = { album: 0, single: 1, compilation: 2 };
-  pool.sort((a, b) => {
-    const ra = rank[a.album?.album_type] ?? 3;
-    const rb = rank[b.album?.album_type] ?? 3;
-    return ra - rb;
+// Resolve one line to a track via a cascade of progressively looser queries,
+// collecting every close title match. Earlier tiers are artist-scoped (where
+// Spotify already constrained the artist); later tiers relax to title-only so a
+// song whose typed "artist" is just the performer/collaborator still resolves.
+// We stop as soon as an exact-title match appears, then rank globally so an exact
+// title always beats a fuzzy near-match (e.g. "ריקי" wins over "ריקדי") and an
+// artist-scoped hit beats a looser one when titles tie.
+async function searchTrack(song, artist, originalText, token) {
+  const hasArtist = artist && artist.toLowerCase() !== 'unknown';
+
+  const tiers = [];
+  if (hasArtist) {
+    tiers.push(`track:"${song}" artist:"${artist}"`); // artist-scoped (exact)
+    tiers.push(`${song} ${artist}`);                  // free text, artist as a hint
+  }
+  tiers.push(`track:"${song}"`);                      // title-scoped
+  tiers.push(song);                                   // bare title (last resort)
+
+  const collected = [];   // { t, sim, tier }
+  for (let ti = 0; ti < tiers.length; ti++) {
+    const items = applyAvoidFilter(await spotifySearch(tiers[ti], token), originalText);
+    for (const t of items) {
+      const sim = similarity(t.name, song);
+      if (sim >= TITLE_THRESHOLD) collected.push({ t, sim, tier: ti });
+    }
+    // Once any exact-title candidate exists, looser tiers can't beat it — stop.
+    if (collected.some((c) => c.sim >= EXACT_SIM)) break;
+  }
+
+  if (collected.length === 0) return null;
+
+  collected.sort((a, b) => {
+    const s = Math.round(b.sim * 100) - Math.round(a.sim * 100);   // exact title first
+    if (s !== 0) return s;
+    if (a.tier !== b.tier) return a.tier - b.tier;                  // prefer artist-scoped tier
+    return (ALBUM_RANK[b.t.album?.album_type] ?? 0) - (ALBUM_RANK[a.t.album?.album_type] ?? 0);
   });
 
-  const best = pool[0];
+  const best = collected[0].t;
   return {
     songName:          best.name,
     artist:            best.artists.map((a) => a.name).join(', '),
