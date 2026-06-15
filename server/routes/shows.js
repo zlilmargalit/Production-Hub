@@ -630,7 +630,7 @@ router.post('/:id/brief', async (req, res) => {
       contacts:          inPdf('contacts')          ? (show.contacts          || '') : '',
 
       additionalDetails: inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
-      food:              inPdf('food')              ? (show.food              || '') : '',
+      food:              inPdf('food')              ? [show.foodContactName || show.food || '', show.foodContactPhone || '', show.foodContactTime || ''].filter(Boolean).join(' · ') : '',
       notes:             inPdf('notes')             ? (show.notes             || '') : '',
       sound:             show.sound    || '',
       lighting:          show.lighting || '',
@@ -685,6 +685,14 @@ router.post('/:id/pdf', async (req, res) => {
       .filter((m) => !MUSICIAN_ROLES.has(m.role))
       .map((m) => `${m.role} – ${m.name}`)
       .join(' | ');
+
+    // Catering line: name + phone + arrival time. Phone/time come from the
+    // Logistics "Food" contact; name falls back to the legacy free-text field.
+    const foodLine = [
+      show.foodContactName || show.food || '',
+      show.foodContactPhone || '',
+      show.foodContactTime || '',
+    ].filter(Boolean).join(' · ');
 
     const esc   = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const nl2br = (s) => esc(s || '').replace(/\n/g, '<br>');
@@ -838,7 +846,7 @@ ${inPdf('parking') && show.parking ? `<div class="row"><span class="label">חנ�
 
 ${inPdf('technicalCrew') && (techCrewText || show.technicalCrew) ? `<div class="row"><span class="label">צוות טכני:</span><span class="value">${esc(techCrewText || show.technicalCrew)}</span></div>` : ''}
 ${inPdf('transportation') && show.transportation ? `<div class="row"><span class="label">הסעה:</span><span class="value">${esc(show.transportation)}</span></div>` : ''}
-${inPdf('food') && show.food ? `<div class="row"><span class="label">אוכל:</span><span class="value">${esc(show.food)}</span></div>` : ''}
+${inPdf('food') && foodLine ? `<div class="row"><span class="label">אוכל:</span><span class="value">${esc(foodLine)}</span></div>` : ''}
 ${inPdf('contacts') && show.contacts ? `<div class="row"><span class="label">אנשי קשר:</span><span class="value">${esc(show.contacts)}</span></div>` : ''}
 ${(show.pdfFields?.musicians !== false) && musicians ? `<div class="musicians"><span class="label">הרכב נגנים: </span>${esc(musicians)}</div>` : ''}
 
