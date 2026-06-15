@@ -119,13 +119,28 @@ async function getGoogleAuth() {
       .catch((e) => console.warn('[auth] Could not save refreshed token:', e.message));
   });
 
-  let accessToken = tokens.access_token;
-  try {
-    const result = await refreshClient.getAccessToken();
-    if (result.token) accessToken = result.token;
-    console.log('[auth] access_token resolved OK');
-  } catch (e) {
-    console.warn('[auth] getAccessToken failed, using stored token:', e.message);
+  // Force a real refresh using the refresh_token rather than trusting the stored
+  // access_token / expiry_date. On Railway the stored token can be stale yet still
+  // look "valid" (future expiry_date), so no refresh fires and Google rejects the
+  // request with "invalid authentication credentials". Setting expiry_date to the
+  // past makes googleapis fetch a fresh token from the refresh_token every time.
+  let accessToken;
+  if (tokens.refresh_token) {
+    try {
+      refreshClient.setCredentials({ ...tokens, expiry_date: 1 });
+      const result = await refreshClient.getAccessToken();
+      if (!result || !result.token) throw new Error('no access token returned');
+      accessToken = result.token;
+      console.log('[auth] access_token refreshed OK');
+    } catch (e) {
+      const detail = e?.response?.data?.error_description || e?.response?.data?.error || e.message;
+      console.error('[auth] token refresh failed:', detail);
+      throw new Error('Google authorization expired — reconnect Google to use Brief/Export. (' + detail + ')');
+    }
+  } else {
+    // Access-only token (e.g. injected via env without a refresh_token) — use as-is.
+    accessToken = tokens.access_token;
+    console.warn('[auth] no refresh_token available; using stored access_token');
   }
 
   // Step 2: return a static client with ONLY the access_token.
