@@ -72,84 +72,11 @@ const readCrew   = (uid) => readJsonCached(cacheKey(uid, 'crew'),           data
 const readFieldTemplates = (uid) => readJsonCached(cacheKey(uid, 'fieldTemplates'), dataPath(uid, 'field-templates.json'), {});
 const readTemplates      = (uid) => readJsonCached(cacheKey(uid, 'templates'),      dataPath(uid, 'templates.json'),       {});
 
-// ── Google auth (async-safe) ───────────────────────────────────────────────
-// Priority order for credentials / tokens:
-//   1. DATA_DIR volume file — allows live token updates on Railway without a re-deploy
-//   2. GMAIL_* env vars     — Railway's static env (may be stale after token expiry)
-//   3. server/data/ files   — local dev fallback
-async function getGoogleAuth() {
-  const volumeCredsPath  = path.join(DATA_DIR, 'gmail-credentials.json');
-  const volumeTokenPath  = path.join(DATA_DIR, 'gmail-token.json');
-
-  let creds, tokens;
-
-  // Credentials: volume → env var → hardcoded path
-  if (fs.existsSync(volumeCredsPath)) {
-    creds = JSON.parse(await fsp.readFile(volumeCredsPath, 'utf8'));
-  } else if (process.env.GMAIL_CREDENTIALS) {
-    creds = JSON.parse(process.env.GMAIL_CREDENTIALS);
-  } else {
-    creds = JSON.parse(await fsp.readFile(CREDENTIALS_PATH, 'utf8'));
-  }
-
-  // Token: volume → env var → hardcoded path
-  // Volume token is preferred so Railway deployments can refresh without a re-deploy
-  if (fs.existsSync(volumeTokenPath)) {
-    tokens = JSON.parse(await fsp.readFile(volumeTokenPath, 'utf8'));
-  } else if (process.env.GMAIL_TOKEN) {
-    tokens = JSON.parse(process.env.GMAIL_TOKEN);
-  } else {
-    tokens = JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
-  }
-
-  const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
-
-  // Step 1: use a full OAuth2 client (with refresh_token) only to obtain a fresh access_token.
-  // When credentials include expiry_date + refresh_token, googleapis on Node 20 can silently
-  // fail to inject the Authorization header. Fetching the token explicitly avoids that path.
-  const refreshClient = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  refreshClient.setCredentials(tokens);
-
-  // Persist any new token issued during the refresh to the volume.
-  refreshClient.on('tokens', (newTokens) => {
-    const dest = path.join(DATA_DIR, 'gmail-token.json');
-    const merged = { ...tokens, ...newTokens };
-    fsp.writeFile(dest, JSON.stringify(merged, null, 2), 'utf8')
-      .then(() => console.log('[auth] Google token auto-refreshed and saved to volume'))
-      .catch((e) => console.warn('[auth] Could not save refreshed token:', e.message));
-  });
-
-  // Force a real refresh using the refresh_token rather than trusting the stored
-  // access_token / expiry_date. On Railway the stored token can be stale yet still
-  // look "valid" (future expiry_date), so no refresh fires and Google rejects the
-  // request with "invalid authentication credentials". Setting expiry_date to the
-  // past makes googleapis fetch a fresh token from the refresh_token every time.
-  let accessToken;
-  if (tokens.refresh_token) {
-    try {
-      refreshClient.setCredentials({ ...tokens, expiry_date: 1 });
-      const result = await refreshClient.getAccessToken();
-      if (!result || !result.token) throw new Error('no access token returned');
-      accessToken = result.token;
-      console.log('[auth] access_token refreshed OK');
-    } catch (e) {
-      const detail = e?.response?.data?.error_description || e?.response?.data?.error || e.message;
-      console.error('[auth] token refresh failed:', detail);
-      throw new Error('Google authorization expired — reconnect Google to use Brief/Export. (' + detail + ')');
-    }
-  } else {
-    // Access-only token (e.g. injected via env without a refresh_token) — use as-is.
-    accessToken = tokens.access_token;
-    console.warn('[auth] no refresh_token available; using stored access_token');
-  }
-
-  // Step 2: return a static client with ONLY the access_token.
-  // No expiry_date, no refresh_token → googleapis skips its token-refresh machinery
-  // entirely and injects the Bearer header reliably on every Node.js version.
-  const staticClient = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  staticClient.setCredentials({ access_token: accessToken });
-  return staticClient;
-}
+// ── Google auth ─────────────────────────────────────────────────────────────
+// Delegates to server/utils/googleAuth.js: prefers a Service Account (no
+// expiry, no refresh flow, permanent) and falls back to the legacy OAuth
+// refresh-token dance only if no service account is configured.
+const { getGoogleAuth, isServiceAccountConfigured } = require('../utils/googleAuth');
 
 // Upload a data-URL to Google Drive, make it publicly readable, return a direct view URL.
 async function uploadDataUrlToDrive(dataUrl, filename) {
@@ -583,7 +510,7 @@ router.post('/:id/brief', async (req, res) => {
       try { await fsp.access(CREDENTIALS_PATH); await fsp.access(TOKEN_PATH); hasFileCreds = true; }
       catch { /* no file creds */ }
     }
-    if (!hasEnvCreds && !hasVolumeCreds && !hasFileCreds) {
+    if (!isServiceAccountConfigured() && !hasEnvCreds && !hasVolumeCreds && !hasFileCreds) {
       return res.status(503).json({ error: 'Google Drive credentials not configured.' });
     }
 

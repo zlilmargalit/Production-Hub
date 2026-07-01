@@ -6,35 +6,17 @@ const express    = require('express');
 const router     = express.Router();
 const { google } = require('googleapis');
 const fs         = require('fs');
-const fsp        = require('fs').promises;
 const path       = require('path');
+
+const { getGoogleAuth, isServiceAccountConfigured } = require('../utils/googleAuth');
 
 const CREDENTIALS_PATH = path.join(__dirname, '../data/gmail-credentials.json');
 const TOKEN_PATH       = path.join(__dirname, '../data/gmail-token.json');
 
 function isConfigured() {
+  if (isServiceAccountConfigured()) return true;
   if (process.env.GMAIL_CREDENTIALS && process.env.GMAIL_TOKEN) return true;
   return fs.existsSync(CREDENTIALS_PATH) && fs.existsSync(TOKEN_PATH);
-}
-
-function getOAuthClient() {
-  const creds = process.env.GMAIL_CREDENTIALS
-    ? JSON.parse(process.env.GMAIL_CREDENTIALS)
-    : JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
-  const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
-  const client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  const tokens = process.env.GMAIL_TOKEN
-    ? JSON.parse(process.env.GMAIL_TOKEN)
-    : JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
-  client.setCredentials(tokens);
-  client.on('tokens', async (newTokens) => {
-    if (process.env.GMAIL_TOKEN) return;
-    try {
-      const current = JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
-      await fsp.writeFile(TOKEN_PATH, JSON.stringify({ ...current, ...newTokens }, null, 2));
-    } catch { /* non-fatal */ }
-  });
-  return client;
 }
 
 // Find a folder by name inside a parent (or root). Returns fileId or null.
@@ -99,7 +81,7 @@ router.post('/export-setlist', async (req, res) => {
 
   let auth, drive, docs;
   try {
-    auth  = getOAuthClient();
+    auth  = await getGoogleAuth();
     drive = google.drive({ version: 'v3', auth });
     docs  = google.docs({ version: 'v1', auth });
   } catch (err) {

@@ -1,16 +1,10 @@
 const express = require('express');
 const router  = express.Router();
-const fs      = require('fs');
-const fsp     = require('fs').promises;
-const path    = require('path');
 const { google } = require('googleapis');
 
 const { readJsonCached } = require('../cache');
-const { dataPath, cacheKey, DATA_DIR } = require('../utils/userData');
-
-// Local-dev credential fallback paths
-const CREDENTIALS_PATH  = path.join(__dirname, '../data/gmail-credentials.json');
-const TOKEN_PATH        = path.join(__dirname, '../data/gmail-token.json');
+const { dataPath, cacheKey } = require('../utils/userData');
+const { getGoogleAuth } = require('../utils/googleAuth');
 
 // Template Google Doc ID — override via BRIEF_TEMPLATE_ID or TEMPLATE_DOC_ID env var
 const BRIEF_TEMPLATE_ID = process.env.BRIEF_TEMPLATE_ID
@@ -21,56 +15,7 @@ const BRIEF_TEMPLATE_ID = process.env.BRIEF_TEMPLATE_ID
 const readShows = (uid) =>
   readJsonCached(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), []);
 
-// ── Google auth — same two-client pattern as shows.js ──────────────────────
-// Priority: volume file > GMAIL_* env vars > local server/data/ files
-async function getGoogleAuth() {
-  const volumeCredsPath = path.join(DATA_DIR, 'gmail-credentials.json');
-  const volumeTokenPath = path.join(DATA_DIR, 'gmail-token.json');
-
-  let creds, tokens;
-
-  if (fs.existsSync(volumeCredsPath)) {
-    creds = JSON.parse(await fsp.readFile(volumeCredsPath, 'utf8'));
-  } else if (process.env.GMAIL_CREDENTIALS) {
-    creds = JSON.parse(process.env.GMAIL_CREDENTIALS);
-  } else {
-    creds = JSON.parse(await fsp.readFile(CREDENTIALS_PATH, 'utf8'));
-  }
-
-  if (fs.existsSync(volumeTokenPath)) {
-    tokens = JSON.parse(await fsp.readFile(volumeTokenPath, 'utf8'));
-  } else if (process.env.GMAIL_TOKEN) {
-    tokens = JSON.parse(process.env.GMAIL_TOKEN);
-  } else {
-    tokens = JSON.parse(await fsp.readFile(TOKEN_PATH, 'utf8'));
-  }
-
-  const { client_id, client_secret, redirect_uris } = creds.installed || creds.web;
-
-  // Step 1: full client with refresh_token — only used to obtain a fresh access_token
-  const refreshClient = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  refreshClient.setCredentials(tokens);
-  refreshClient.on('tokens', (newTokens) => {
-    const dest   = path.join(DATA_DIR, 'gmail-token.json');
-    const merged = { ...tokens, ...newTokens };
-    fsp.writeFile(dest, JSON.stringify(merged, null, 2), 'utf8')
-      .then(() => console.log('[documents/auth] token auto-refreshed and saved'))
-      .catch((e) => console.warn('[documents/auth] could not save refreshed token:', e.message));
-  });
-
-  let accessToken = tokens.access_token;
-  try {
-    const result = await refreshClient.getAccessToken();
-    if (result.token) accessToken = result.token;
-  } catch (e) {
-    console.warn('[documents/auth] getAccessToken failed, using stored token:', e.message);
-  }
-
-  // Step 2: static client with access_token only — bypasses Node 20 refresh machinery
-  const staticClient = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-  staticClient.setCredentials({ access_token: accessToken });
-  return staticClient;
-}
+// Google auth (Service Account preferred, OAuth fallback) — server/utils/googleAuth.js
 
 function formatDate(d) {
   if (!d) return '';

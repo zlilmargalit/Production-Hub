@@ -1060,6 +1060,30 @@ app.post('/api/admin/google-credentials', async (req, res) => {
   }
 });
 
+// ── Admin: push a Google Service Account key to the DATA_DIR volume ─────────
+// Once this exists, server/utils/googleAuth.js uses it for all Brief / PDF /
+// Setlist-export Drive & Docs calls instead of the fragile OAuth refresh-token
+// flow. Service account keys don't expire and need no refresh — this is the
+// permanent fix for the recurring "Google authorization expired" failure.
+// Remember: the target Drive folder(s) must be shared with the key's
+// client_email (Editor) for the service account to write into them.
+app.post('/api/admin/google-service-account', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const key = req.body;
+  if (!key || key.type !== 'service_account' || !key.client_email || !key.private_key) {
+    return res.status(400).json({ error: 'Body must be a Google service account JSON key (type "service_account" with client_email and private_key)' });
+  }
+  try {
+    const dest = path.join(DATA_DIR, 'service-account.json');
+    await fsp.writeFile(dest, JSON.stringify(key, null, 2), 'utf8');
+    console.log('[admin] Google service account key saved at', dest, '(', key.client_email, ')');
+    res.json({ ok: true, written: dest, client_email: key.client_email });
+  } catch (err) {
+    console.error('[admin] Failed to write service account key:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Setlists ─────────────────────────────────────────────────────────────────
 const SETLISTS_FILE = path.join(DATA_DIR, 'setlists.json');
 function loadSetlists() {
