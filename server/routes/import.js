@@ -114,12 +114,19 @@ function parseSheet(workbook, sheetName) {
 
     const eventType = mapEventType(sheetName, rawType);
 
-    // Skip חלונות entries embedded in the Asaf sheet, and skip truly empty rows
+    // Skip חלונות entries embedded in the Asaf sheet
     if (String(rawType || '').trim().startsWith('חלונות')) continue;
-    if (!venue && !eventType) continue;
+    // A real show has a place. Rows with no מקום are placeholders (e.g. blank
+    // "אני גיטרה" rows) — skip them so we never invent ghost shows.
+    if (!venue) continue;
 
-    // Build a readable show name
-    const name = venue || eventType || `מופע ${dateStr}`;
+    // Name = the ensemble-type word from the "סוג הרכב" column (סולו / מתארח /
+    // להקה …) followed by the place, matching how shows are named in the app.
+    // The "אני גיטרה" sheet is itself the type, so it supplies the type word.
+    const typeWord = sheetName === 'אני גיטרה'
+      ? 'אני גיטרה'
+      : (typeof rawType === 'number' ? '' : String(rawType || '').trim().replace(/\s+/g, ' '));
+    const name = [typeWord, venue].filter(Boolean).join(' ');
 
     const additionalParts = [
       booking  ? `בוקינג: ${booking}`  : '',
@@ -142,23 +149,88 @@ function parseSheet(workbook, sheetName) {
   return results;
 }
 
-// Normalize venue string for fuzzy comparison
-function normalizeVenue(v) {
-  return String(v || '')
-    .toLowerCase()
-    .replace(/['"״׳,\-()"]/g, '')
+// ── Robust Hebrew place matching for dedup ─────────────────────────────────
+// Goal: the same venue written slightly differently in the email vs. in the app
+// must be recognised as the same show — e.g. "תיאטרון המסילה פ״ת" ==
+// "תיאטרון המסילה פתח תקווה", "צל החורש, אירוע חברה" == "סולו בצל החורש".
+
+// Israeli city abbreviations → full form (compared after punctuation is stripped,
+// so "פ״ת" arrives here as "פת").
+const CITY_ABBREV = {
+  'פת': 'פתח תקווה', 'תא': 'תל אביב', 'קש': 'קרית שמונה', 'רג': 'רמת גן',
+  'בש': 'באר שבע', 'ראשלצ': 'ראשון לציון', 'כס': 'כפר סבא', 'רח': 'רחובות',
+};
+// Filler words that carry no venue identity.
+const STOPWORDS = new Set([
+  'אצל', 'של', 'עם', 'על', 'את', 'או', 'אירוע', 'חברה', 'מופע', 'הופעה',
+  'ערב', 'יום', 'עם', 'ה', 'ב', 'ל', 'מ', 'ו',
+]);
+
+function normHeb(str) {
+  return String(str || '')
+    .replace(/[֑-ׇ]/g, '')                      // niqqud / cantillation
+    .replace(/["'`״׳.,()\[\]{}\/\\|:;!?\-–—_]/g, ' ')     // punctuation → space
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    .toLowerCase();
 }
 
-// Two venues "match" if one contains the other
-// e.g. "עין גב" matches "פסטיבל עין גב", "טרקלין" matches "סולו טרקלין פרדס חנה"
-function venueOverlaps(a, b) {
-  const na = normalizeVenue(a);
-  const nb = normalizeVenue(b);
-  if (!na && !nb) return true;   // both empty on same date → duplicate
-  if (!na || !nb) return false;  // one has venue, other doesn't → different show
-  return na === nb || na.includes(nb) || nb.includes(na);
+// Significant tokens: punctuation stripped, city abbreviations expanded,
+// stopwords and 1-char tokens dropped.
+function sigTokens(str) {
+  const out = [];
+  for (const tok of normHeb(str).split(' ')) {
+    if (!tok) continue;
+    if (CITY_ABBREV[tok]) { for (const w of CITY_ABBREV[tok].split(' ')) out.push(w); continue; }
+    if (tok.length < 2 || STOPWORDS.has(tok)) continue;
+    out.push(tok);
+  }
+  return out;
+}
+
+function levSim(a, b) {
+  if (a === b) return 1;
+  const m = a.length, n = b.length;
+  if (!m || !n) return 0;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return 1 - prev[n] / Math.max(m, n);
+}
+
+// Two tokens match if they're close spellings (תיאטרון≈תאטרון) — comparing both
+// the raw forms and the forms with a leading Hebrew prefix letter removed
+// (so "בצל"≈"צל", "המסילה"≈"מסילה").
+function tokenMatch(s, l) {
+  if (levSim(s, l) >= 0.8) return true;
+  const strip = (t) => (t.length > 2 && /^[בלמהוכש]/.test(t) ? t.slice(1) : t);
+  return levSim(strip(s), strip(l)) >= 0.85;
+}
+
+// Do two place strings refer to the same venue? Robust to spelling, abbreviations,
+// added qualifiers and word order: a majority of the shorter string's significant
+// tokens must fuzzy-match a token in the longer string.
+function placesMatch(a, b) {
+  const ta = sigTokens(a), tb = sigTokens(b);
+  if (!ta.length || !tb.length) return false;
+  const [small, large] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  let matched = 0;
+  for (const s of small) if (large.some((l) => tokenMatch(s, l))) matched++;
+  return matched >= Math.max(1, Math.ceil(small.length * 0.6));
+}
+
+// Same show = same date AND the imported place matches the existing show's venue
+// OR its name (curated shows carry the venue inside the name, e.g.
+// "סולו תיאטרון המסילה פתח תקווה").
+function isSameShow(existing, s) {
+  if (existing.date !== s.date) return false;
+  const targets = [existing.venue, existing.name].filter(Boolean);
+  return targets.some((t) => placesMatch(t, s.venue));
 }
 
 function findNewShows(xlsxPath, existingShows) {
@@ -171,10 +243,8 @@ function findNewShows(xlsxPath, existingShows) {
       // Skip archive rows: only import recent/upcoming shows, never years of history
       if (s.date < floor) continue;
 
-      // Fuzzy dedup: same date + overlapping venue = same show
-      const isDupe = [...existingShows, ...newShows].some(
-        e => e.date === s.date && venueOverlaps(e.venue, s.venue)
-      );
+      // Robust dedup: same date + fuzzy place/name match = same show
+      const isDupe = [...existingShows, ...newShows].some((e) => isSameShow(e, s));
       if (isDupe) continue;
 
       const { _sheet, ...data } = s;
