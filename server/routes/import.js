@@ -126,7 +126,10 @@ function parseSheet(workbook, sheetName) {
     const typeWord = sheetName === 'אני גיטרה'
       ? 'אני גיטרה'
       : (typeof rawType === 'number' ? '' : String(rawType || '').trim().replace(/\s+/g, ' '));
-    const name = [typeWord, venue].filter(Boolean).join(' ');
+    // Commas are stripped from the name so the title reads cleanly, e.g.
+    // "מתארח אצל ארקדי דוכין לייב פארק ראשלצ" (place kept intact in the venue field).
+    const name = [typeWord, venue].filter(Boolean).join(' ')
+      .replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
 
     const additionalParts = [
       booking  ? `בוקינג: ${booking}`  : '',
