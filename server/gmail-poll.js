@@ -116,8 +116,10 @@ async function checkGmail({ force = false } = {}) {
           const showsKey  = cacheKey(IMPORT_UID, 'shows');
           const showsPath = dataPath(IMPORT_UID, 'shows.json');
           await require('fs').promises.mkdir(path.dirname(showsPath), { recursive: true });
-          const existing = await readJsonCached(showsKey, showsPath, []);
-          const newShows = findNewShows(XLSX_PATH, existing);
+          const existing  = await readJsonCached(showsKey, showsPath, []);
+          const templates = await readJsonCached(cacheKey(IMPORT_UID, 'templates'), dataPath(IMPORT_UID, 'templates.json'), {});
+          const crew      = await readJsonCached(cacheKey(IMPORT_UID, 'crew'),      dataPath(IMPORT_UID, 'crew.json'),      []);
+          const newShows  = findNewShows(XLSX_PATH, existing, { templates, crew });
           if (newShows.length > IMPORT_MAX) {
             console.error(`[gmail] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue; nothing written`);
           } else if (newShows.length > 0) {

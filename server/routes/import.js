@@ -33,8 +33,24 @@ function importFloorStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const readShows  = (uid) => readJsonCached(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), []);
-const writeShows = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), shows);
+const readShows      = (uid) => readJsonCached(cacheKey(uid, 'shows'),     dataPath(uid, 'shows.json'),     []);
+const writeShows     = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), shows);
+const readCrew       = (uid) => readJsonCached(cacheKey(uid, 'crew'),      dataPath(uid, 'crew.json'),      []);
+const readTemplates  = (uid) => readJsonCached(cacheKey(uid, 'templates'), dataPath(uid, 'templates.json'), {});
+
+// Attach the default crew for a show's event type (same rule as the "Apply crew"
+// button) so imported shows arrive with their standard crew already assigned.
+// crewIds get every templated member; technicalCrew text excludes musicians.
+function applyCrewTemplate(show, templates, crew) {
+  const ids = templates && templates[show.eventType];
+  if (!ids || !ids.length || !Array.isArray(crew)) return show;
+  const technicalCrew = ids
+    .map((id) => crew.find((m) => m.id === id))
+    .filter((m) => m && m.role !== 'נגן')
+    .map((m) => `${m.role} – ${m.name}`)
+    .join(' | ');
+  return { ...show, crewIds: ids, technicalCrew };
+}
 
 const pathExists = (p) => fsp.access(p).then(() => true).catch(() => false);
 
@@ -245,7 +261,7 @@ function isSameShow(existing, s) {
   return targets.some((t) => placesMatch(t, s.venue));
 }
 
-function findNewShows(xlsxPath, existingShows) {
+function findNewShows(xlsxPath, existingShows, { templates, crew } = {}) {
   const wb = XLSX.readFile(xlsxPath);
   const newShows = [];
   const floor = importFloorStr();
@@ -260,7 +276,7 @@ function findNewShows(xlsxPath, existingShows) {
       if (isDupe) continue;
 
       const { _sheet, ...data } = s;
-      newShows.push({
+      let show = {
         id: uuidv4(),
         ...data,
         invoice: false,
@@ -269,7 +285,10 @@ function findNewShows(xlsxPath, existingShows) {
         crewIds: [],
         tasks: [],
         createdAt: new Date().toISOString(),
-      });
+      };
+      // Auto-assign the standard crew for this event type on import
+      show = applyCrewTemplate(show, templates, crew);
+      newShows.push(show);
     }
   }
   return newShows;
@@ -311,8 +330,10 @@ router.post('/sync', async (req, res) => {
     return res.json({ added: gmailAdded });
   }
   try {
-    const existing = await readShows(IMPORT_UID);
-    const newShows = findNewShows(xlsxPath, existing);
+    const [existing, templates, crew] = await Promise.all([
+      readShows(IMPORT_UID), readTemplates(IMPORT_UID), readCrew(IMPORT_UID),
+    ]);
+    const newShows = findNewShows(xlsxPath, existing, { templates, crew });
     if (newShows.length > IMPORT_MAX) {
       console.error(`[sync] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue`);
       return res.status(409).json({
