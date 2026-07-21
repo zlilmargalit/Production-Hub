@@ -18,10 +18,10 @@ const DEFAULT_XLSX = path.join(__dirname, '../../אסף אמדורסקי לוח 
 const IMPORT_ARTIST_ID = process.env.IMPORT_ARTIST_ID || '05dea0dd-dfc3-48c5-b49d-8e3f168ec8c9';
 const IMPORT_UID = artistScopedId('admin', IMPORT_ARTIST_ID);
 
-// The source spreadsheet holds YEARS of gig history. Only import shows dated
-// within this window (default: last 45 days onward) so a sync adds genuinely
-// new/upcoming shows rather than dumping the entire archive into the workspace.
-const IMPORT_FLOOR_DAYS = Number(process.env.IMPORT_FLOOR_DAYS || 45);
+// The source spreadsheet holds YEARS of gig history. A schedule sync must ONLY
+// ever add upcoming shows — never past ones. So the floor is today (0 days back).
+// (Overridable via IMPORT_FLOOR_DAYS if a small grace window is ever wanted.)
+const IMPORT_FLOOR_DAYS = Number(process.env.IMPORT_FLOOR_DAYS || 0);
 // Safety net: if a single sync would add more than this, something is wrong
 // (parse/dedup failure) — refuse to write and surface it instead of flooding
 // the workspace. Overridable via IMPORT_MAX.
@@ -240,7 +240,7 @@ function findNewShows(xlsxPath, existingShows) {
 
   for (const sheetName of ['אסף אמדורסקי', 'אני גיטרה']) {
     for (const s of parseSheet(wb, sheetName)) {
-      // Skip archive rows: only import recent/upcoming shows, never years of history
+      // Only import upcoming shows — never past ones (a new schedule adds new gigs)
       if (s.date < floor) continue;
 
       // Robust dedup: same date + fuzzy place/name match = same show
