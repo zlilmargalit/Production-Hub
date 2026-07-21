@@ -165,6 +165,15 @@ const STOPWORDS = new Set([
   'אצל', 'של', 'עם', 'על', 'את', 'או', 'אירוע', 'חברה', 'מופע', 'הופעה',
   'ערב', 'יום', 'עם', 'ה', 'ב', 'ל', 'מ', 'ו',
 ]);
+// Ensemble-type / genre / project words. These prefix the show name (e.g.
+// "אני גיטרה עמק חפר", "מנועים שקטים גבעת ברנר") but are NOT part of the venue,
+// so they're excluded from place matching — otherwise the same venue written
+// with vs without the type prefix fails to dedupe.
+const TYPE_WORDS = new Set([
+  'אני', 'גיטרה', 'סולו', 'פסנתר', 'אקוסטי', 'מתארח', 'מארח', 'מתארחת', 'להקה',
+  'תקלוט', 'אירוח', 'מפגש', 'אמן', 'כתת', 'מנועים', 'שקטים', 'החלונות', 'חלונות',
+  'הגבוהים', 'תקליטן',
+]);
 
 function normHeb(str) {
   return String(str || '')
@@ -182,7 +191,7 @@ function sigTokens(str) {
   for (const tok of normHeb(str).split(' ')) {
     if (!tok) continue;
     if (CITY_ABBREV[tok]) { for (const w of CITY_ABBREV[tok].split(' ')) out.push(w); continue; }
-    if (tok.length < 2 || STOPWORDS.has(tok)) continue;
+    if (tok.length < 2 || STOPWORDS.has(tok) || TYPE_WORDS.has(tok)) continue;
     out.push(tok);
   }
   return out;

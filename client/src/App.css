@@ -2091,9 +2091,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-variation-settings: "opsz" 48;
   /* match btn-action right padding so text aligns under "e" of Delete */
   padding-right: 9px;
-  /* RTL: right-align the show name in both web and mobile */
-  direction: rtl;
-  unicode-bidi: bidi-override;
+  /* Right-align the show name. The element's dir attribute handles bidi, so
+     embedded English words / numbers (e.g. "D ONE", "80") render correctly
+     and are NOT reversed — do NOT use unicode-bidi: bidi-override here. */
   text-align: right;
   /* single line — truncate with ellipsis */
   white-space: nowrap;
