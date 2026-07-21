@@ -84,7 +84,7 @@ async function checkGmail({ force = false } = {}) {
     const threads = listRes.data.threads || [];
     if (threads.length === 0) return { added: 0 };
 
-    const { findNewShows, IMPORT_UID } = require('./routes/import');
+    const { findNewShows, IMPORT_UID, IMPORT_MAX } = require('./routes/import');
 
     // Gmail API returns threads newest-first by default — no manual sort needed.
     // Only import from the first (newest) thread; label all threads as processed.
@@ -118,7 +118,9 @@ async function checkGmail({ force = false } = {}) {
           await require('fs').promises.mkdir(path.dirname(showsPath), { recursive: true });
           const existing = await readJsonCached(showsKey, showsPath, []);
           const newShows = findNewShows(XLSX_PATH, existing);
-          if (newShows.length > 0) {
+          if (newShows.length > IMPORT_MAX) {
+            console.error(`[gmail] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue; nothing written`);
+          } else if (newShows.length > 0) {
             await writeJsonAndCache(showsKey, showsPath, [...existing, ...newShows]);
             totalAdded += newShows.length;
             console.log(`[gmail] Imported ${newShows.length} new shows into workspace ${IMPORT_UID}`);

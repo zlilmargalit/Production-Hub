@@ -1084,6 +1084,44 @@ app.post('/api/admin/google-service-account', async (req, res) => {
   }
 });
 
+// ── Admin: inspect / prune shows in a workspace (recovery tool) ─────────────
+// Read-only stats + a guarded delete for cleaning up a bad bulk import. Body:
+//   { artistId, createdAfter?, dryRun=true }
+// Without createdAfter it only reports stats. With createdAfter it removes shows
+// whose createdAt >= that ISO timestamp (the import burst), dryRun=false to apply.
+app.post('/api/admin/prune-shows', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { artistId, createdAfter = null, dryRun = true } = req.body || {};
+  const uid = artistId ? artistScopedId('admin', artistId) : req.userId;
+  const key = udCacheKey(uid, 'shows');
+  const p   = udDataPath(uid, 'shows.json');
+  try {
+    const shows = await readJsonCached(key, p, []);
+    // createdAt-day histogram so you can see the burst without dumping payloads
+    const byDay = {};
+    for (const s of shows) {
+      const d = (s.createdAt || '').slice(0, 10) || 'no-createdAt';
+      byDay[d] = (byDay[d] || 0) + 1;
+    }
+    const cutoff = createdAfter ? new Date(createdAfter).getTime() : null;
+    const isBurst = (s) => cutoff && s.createdAt && new Date(s.createdAt).getTime() >= cutoff;
+    const toRemove = cutoff ? shows.filter(isBurst) : [];
+    const kept     = cutoff ? shows.filter((s) => !isBurst(s)) : shows;
+    if (cutoff && !dryRun) {
+      await writeJsonAndCache(key, p, kept);
+      console.log(`[admin] Pruned ${toRemove.length} shows created >= ${createdAfter} from ${uid}`);
+    }
+    res.json({
+      uid, total: shows.length, byCreatedAtDay: byDay,
+      createdAfter, dryRun,
+      wouldRemove: toRemove.length, remaining: kept.length,
+      removeSample: toRemove.slice(0, 8).map((s) => ({ date: s.date, name: s.name, createdAt: s.createdAt })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Setlists ─────────────────────────────────────────────────────────────────
 const SETLISTS_FILE = path.join(DATA_DIR, 'setlists.json');
 function loadSetlists() {

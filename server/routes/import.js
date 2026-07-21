@@ -18,6 +18,21 @@ const DEFAULT_XLSX = path.join(__dirname, '../../אסף אמדורסקי לוח 
 const IMPORT_ARTIST_ID = process.env.IMPORT_ARTIST_ID || '05dea0dd-dfc3-48c5-b49d-8e3f168ec8c9';
 const IMPORT_UID = artistScopedId('admin', IMPORT_ARTIST_ID);
 
+// The source spreadsheet holds YEARS of gig history. Only import shows dated
+// within this window (default: last 45 days onward) so a sync adds genuinely
+// new/upcoming shows rather than dumping the entire archive into the workspace.
+const IMPORT_FLOOR_DAYS = Number(process.env.IMPORT_FLOOR_DAYS || 45);
+// Safety net: if a single sync would add more than this, something is wrong
+// (parse/dedup failure) — refuse to write and surface it instead of flooding
+// the workspace. Overridable via IMPORT_MAX.
+const IMPORT_MAX = Number(process.env.IMPORT_MAX || 40);
+
+function importFloorStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - IMPORT_FLOOR_DAYS);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const readShows  = (uid) => readJsonCached(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), []);
 const writeShows = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), shows);
 
@@ -149,9 +164,13 @@ function venueOverlaps(a, b) {
 function findNewShows(xlsxPath, existingShows) {
   const wb = XLSX.readFile(xlsxPath);
   const newShows = [];
+  const floor = importFloorStr();
 
   for (const sheetName of ['אסף אמדורסקי', 'אני גיטרה']) {
     for (const s of parseSheet(wb, sheetName)) {
+      // Skip archive rows: only import recent/upcoming shows, never years of history
+      if (s.date < floor) continue;
+
       // Fuzzy dedup: same date + overlapping venue = same show
       const isDupe = [...existingShows, ...newShows].some(
         e => e.date === s.date && venueOverlaps(e.venue, s.venue)
@@ -212,6 +231,14 @@ router.post('/sync', async (req, res) => {
   try {
     const existing = await readShows(IMPORT_UID);
     const newShows = findNewShows(xlsxPath, existing);
+    if (newShows.length > IMPORT_MAX) {
+      console.error(`[sync] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue`);
+      return res.status(409).json({
+        added: gmailAdded,
+        blocked: newShows.length,
+        error: `Refused to add ${newShows.length} shows at once (safety cap ${IMPORT_MAX}). This usually means a dedup/parse problem — nothing was written.`,
+      });
+    }
     if (newShows.length > 0) await writeShows(IMPORT_UID, [...existing, ...newShows]);
     res.json({ added: newShows.length + gmailAdded, shows: newShows });
   } catch (err) {
@@ -219,4 +246,4 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-module.exports = { router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID };
+module.exports = { router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID, IMPORT_MAX };
