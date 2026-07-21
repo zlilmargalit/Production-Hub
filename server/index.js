@@ -1122,6 +1122,51 @@ app.post('/api/admin/prune-shows', async (req, res) => {
   }
 });
 
+// ── Admin: de-duplicate shows in a workspace (recovery tool) ────────────────
+// Collapses same-date + same-venue duplicates using the import matcher, keeping
+// the most complete record of each group (most crew, then most tasks, then the
+// oldest). Body: { artistId, dryRun=true }.
+app.post('/api/admin/dedupe-shows', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { artistId, dryRun = true } = req.body || {};
+  const { sameEvent } = require('./routes/import');
+  const uid = artistId ? artistScopedId('admin', artistId) : req.userId;
+  const key = udCacheKey(uid, 'shows');
+  const p   = udDataPath(uid, 'shows.json');
+  try {
+    const shows = await readJsonCached(key, p, []);
+    const used = new Array(shows.length).fill(false);
+    const kept = [], removed = [];
+    for (let i = 0; i < shows.length; i++) {
+      if (used[i]) continue;
+      used[i] = true;
+      const group = [shows[i]];
+      for (let j = i + 1; j < shows.length; j++) {
+        if (!used[j] && sameEvent(shows[i], shows[j])) { used[j] = true; group.push(shows[j]); }
+      }
+      if (group.length === 1) { kept.push(shows[i]); continue; }
+      // Keep the most complete: most crew, then most tasks, then oldest createdAt
+      group.sort((a, b) =>
+        (b.crewIds?.length || 0) - (a.crewIds?.length || 0) ||
+        (b.tasks?.length   || 0) - (a.tasks?.length   || 0) ||
+        String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+      kept.push(group[0]);
+      for (const g of group.slice(1)) removed.push(g);
+    }
+    if (!dryRun) {
+      await writeJsonAndCache(key, p, kept);
+      console.log(`[admin] Deduped ${removed.length} duplicate shows from ${uid}`);
+    }
+    res.json({
+      dryRun, total: shows.length,
+      duplicatesRemoved: removed.length, remaining: kept.length,
+      removedSample: removed.slice(0, 20).map((s) => ({ date: s.date, name: s.name, crew: s.crewIds?.length || 0 })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Setlists ─────────────────────────────────────────────────────────────────
 const SETLISTS_FILE = path.join(DATA_DIR, 'setlists.json');
 function loadSetlists() {

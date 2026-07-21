@@ -261,6 +261,15 @@ function isSameShow(existing, s) {
   return targets.some((t) => placesMatch(t, s.venue));
 }
 
+// Symmetric version for de-duplicating two existing show records against each
+// other (either may carry the venue in its name and/or venue field).
+function sameEvent(a, b) {
+  if (!a || !b || a.date !== b.date) return false;
+  const as = [a.venue, a.name].filter(Boolean);
+  const bs = [b.venue, b.name].filter(Boolean);
+  return as.some((x) => bs.some((y) => placesMatch(x, y)));
+}
+
 function findNewShows(xlsxPath, existingShows, { templates, crew } = {}) {
   const wb = XLSX.readFile(xlsxPath);
   const newShows = [];
@@ -349,4 +358,4 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-module.exports = { router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID, IMPORT_MAX };
+module.exports = { router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID, IMPORT_MAX, sameEvent };
