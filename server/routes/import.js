@@ -6,9 +6,17 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
-const { dataPath, cacheKey } = require('../utils/userData');
+const { dataPath, cacheKey, artistScopedId } = require('../utils/userData');
 
 const DEFAULT_XLSX = path.join(__dirname, '../../אסף אמדורסקי לוח הופעות.xlsx');
+
+// The shared "אסף אמדורסקי לוח הופעות" xlsx always belongs to the Assaf Amdursky
+// workspace — regardless of which workspace the admin is viewing when they hit
+// Sync. Imports must therefore target that artist's data files, not the legacy
+// admin-root shows.json (which the UI never displays once artists exist).
+// Override via IMPORT_ARTIST_ID if the source spreadsheet ever changes owner.
+const IMPORT_ARTIST_ID = process.env.IMPORT_ARTIST_ID || '05dea0dd-dfc3-48c5-b49d-8e3f168ec8c9';
+const IMPORT_UID = artistScopedId('admin', IMPORT_ARTIST_ID);
 
 const readShows  = (uid) => readJsonCached(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), []);
 const writeShows = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'), dataPath(uid, 'shows.json'), shows);
@@ -174,7 +182,7 @@ router.post('/preview', async (req, res) => {
     return res.status(404).json({ error: 'Excel file not found', path: xlsxPath });
   }
   try {
-    const existing = await readShows(req.userId);
+    const existing = await readShows(IMPORT_UID);
     const newShows = findNewShows(xlsxPath, existing);
     res.json({
       count: newShows.length,
@@ -202,13 +210,13 @@ router.post('/sync', async (req, res) => {
     return res.json({ added: gmailAdded });
   }
   try {
-    const existing = await readShows(req.userId);
+    const existing = await readShows(IMPORT_UID);
     const newShows = findNewShows(xlsxPath, existing);
-    if (newShows.length > 0) await writeShows(req.userId, [...existing, ...newShows]);
+    if (newShows.length > 0) await writeShows(IMPORT_UID, [...existing, ...newShows]);
     res.json({ added: newShows.length + gmailAdded, shows: newShows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-module.exports = { router, findNewShows, DEFAULT_XLSX };
+module.exports = { router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID };

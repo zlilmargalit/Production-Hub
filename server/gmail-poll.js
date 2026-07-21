@@ -1,12 +1,11 @@
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
-const { DATA_DIR } = require('./utils/userData');
+const { dataPath, cacheKey } = require('./utils/userData');
 
 const CREDENTIALS_PATH = path.join(__dirname, 'data/gmail-credentials.json');
 const TOKEN_PATH       = path.join(__dirname, 'data/gmail-token.json');
 const XLSX_PATH        = path.join(__dirname, '../אסף אמדורסקי לוח הופעות.xlsx');
-const SHOWS_FILE       = path.join(DATA_DIR, 'shows.json');
 const LABEL_PROCESSED  = 'Label_16'; // "production-imported"
 
 const ALLOWED_SENDERS  = ['noa@hamonvolume.com', 'zlilmargalit0@gmail.com'];
@@ -75,12 +74,17 @@ async function checkGmail({ force = false } = {}) {
     const auth = getOAuthClient();
     const gmail = google.gmail({ version: 'v1', auth });
 
-    const q = `from:(${ALLOWED_SENDERS.join(' OR ')}) has:attachment filename:.xlsx -label:production-imported`;
+    // Auto-poll only looks at un-imported mail. A manual Sync (force) re-scans the
+    // newest matching email even if it was already labeled, so the user can always
+    // recover a mis-imported or dropped schedule by clicking Sync — re-importing is
+    // idempotent thanks to the date+venue dedup in findNewShows().
+    const labelFilter = force ? '' : ' -label:production-imported';
+    const q = `from:(${ALLOWED_SENDERS.join(' OR ')}) has:attachment filename:.xlsx${labelFilter}`;
     const listRes = await gmail.users.threads.list({ userId: 'me', q, maxResults: 5 });
     const threads = listRes.data.threads || [];
-    if (threads.length === 0) return;
+    if (threads.length === 0) return { added: 0 };
 
-    const { findNewShows } = require('./routes/import');
+    const { findNewShows, IMPORT_UID } = require('./routes/import');
 
     // Gmail API returns threads newest-first by default — no manual sort needed.
     // Only import from the first (newest) thread; label all threads as processed.
@@ -106,13 +110,18 @@ async function checkGmail({ force = false } = {}) {
           await require('fs').promises.writeFile(XLSX_PATH, buf);
           console.log(`[gmail] Saved xlsx from message ${msg.id} (${buf.length} bytes)`);
 
+          // Import into the Assaf Amdursky workspace (where the UI reads shows),
+          // not the orphaned admin-root shows.json.
           const { readJsonCached, writeJsonAndCache } = require('./cache');
-          const existing = await readJsonCached('shows', SHOWS_FILE, []);
+          const showsKey  = cacheKey(IMPORT_UID, 'shows');
+          const showsPath = dataPath(IMPORT_UID, 'shows.json');
+          await require('fs').promises.mkdir(path.dirname(showsPath), { recursive: true });
+          const existing = await readJsonCached(showsKey, showsPath, []);
           const newShows = findNewShows(XLSX_PATH, existing);
           if (newShows.length > 0) {
-            await writeJsonAndCache('shows', SHOWS_FILE, [...existing, ...newShows]);
+            await writeJsonAndCache(showsKey, showsPath, [...existing, ...newShows]);
             totalAdded += newShows.length;
-            console.log(`[gmail] Imported ${newShows.length} new shows`);
+            console.log(`[gmail] Imported ${newShows.length} new shows into workspace ${IMPORT_UID}`);
           } else {
             console.log('[gmail] No new shows to add');
           }
