@@ -9,6 +9,10 @@ server/.env
 # Sensitive credential files
 docs/client_secret*.json
 *client_secret*.json
+# Google service-account private keys (never commit)
+*service-account*.json
+docs/claude-schedule-automation-*.json
+*.iam.gserviceaccount.com.json
 # Runtime data files — managed on server, not tracked in git
 server/data/*.json
 server/data/users/

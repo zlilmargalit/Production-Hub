@@ -1,0 +1,197 @@
+{
+  "eventTypes": ["הופעה", "תיאטרון", "מחול", "קולנוע"],
+  "crew": [
+    { "id": "demo-crew-1", "name": "יונתן בר-לב", "role": "סאונד", "phone": "054-000-1122", "email": "sound1@demo.co", "eventTypes": ["הופעה", "מחול", "קולנוע"] },
+    { "id": "demo-crew-2", "name": "מאיה גולדן", "role": "תאורה", "phone": "054-000-2233", "email": "light1@demo.co", "eventTypes": ["הופעה", "תיאטרון", "מחול"] },
+    { "id": "demo-crew-3", "name": "שירה קפלן", "role": "הפקה", "phone": "054-000-3344", "email": "prod1@demo.co", "eventTypes": ["הופעה", "תיאטרון", "מחול", "קולנוע"] },
+    { "id": "demo-crew-4", "name": "גיא שלו", "role": "וידאו", "phone": "054-000-4455", "email": "video1@demo.co", "eventTypes": ["קולנוע", "מחול"] },
+    { "id": "demo-crew-5", "name": "אורי נחמיאס", "role": "סאונד", "phone": "054-000-5566", "email": "sound2@demo.co", "eventTypes": ["הופעה", "תיאטרון"] },
+    { "id": "demo-crew-6", "name": "דנה רוזן", "role": "במה", "phone": "054-000-6677", "email": "stage1@demo.co", "eventTypes": ["תיאטרון", "מחול"] },
+    { "id": "demo-crew-7", "name": "טל אבידן", "role": "תאורה", "phone": "054-000-7788", "email": "light2@demo.co", "eventTypes": ["קולנוע", "הופעה"] }
+  ],
+  "templates": {
+    "הופעה": ["demo-crew-1", "demo-crew-2", "demo-crew-3"],
+    "תיאטרון": ["demo-crew-5", "demo-crew-2", "demo-crew-6", "demo-crew-3"],
+    "מחול": ["demo-crew-2", "demo-crew-1", "demo-crew-6", "demo-crew-3"],
+    "קולנוע": ["demo-crew-4", "demo-crew-7", "demo-crew-3"]
+  },
+  "fieldTemplates": {},
+  "shows": [
+    {
+      "id": "demo-show-1",
+      "name": "ערב שירה ישראלית – טריו הנגב",
+      "date": "2026-07-30",
+      "eventType": "הופעה",
+      "venue": "זאפה תל אביב",
+      "address": "ראול ולנברג 24, תל אביב",
+      "parking": "חניון גב-ים, כניסה מרחוב הברזל",
+      "contacts": "רכזת הפקה – מור: 054-000-9001 | מפיק בית – אבי: 054-000-9002",
+      "schedule": "17:00 הגעת צוות טכני\n17:30 פריקה וכיוונון\n18:30 סאונדצ'ק\n20:00 פתיחת דלתות\n20:30 תחילת מופע\n22:15 סיום",
+      "technicalCrew": "סאונד – יונתן בר-לב | תאורה – מאיה גולדן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-1", "demo-crew-2", "demo-crew-3"],
+      "guestList": "משפחת אלוני 2\nנועה ברגר\nיואב שגיא זוג\nרשימת עיתונות +3",
+      "food": "כיבוד קל לצוות | ארוחת ערב לאמנים",
+      "notes": "בקשה מיוחדת: תאורה חמה, ללא סטרובוסקופ.",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "אישור רשימת שירים", "completed": true },
+        { "text": "הזמנת גב-ליין (אמפים)", "completed": true },
+        { "text": "תיאום עיתונות", "completed": false }
+      ],
+      "createdAt": "2026-06-01T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-2",
+      "name": "תיאטרון 'חלון לרחוב' – הצגת מקור",
+      "date": "2026-08-07",
+      "eventType": "תיאטרון",
+      "venue": "תיאטרון הקאמרי",
+      "address": "שדרות שאול המלך 19, תל אביב",
+      "parking": "חניון היכל הספורט / חניון גולדה",
+      "contacts": "מנהלת במה – ליאת: 054-000-9010 | הפקה ראשית – עידו: 054-000-9011",
+      "schedule": "15:00 בנייה\n17:00 חזרה טכנית\n19:00 פתיחת אולם\n20:00 מערכה ראשונה\n21:00 הפסקה\n21:20 מערכה שנייה\n22:30 ירידת מסך",
+      "technicalCrew": "סאונד – אורי נחמיאס | תאורה – מאיה גולדן | במה – דנה רוזן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-5", "demo-crew-2", "demo-crew-6", "demo-crew-3"],
+      "notes": "12 שחקנים על הבמה, החלפת תפאורה מהירה בין המערכות.",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "אישור סידור תפאורה", "completed": true },
+        { "text": "מיקרופונים אלחוטיים – בדיקת סוללות", "completed": false }
+      ],
+      "createdAt": "2026-06-04T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-3",
+      "name": "מופע מחול עכשווי – 'קו האופק'",
+      "date": "2026-08-14",
+      "eventType": "מחול",
+      "venue": "מרכז סוזן דלל",
+      "address": "יחיאלי 5, נווה צדק, תל אביב",
+      "parking": "חניון רחוב שבזי בסמוך",
+      "contacts": "מנהל טכני – נמרוד: 054-000-9020 | רכזת מחול – שי: 054-000-9021",
+      "schedule": "14:00 מרקינג רצפה\n15:30 חזרת תאורה\n17:00 חזרה גנרלית\n19:30 פתיחת דלתות\n20:00 תחילת מופע\n21:10 סיום",
+      "technicalCrew": "תאורה – מאיה גולדן | סאונד – יונתן בר-לב | במה – דנה רוזן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-2", "demo-crew-1", "demo-crew-6", "demo-crew-3"],
+      "notes": "רצפת מחול שחורה (מרלי) נדרשת. 8 רקדנים.",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "פריסת רצפת מרלי", "completed": false },
+        { "text": "תיאום כניסת קהל עם הקופה", "completed": false }
+      ],
+      "createdAt": "2026-06-07T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-4",
+      "name": "הקרנת בכורה: 'עונת המעבר'",
+      "date": "2026-08-21",
+      "eventType": "קולנוע",
+      "venue": "סינמטק תל אביב",
+      "address": "שפרינצק 2, תל אביב",
+      "parking": "חניון דיזנגוף סנטר",
+      "contacts": "רכזת אירוע – טל: 054-000-9030 | הקרנה – מתן: 054-000-9031",
+      "schedule": "18:00 בדיקת DCP\n19:00 שטיח אדום וקבלת פנים\n20:00 דברי פתיחה\n20:15 הקרנה\n22:00 שיחה עם היוצרים",
+      "technicalCrew": "וידאו – גיא שלו | תאורה – טל אבידן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-4", "demo-crew-7", "demo-crew-3"],
+      "guestList": "צוות הסרט 12\nמוזמני הפקה 8\nעיתונות +5\nאורחי במאי 4",
+      "food": "קוקטייל קבלת פנים",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "קבלת קובץ DCP ובדיקה", "completed": true },
+        { "text": "מיקרופון לשיחת יוצרים", "completed": false }
+      ],
+      "createdAt": "2026-06-10T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-5",
+      "name": "מופע ג'אז – הרכב 'אחרי חצות'",
+      "date": "2026-09-04",
+      "eventType": "הופעה",
+      "venue": "הבארבי",
+      "address": "קיבוץ גלויות 52, תל אביב",
+      "parking": "חניה ברחובות הסמוכים",
+      "contacts": "מפיק בית – רן: 054-000-9040",
+      "schedule": "18:00 הגעת צוות\n19:00 סאונדצ'ק\n21:00 פתיחת דלתות\n21:30 מופע ראשון\n23:00 סט שני",
+      "technicalCrew": "סאונד – יונתן בר-לב | תאורה – מאיה גולדן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-1", "demo-crew-2", "demo-crew-3"],
+      "notes": "פסנתר כנף מכוון נדרש על הבמה.",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "הזמנת כיוון פסנתר", "completed": false }
+      ],
+      "createdAt": "2026-06-14T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-6",
+      "name": "'מכתבים מהעיר' – מונודרמה",
+      "date": "2026-09-18",
+      "eventType": "תיאטרון",
+      "venue": "בית ליסין",
+      "address": "דיזנגוף 101, תל אביב",
+      "parking": "חניון דיזנגוף סנטר בסמוך",
+      "contacts": "מנהלת במה – ענת: 054-000-9050 | הפקה – עידו: 054-000-9051",
+      "schedule": "16:00 בנייה\n18:00 חזרה טכנית\n19:30 פתיחת אולם\n20:00 תחילת הצגה\n21:20 סיום",
+      "technicalCrew": "סאונד – אורי נחמיאס | תאורה – מאיה גולדן | במה – דנה רוזן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-5", "demo-crew-2", "demo-crew-6", "demo-crew-3"],
+      "notes": "שחקן יחיד, תפאורה מינימליסטית.",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "אישור קיו-שיט תאורה", "completed": true }
+      ],
+      "createdAt": "2026-06-18T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-7",
+      "name": "ערב יצירות – להקת 'צעדים'",
+      "date": "2026-10-02",
+      "eventType": "מחול",
+      "venue": "מרכז סוזן דלל",
+      "address": "יחיאלי 5, נווה צדק, תל אביב",
+      "parking": "חניון רחוב שבזי בסמוך",
+      "contacts": "מנהל טכני – נמרוד: 054-000-9060 | רכזת: 054-000-9061",
+      "schedule": "13:00 מרקינג\n15:00 חזרת תאורה\n17:30 גנרלית\n19:30 פתיחת דלתות\n20:00 מופע",
+      "technicalCrew": "תאורה – מאיה גולדן | סאונד – יונתן בר-לב | במה – דנה רוזן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-2", "demo-crew-1", "demo-crew-6", "demo-crew-3"],
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "תיאום 3 יצירות עם 3 כוריאוגרפים", "completed": false }
+      ],
+      "createdAt": "2026-06-22T09:00:00.000Z"
+    },
+    {
+      "id": "demo-show-8",
+      "name": "קונצרט קאמרי – רביעיית 'מיתר'",
+      "date": "2026-10-16",
+      "eventType": "הופעה",
+      "venue": "צוותא",
+      "address": "אבן גבירול 30, תל אביב",
+      "parking": "חניון גן העיר",
+      "contacts": "מפיק – יעל: 054-000-9070",
+      "schedule": "18:00 הגעה\n18:45 סאונדצ'ק אקוסטי\n20:00 פתיחת דלתות\n20:30 קונצרט",
+      "technicalCrew": "סאונד – יונתן בר-לב | תאורה – מאיה גולדן | הפקה – שירה קפלן",
+      "crewIds": ["demo-crew-1", "demo-crew-2", "demo-crew-3"],
+      "notes": "הגברה עדינה בלבד, דגש על אקוסטיקה טבעית.",
+      "invoice": false,
+      "receipt": false,
+      "archived": false,
+      "tasks": [
+        { "text": "4 כיסאות ללא ידיות + 4 סטנדרים", "completed": true },
+        { "text": "בדיקת אקוסטיקה עם המנהל האמנותי", "completed": false }
+      ],
+      "createdAt": "2026-06-26T09:00:00.000Z"
+    }
+  ]
+}
