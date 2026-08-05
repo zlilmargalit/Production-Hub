@@ -738,7 +738,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
 }
 
 // ── Dashboard root ─────────────────────────────────────────────────────────────
-export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {}, onOpenTimeLog }) {
+export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {}, onOpenTimeLog, demoMode = false, demoShows = null }) {
   const artists = withColor(rawArtists);
   const [allShows, setAllShows]       = useState([]);
   const [loadingShows, setLoading]    = useState(true);
@@ -749,6 +749,17 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
   const [allTasks, setAllTasks] = useState([]);
 
   useEffect(() => {
+    // Demo: all shows are already in memory — tag each with its artist's meta
+    // (colour/name) instead of hitting the authenticated per-artist API.
+    if (demoMode) {
+      const tagged = (demoShows || []).map((s) => {
+        const a = artists.find((x) => x.id === s.artistId) || {};
+        return { ...s, artistName: a.name, color: a.color, soft: a.soft };
+      });
+      setAllShows(tagged);
+      setLoading(false);
+      return;
+    }
     if (!artists.length) { setAllShows([]); setLoading(false); return; }
     setLoading(true);
     Promise.all(
@@ -759,9 +770,10 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
           .catch(() => [])
       )
     ).then((results) => { setAllShows(results.flat()); setLoading(false); });
-  }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rawArtists, demoMode, demoShows]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (demoMode) { setAllTasks([]); return; }
     if (!artists.length) { setAllTasks([]); return; }
     Promise.all(
       artists.map((a) =>
@@ -771,7 +783,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
           .catch(() => [])
       )
     ).then((results) => setAllTasks(results.flat()));
-  }, [rawArtists]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rawArtists, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Toggle a task using ITS OWN artist scope (not the current workspace's), so
   // completing any artist's task from the shared home hits the right file.

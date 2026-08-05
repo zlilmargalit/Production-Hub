@@ -126,6 +126,7 @@ function App({ demoMode = false }) {
           setTemplates(d.templates || {});
           setFieldTemplates(d.fieldTemplates || {});
           setEventTypes(d.eventTypes || []);
+          setArtists(d.artists || []);
         })
         .catch(() => setError('Could not load demo data'))
         .finally(() => setLoading(false));
@@ -349,6 +350,12 @@ function App({ demoMode = false }) {
 
   // ── Artist switching ──────────────────────────────────────────────────────
   const switchToArtist = useCallback(async (artist) => {
+    // Demo mode holds all data in memory (no per-artist API) — just switch context.
+    if (demoMode) {
+      currentArtistRef.current = artist?.id || null;
+      setCurrentArtist(artist);
+      return;
+    }
     // Cancel any previous in-flight switch to avoid stale data races
     if (switchAbortRef.current) switchAbortRef.current.abort();
     const ac = new AbortController();
@@ -366,7 +373,7 @@ function App({ demoMode = false }) {
     } catch (err) {
       if (err.name !== 'AbortError') console.error('[artist-switch]', err.message);
     }
-  }, [fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
 
   const createArtist = useCallback(async (name) => {
     const res = await fetch('/api/artists', {
@@ -665,6 +672,8 @@ function App({ demoMode = false }) {
             onOpenShow={openShowFromDashboard}
             onToggleTask={toggleTask}
             eventTypeChecklists={eventTypeChecklists}
+            demoMode={demoMode}
+            demoShows={shows}
           />
         ) : page === 'timelog' ? (
           <TimeLog onBack={() => setPage('home')} />
