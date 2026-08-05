@@ -635,16 +635,15 @@ function App({ demoMode = false }) {
               </svg>
             </button>
           )}
-          {!demoMode && (
-            <WorkspaceSelector
-              page={page}
-              artists={artists}
-              currentArtist={currentArtist}
-              onSwitch={handleWorkspaceSwitch}
-              onGoHome={() => setPage('home')}
-              onOpenTimeLog={() => setPage('timelog')}
-            />
-          )}
+          <WorkspaceSelector
+            page={page}
+            artists={artists}
+            currentArtist={currentArtist}
+            onSwitch={handleWorkspaceSwitch}
+            onGoHome={() => setPage('home')}
+            onOpenTimeLog={() => setPage('timelog')}
+            demoMode={demoMode}
+          />
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
         </div>
       </header>
@@ -679,7 +678,7 @@ function App({ demoMode = false }) {
           <TimeLog onBack={() => setPage('home')} />
         ) : page === 'shows' ? (
           <ShowList
-            shows={shows}
+            shows={demoMode && currentArtist ? shows.filter((s) => s.artistId === currentArtist.id) : shows}
             crew={crew}
             fieldTemplates={fieldTemplates}
             onEdit={userRole === 'admin' ? openEdit : null}
@@ -1077,7 +1076,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
 // ── Workspace Selector ────────────────────────────────────────────────────────
 const WS_PALETTE = ['#3852B4', '#F08D39', '#C79A3F', '#4E7265'];
 
-function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, onOpenTimeLog }) {
+function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, onOpenTimeLog, demoMode = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -1135,8 +1134,8 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
             {page === 'home' && <span className="ws-dropdown-check">✓</span>}
           </button>
 
-          {/* Time Log row */}
-          <button
+          {/* Time Log row — hidden in demo (needs a real account) */}
+          {!demoMode && <button
             className={`ws-dropdown-item${isTimeLog ? ' ws-dropdown-item--active' : ''}`}
             onClick={() => { onOpenTimeLog?.(); setOpen(false); }}
           >
@@ -1151,7 +1150,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
               <span className="ws-dropdown-item-sub">Sessions &amp; billing</span>
             </span>
             {isTimeLog ? <span className="ws-dropdown-check">✓</span> : <span className="ws-dropdown-arrow">→</span>}
-          </button>
+          </button>}
 
           {/* Artist rows */}
           {artists.length > 0 && (
