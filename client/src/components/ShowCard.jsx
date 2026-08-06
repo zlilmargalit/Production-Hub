@@ -107,6 +107,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     setBriefStatus('loading');
     setBriefError(null);
     setBriefDocUrl(null);
+    // Re-enable the button after 15s even if the doc is still generating in the
+    // background — the poll below still flips it to Sent ✓ / Open doc when ready.
+    setTimeout(() => setBriefStatus((s) => (s === 'loading' ? null : s)), 15000);
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
       const res  = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });

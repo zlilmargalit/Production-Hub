@@ -200,6 +200,21 @@ function mergeRunsInXml(xml) {
   return xml.replace(re, (match) => match.replace(new RegExp(rb, 'g'), ''));
 }
 
+// Remove a whole section from the brief's document.xml: the value paragraph that
+// holds {{PLACEHOLDER}} plus the section-header paragraph immediately before it.
+// Used to drop fields that are empty/unchecked so only selected fields render.
+function removeBriefSection(xml, ph) {
+  const phIdx = xml.indexOf(ph);
+  if (phIdx === -1) return xml;
+  const valStart = xml.lastIndexOf('<w:p ', phIdx);           // value paragraph start
+  const valEndTag = xml.indexOf('</w:p>', phIdx);             // value paragraph end
+  if (valStart === -1 || valEndTag === -1) return xml;
+  const valEnd = valEndTag + '</w:p>'.length;
+  const hdrStart = xml.lastIndexOf('<w:p ', valStart - 1);    // header paragraph start
+  if (hdrStart === -1) return xml;
+  return xml.slice(0, hdrStart) + xml.slice(valEnd);
+}
+
 // Create a coordination-sheet Google Doc by filling the DOCX template and
 // uploading it to Drive (Drive auto-converts DOCX → Google Doc on upload).
 async function createBriefDoc(payload) {
@@ -228,6 +243,23 @@ async function createBriefDoc(payload) {
       : `</w:t></w:r><w:r><w:br/></w:r><w:r>${noB}<w:t xml:space="preserve">${x(l)}`
     ).join('');
   };
+
+  // Drop any section whose field is empty/unchecked — remove its header AND its
+  // value paragraph so the brief shows ONLY the fields that are toggled on and
+  // have content (no more empty "הסעה"/"חנייה" headers).
+  const OPTIONAL_SECTIONS = {
+    '{{VENUE}}':              payload.venue,
+    '{{ADDRESS}}':            payload.address,
+    '{{TECHNICA_CREW}}':      payload.technicalCrew,
+    '{{TRANSPORTATION}}':     payload.transportation,
+    '{{PARKING}}':            payload.parking,
+    '{{SCHEDULE}}':           payload.schedule,
+    '{{CONTACTS}}':           payload.contacts,
+    '{{ADDITIONAL_DETAILS}}': payload.additionalDetails,
+  };
+  for (const [ph, val] of Object.entries(OPTIONAL_SECTIONS)) {
+    if (!val || !String(val).trim()) docXml = removeBriefSection(docXml, ph);
+  }
 
   const map = {
     '{{EVENT_NAME}}':         toDocx(payload.eventName),
