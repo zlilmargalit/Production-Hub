@@ -73,9 +73,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     .filter((m) => MUSICIAN_ROLES.has(m.role))
     .map((m) => m.name)
     .join(' | ');
-  const TECH_ROLES = ['סאונד', 'תאורה', 'הפקה'];
+  // Technical crew = everyone assigned who isn't a musician (backliner included).
   const techCrewDisplay = assignedCrew.length > 0
-    ? assignedCrew.filter((m) => TECH_ROLES.includes(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ')
+    ? assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ')
     : show.technicalCrew;
 
   const customDefs = (show.eventType && fieldTemplates?.[show.eventType]) || [];

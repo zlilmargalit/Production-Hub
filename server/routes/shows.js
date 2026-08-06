@@ -551,7 +551,9 @@ router.post('/:id/brief', async (req, res) => {
     const customDefs = (show.eventType && fieldTemplates[show.eventType]) || [];
 
     const assignedCrew = (show.crewIds || []).map((id) => crew.find((m) => m.id === id)).filter(Boolean);
-    const techCrew  = assignedCrew.filter((m) => ['סאונד', 'תאורה', 'הפקה'].includes(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ') || show.technicalCrew || '';
+    // Technical crew = everyone assigned who isn't a musician (so backliner,
+    // sound, lighting, production… all appear — consistent with the PDF).
+    const techCrew  = assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ') || show.technicalCrew || '';
     const musicians = assignedCrew.filter((m) => MUSICIAN_ROLES.has(m.role)).map((m) => m.name).join(', ');
 
     const checkItems = [
