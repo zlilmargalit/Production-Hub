@@ -23,7 +23,35 @@ async function loadPuppeteer() {
   return _puppeteer;
 }
 const fss       = require('fs');
+const path      = require('path');
 const { execSync } = require('child_process');
+
+// ── Hebrew font for headless Chromium ────────────────────────────────────────
+// Railway's nixpacks image ships NO Hebrew-capable system font, so Chromium
+// renders Hebrew text as invisible glyphs ("boxes but no text"). Register the
+// bundled Heebo font where fontconfig scans ($XDG_DATA_HOME/fonts and ~/.fonts)
+// BEFORE launching Chromium, so Hebrew renders reliably regardless of the
+// embedded @font-face. No-op on macOS (has Hebrew fonts).
+let _fontReady = false;
+function ensureHebrewFont() {
+  if (_fontReady || process.platform === 'darwin') return;
+  _fontReady = true;
+  try {
+    const src = path.join(__dirname, 'assets/Heebo.ttf');
+    if (!fss.existsSync(src)) { console.warn('[pdf] Heebo.ttf missing — Hebrew may not render'); return; }
+    const xdg = process.env.XDG_DATA_HOME || '/tmp/hub-xdg';
+    const targets = [path.join(xdg, 'fonts')];
+    if (process.env.HOME) targets.push(path.join(process.env.HOME, '.fonts'));
+    for (const dir of targets) {
+      try { fss.mkdirSync(dir, { recursive: true }); fss.copyFileSync(src, path.join(dir, 'Heebo.ttf')); } catch {}
+    }
+    process.env.XDG_DATA_HOME = xdg;
+    try { execSync('fc-cache -f', { stdio: 'ignore' }); } catch {}
+    console.log('[pdf] Registered Heebo Hebrew font for Chromium');
+  } catch (e) {
+    console.warn('[pdf] could not register Hebrew font:', e.message);
+  }
+}
 
 // ── Chrome path resolution (lazy — runs once on first PDF request) ──────────
 
@@ -132,6 +160,7 @@ function getChromePath() {
 let browserPromise = null;
 
 async function launchBrowser() {
+  ensureHebrewFont();          // register Hebrew font before Chromium starts
   const cp = getChromePath();
   const puppeteer = await loadPuppeteer();
   console.log('[pdf] Launching browser:', cp);
