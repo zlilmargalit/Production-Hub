@@ -326,6 +326,31 @@ function showFieldInPdf(show, key) {
   return !show.pdfFields || show.pdfFields[key] !== false;
 }
 
+// crewIds is the real link; technicalCrew is a denormalised text copy of it that
+// the brief and PDF fall back to when no crew is assigned. Nothing kept the two
+// in step, so swapping a sound engineer updated crewIds and left the old name in
+// technicalCrew — 11 of 20 shows had already drifted this way, most listing
+// musicians who are no longer counted as technical crew.
+//
+// Rebuild the text from crewIds on every save so the stored copy can't go stale.
+// When no crew is assigned the existing text is preserved: shows imported from
+// the schedule carry a sound contact there and have nothing to derive from.
+async function syncTechnicalCrew(userId, show) {
+  try {
+    if (!Array.isArray(show.crewIds) || show.crewIds.length === 0) return show;
+    const crew = await readCrew(userId);
+    const text = show.crewIds
+      .map((id) => crew.find((m) => m.id === id))
+      .filter((m) => m && !MUSICIAN_ROLES.has(m.role))
+      .map((m) => `${m.role} – ${m.name}`)
+      .join(' | ');
+    if (!text || text === show.technicalCrew) return show;
+    return { ...show, technicalCrew: text };
+  } catch {
+    return show;   // never block a save on this
+  }
+}
+
 // Short artist tag inserted into the PDF filename. Artist records store Latin
 // names ("Assaf Amdursky"), but the coordination sheets are filed in Hebrew —
 // so map to a Hebrew tag, falling back to the artist's own name for anyone not
@@ -495,6 +520,7 @@ router.put('/:id', async (req, res, next) => {
     }
 
     shows[idx] = { ...shows[idx], ...incoming };
+    shows[idx] = await syncTechnicalCrew(req.userId, shows[idx]);
     await writeShows(req.userId, shows);
     res.json(shows[idx]);
   } catch (err) { next(err); }
