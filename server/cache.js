@@ -5,6 +5,7 @@
 // writers (gmail-poll, chokidar import) call invalidate(key) afterwards.
 
 const NodeCache = require('node-cache');
+const fs  = require('fs');
 const fsp = require('fs').promises;
 
 // stdTTL=0 → entries never expire by time; we manage invalidation explicitly.
@@ -69,14 +70,27 @@ async function snapshotPrevious(filePath) {
   } catch { /* never block the write on version bookkeeping */ }
 }
 
-// Write JSON to disk and refresh the cache.
-// The write is atomic: JSON is written to a temp file in the same directory and
-// then renamed over the target. rename() is atomic on the filesystem, so a crash
-// or two overlapping writes can never leave a half-written, unparseable file —
-// which the previous in-place writeFile could, silently corrupting real data.
-async function writeJsonAndCache(key, filePath, data) {
-  await snapshotPrevious(filePath);
-  const json = JSON.stringify(data, null, 2);
+// ── Per-file serialization ──────────────────────────────────────────────────
+// Everything runs in one Node process, but requests and the cron jobs
+// (gmail-poll, automations, notifications) interleave at every await. A promise
+// chain per path serializes work on the same file so a read-modify-write can't
+// be interleaved by another one — which is how updates get silently lost.
+const _locks = new Map();
+function withFileLock(filePath, fn) {
+  const prev = _locks.get(filePath) || Promise.resolve();
+  const run  = prev.then(fn, fn);                 // run regardless of prior outcome
+  // Keep the chain alive but don't retain rejections
+  _locks.set(filePath, run.then(() => {}, () => {}));
+  run.finally(() => { if (_locks.get(filePath) === undefined) _locks.delete(filePath); });
+  return run;
+}
+
+// Atomic JSON write: temp file in the same directory, then rename over the
+// target. rename() is atomic on the filesystem, so a crash or an overlapping
+// write can never leave a half-written, unparseable file — which an in-place
+// writeFile can, silently corrupting real data.
+async function writeJsonAtomic(filePath, data) {
+  const json = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
   const tmp  = `${filePath}.${process.pid}.${Date.now()}.tmp`;
   try {
     await fsp.writeFile(tmp, json);
@@ -85,7 +99,48 @@ async function writeJsonAndCache(key, filePath, data) {
     await fsp.unlink(tmp).catch(() => {});
     throw err;
   }
-  cache.set(key, data);
+}
+
+// Synchronous counterpart, for the handful of call sites that write config-ish
+// files synchronously (users, teams, invitations, activity log…). Same atomic
+// temp-then-rename guarantee without forcing those callers to become async.
+function writeJsonAtomicSync(filePath, data) {
+  const json = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  const tmp  = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(tmp, json, 'utf8');
+    fs.renameSync(tmp, filePath);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch {}
+    throw err;
+  }
+}
+
+// Write JSON to disk and refresh the cache. Serialized per file and atomic.
+async function writeJsonAndCache(key, filePath, data) {
+  return withFileLock(filePath, async () => {
+    await snapshotPrevious(filePath);
+    await writeJsonAtomic(filePath, data);
+    cache.set(key, data);
+  });
+}
+
+// Read-modify-write as one indivisible step. Use this instead of
+// read → mutate → write whenever concurrent callers could touch the same file
+// (user requests racing a cron job): the whole sequence holds the file lock, and
+// the read deliberately bypasses the cache so it always sees the latest data.
+async function updateJsonAndCache(key, filePath, mutator, fallback = []) {
+  return withFileLock(filePath, async () => {
+    let current;
+    try { current = JSON.parse(await fsp.readFile(filePath, 'utf8')); }
+    catch (err) { if (err.code === 'ENOENT') current = fallback; else throw err; }
+    const next = await mutator(current);
+    if (next === undefined) return current;        // mutator opted out
+    await snapshotPrevious(filePath);
+    await writeJsonAtomic(filePath, next);
+    cache.set(key, next);
+    return next;
+  });
 }
 
 function invalidate(key) {
@@ -96,4 +151,7 @@ function clearAll() {
   cache.flushAll();
 }
 
-module.exports = { cache, readJsonCached, writeJsonAndCache, invalidate, clearAll };
+module.exports = {
+  cache, readJsonCached, writeJsonAndCache, updateJsonAndCache,
+  writeJsonAtomic, writeJsonAtomicSync, withFileLock, invalidate, clearAll,
+};

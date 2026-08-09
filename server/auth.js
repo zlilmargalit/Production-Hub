@@ -59,7 +59,9 @@ function loadUsers() {
 }
 
 function saveUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  // Atomic: a torn write here would corrupt the account list and lock everyone
+  // out, so write a temp file and rename it over the target.
+  require('./cache').writeJsonAtomicSync(USERS_FILE, users);
 }
 
 // ── Token sign / verify ──────────────────────────────────────────────────────

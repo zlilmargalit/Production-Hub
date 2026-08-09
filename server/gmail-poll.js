@@ -112,22 +112,31 @@ async function checkGmail({ force = false } = {}) {
 
           // Import into the Assaf Amdursky workspace (where the UI reads shows),
           // not the orphaned admin-root shows.json.
-          const { readJsonCached, writeJsonAndCache } = require('./cache');
+          const { readJsonCached, updateJsonAndCache } = require('./cache');
           const showsKey  = cacheKey(IMPORT_UID, 'shows');
           const showsPath = dataPath(IMPORT_UID, 'shows.json');
           await require('fs').promises.mkdir(path.dirname(showsPath), { recursive: true });
-          const existing  = await readJsonCached(showsKey, showsPath, []);
           const templates = await readJsonCached(cacheKey(IMPORT_UID, 'templates'), dataPath(IMPORT_UID, 'templates.json'), {});
           const crew      = await readJsonCached(cacheKey(IMPORT_UID, 'crew'),      dataPath(IMPORT_UID, 'crew.json'),      []);
-          const newShows  = findNewShows(XLSX_PATH, existing, { templates, crew });
-          if (newShows.length > IMPORT_MAX) {
-            console.error(`[gmail] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue; nothing written`);
-          } else if (newShows.length > 0) {
-            await writeJsonAndCache(showsKey, showsPath, [...existing, ...newShows]);
-            totalAdded += newShows.length;
-            console.log(`[gmail] Imported ${newShows.length} new shows into workspace ${IMPORT_UID}`);
-          } else {
-            console.log('[gmail] No new shows to add');
+
+          // This cron runs while shows are being edited in the UI. Reading the
+          // list and later writing back "existing + new" would silently discard
+          // any show saved in between, so dedup and append happen inside one
+          // locked read-modify-write against the freshest data on disk.
+          let added = 0;
+          await updateJsonAndCache(showsKey, showsPath, (existing) => {
+            const newShows = findNewShows(XLSX_PATH, existing, { templates, crew });
+            if (newShows.length > IMPORT_MAX) {
+              console.error(`[gmail] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue; nothing written`);
+              return undefined;   // abort without writing
+            }
+            if (newShows.length === 0) { console.log('[gmail] No new shows to add'); return undefined; }
+            added = newShows.length;
+            return [...existing, ...newShows];
+          }, []);
+          if (added) {
+            totalAdded += added;
+            console.log(`[gmail] Imported ${added} new shows into workspace ${IMPORT_UID}`);
           }
           importedFromNewest = true;
         } else {

@@ -41,7 +41,7 @@ const { router: automationsRouter, publicRouter: automationsPublicRouter, startC
 const { router: notificationsRouter, startNotificationCron } = require('./routes/notifications');
 const driveRouter             = require('./routes/drive');
 const { startPolling: startGmailPolling } = require('./gmail-poll');
-const { readJsonCached, writeJsonAndCache, clearAll: clearCache } = require('./cache');
+const { readJsonCached, writeJsonAndCache, writeJsonAtomicSync, clearAll: clearCache } = require('./cache');
 const { shutdown: shutdownPuppeteer } = require('./pdf');
 const { DATA_DIR, ensureUserDir, dataPath: udDataPath, cacheKey: udCacheKey, artistScopedId } = require('./utils/userData');
 
@@ -96,7 +96,7 @@ function logActivity(userId, username, action, detail = '') {
     const log = loadActivity();
     log.unshift({ userId, username, action, detail, timestamp: new Date().toISOString() });
     if (log.length > 500) log.length = 500;
-    fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(log, null, 2), 'utf8');
+    writeJsonAtomicSync(ACTIVITY_FILE, log);
   } catch { /* non-fatal */ }
 }
 
@@ -110,14 +110,14 @@ function loadJoinRequests() {
   try { return JSON.parse(fs.readFileSync(JOIN_REQUESTS_FILE, 'utf8')); } catch { return []; }
 }
 function saveJoinRequests(list) {
-  fs.writeFileSync(JOIN_REQUESTS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  writeJsonAtomicSync(JOIN_REQUESTS_FILE, list);
 }
 
 function loadInvitations() {
   try { return JSON.parse(fs.readFileSync(INVITATIONS_FILE, 'utf8')); } catch { return []; }
 }
 function saveInvitations(list) {
-  fs.writeFileSync(INVITATIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  writeJsonAtomicSync(INVITATIONS_FILE, list);
 }
 function loadTeamSettings() {
   try {
@@ -127,13 +127,13 @@ function loadTeamSettings() {
   }
 }
 function saveTeamSettings(settings) {
-  fs.writeFileSync(TEAM_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+  writeJsonAtomicSync(TEAM_SETTINGS_FILE, settings);
 }
 function loadTeams() {
   try { return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch { return []; }
 }
 function saveTeams(teams) {
-  fs.writeFileSync(TEAMS_FILE, JSON.stringify(teams, null, 2), 'utf8');
+  writeJsonAtomicSync(TEAMS_FILE, teams);
 }
 
 /**
@@ -589,7 +589,7 @@ function loadAdminProfile() {
   try { return JSON.parse(fs.readFileSync(ADMIN_PROFILE_PATH(), 'utf8')); } catch { return {}; }
 }
 function saveAdminProfile(p) {
-  fs.writeFileSync(ADMIN_PROFILE_PATH(), JSON.stringify(p, null, 2), 'utf8');
+  writeJsonAtomicSync(ADMIN_PROFILE_PATH(), p);
 }
 
 app.get('/api/me', (req, res) => {
@@ -1260,7 +1260,7 @@ function loadSetlists() {
   try { return JSON.parse(fs.readFileSync(SETLISTS_FILE, 'utf8')); } catch { return []; }
 }
 function saveSetlists(list) {
-  fs.writeFileSync(SETLISTS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  writeJsonAtomicSync(SETLISTS_FILE, list);
 }
 
 app.get('/api/setlists', (req, res) => {
