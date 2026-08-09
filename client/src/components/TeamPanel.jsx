@@ -5,6 +5,7 @@ import TechFiles         from './backliner/TechFiles';
 import SegmentedControl  from './ui/SegmentedControl';
 import PageBar           from './ui/PageBar';
 import SavedPill, { useSavedPill } from './ui/SavedPill';
+import ErrorBoundary from './ui/ErrorBoundary';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const RUBRIC_LABELS = {
@@ -201,7 +202,12 @@ function InlinePermissions({ userId, perms, onSave }) {
 }
 
 // ── Expandable user details ────────────────────────────────────────────────────
-function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow, onCreateTask, onToggleTask }) {
+function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateTask, onToggleTask }) {
+  // Coerce to arrays: a failed fetch can leave an error object here, and .filter
+  // on a non-array throws during render, which blanks the page.
+  const showList     = Array.isArray(shows)       ? shows       : [];
+  const taskList     = Array.isArray(tasks)       ? tasks       : [];
+  const activityList = Array.isArray(activityLog) ? activityLog : [];
   const [section, setSection] = useState('tasks');
   const today = new Date().toISOString().slice(0, 10);
 
@@ -212,8 +218,8 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow, onCr
   // every embedded task disappear from this panel — including ones this panel
   // had just created itself. Writing here now goes to the same store this reads
   // from, so there is nothing to fall back to.
-  const showMap = Object.fromEntries(shows.map(s => [s.id, s]));
-  const assignedTasks = tasks
+  const showMap = Object.fromEntries(showList.map(s => [s.id, s]));
+  const assignedTasks = taskList
     .filter(t => !t.completed && t.assigneeId === user.id)
     .map(t => ({
       ...t,
@@ -222,7 +228,7 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow, onCr
     }));
 
   // Upcoming shows (next 5 where user is assigned)
-  const upcomingShows = shows
+  const upcomingShows = showList
     .filter(s =>
       !s.archived &&
       (user.assignedShowIds || []).includes(s.id) &&
@@ -232,7 +238,7 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow, onCr
     .slice(0, 5);
 
   // Recent activity (last 3 actions for this user)
-  const userActivity = activityLog
+  const userActivity = activityList
     .filter(e => e.userId === user.id || e.username === user.username)
     .slice(0, 3);
 
@@ -473,23 +479,27 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       {/* Content permissions */}
                       <div className="tm-settings-col">
                         <span className="tm-settings-col-label">Content Permissions</span>
-                        <InlinePermissions
-                          userId={u.id}
-                          perms={localPerms[u.id] || { viewRubrics: [], editRubrics: [] }}
-                          onSave={savePerms}
-                        />
+                        <ErrorBoundary label="Content permissions">
+                          <InlinePermissions
+                            userId={u.id}
+                            perms={localPerms[u.id] || { viewRubrics: [], editRubrics: [] }}
+                            onSave={savePerms}
+                          />
+                        </ErrorBoundary>
                       </div>
                     </div>
 
-                    <UserExpanded
-                      user={u}
-                      shows={shows}
-                      tasks={tasks}
-                      activityLog={activityLog}
-                      onUpdateShow={onUpdateShow}
-                      onCreateTask={onCreateTask}
-                      onToggleTask={onToggleTask}
-                    />
+                    <ErrorBoundary label="Member details">
+                      <UserExpanded
+                        user={u}
+                        shows={shows}
+                        tasks={tasks}
+                        activityLog={activityLog}
+                        onUpdateShow={onUpdateShow}
+                        onCreateTask={onCreateTask}
+                        onToggleTask={onToggleTask}
+                      />
+                    </ErrorBoundary>
                   </>
                 )}
               </div>
