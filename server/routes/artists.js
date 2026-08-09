@@ -5,6 +5,19 @@ const { v4: uuidv4 } = require('uuid');
 const { dataPath, cacheKey, ensureArtistDir } = require('../utils/userData');
 const { readJsonCached, writeJsonAndCache }    = require('../cache');
 
+// A workspace is an artist record with a workType. Records saved before this
+// field existed have no value, so every read normalises to 'production' — no
+// migration, no rewriting of existing files.
+const WORK_TYPES = ['production', 'administration', 'calendar', 'custom'];
+const DEFAULT_WORK_TYPE = 'production';
+function normalizeWorkType(v) {
+  const t = String(v || '').trim().toLowerCase();
+  return WORK_TYPES.includes(t) ? t : DEFAULT_WORK_TYPE;
+}
+// Enums are normalised on write and defaulted on read, so a free-text value can
+// never reach storage (see the crew.json `role` drift this codebase already has).
+const withWorkType = (a) => ({ ...a, workType: normalizeWorkType(a.workType) });
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const readArtists  = (uid) =>
   readJsonCached(cacheKey(uid, 'artists'), dataPath(uid, 'artists.json'), []);
@@ -14,7 +27,7 @@ const writeArtists = (uid, data) =>
 // ── GET / — list all artists for the current user ────────────────────────────
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await readArtists(req.userId));
+    res.json((await readArtists(req.userId)).map(withWorkType));
   } catch (err) { next(err); }
 });
 
@@ -24,8 +37,21 @@ router.post('/', async (req, res, next) => {
     const name = (req.body?.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Name is required' });
 
+    // Reject an unrecognised workType rather than silently coercing it — on
+    // create the caller stated an intent, and a typo should surface.
+    if (req.body?.workType !== undefined &&
+        !WORK_TYPES.includes(String(req.body.workType).trim().toLowerCase())) {
+      return res.status(400).json({ error: `workType must be one of: ${WORK_TYPES.join(', ')}` });
+    }
     const artists   = await readArtists(req.userId);
-    const newArtist = { id: uuidv4(), name, createdAt: new Date().toISOString() };
+    const newArtist = {
+      id: uuidv4(),
+      name,
+      workType: normalizeWorkType(req.body?.workType),
+      color: typeof req.body?.color === 'string' ? req.body.color : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    if (newArtist.color === undefined) delete newArtist.color;
     artists.push(newArtist);
     await writeArtists(req.userId, artists);
     await ensureArtistDir(req.userId, newArtist.id);   // create isolated data dirs

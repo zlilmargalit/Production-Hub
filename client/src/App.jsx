@@ -14,6 +14,7 @@ import AutomationsPage  from './components/automations/AutomationsPage';
 import BacklinerDashboard from './components/backliner/BacklinerDashboard';
 import Dashboard from './components/Dashboard';
 import TimeLog from './components/TimeLog';
+import { groupByWorkType, resolveWorkType, creatableTypes } from './config/workspaceTypes';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -400,11 +401,11 @@ function App({ demoMode = false }) {
     }
   }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
 
-  const createArtist = useCallback(async (name) => {
+  const createArtist = useCallback(async (name, workType = 'production') => {
     const res = await fetch('/api/artists', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, workType }),
     });
     if (!res.ok) throw new Error('Failed to create artist');
     const artist = await res.json();
@@ -1177,12 +1178,16 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
             {isTimeLog ? <span className="ws-dropdown-check">✓</span> : <span className="ws-dropdown-arrow">→</span>}
           </button>}
 
-          {/* Artist rows */}
-          {artists.length > 0 && (
-            <>
-              <div className="ws-dropdown-divider">Artists</div>
-              {artists.map((a, i) => {
-                const color = WS_PALETTE[i % WS_PALETTE.length];
+          {/* Workspace rows, grouped by template. One flat level: a group header
+              per type, then its workspaces. Deliberately not a nested menu. */}
+          {groupByWorkType(artists).map((group) => (
+            <div key={group.type}>
+              <div className="ws-dropdown-divider">{group.label.toUpperCase()}</div>
+              {group.items.map((a) => {
+                // Colour is the workspace's identity — keep it stable per record
+                // rather than tied to position in a filtered list.
+                const idx = artists.findIndex((x) => x.id === a.id);
+                const color = a.color || WS_PALETTE[idx % WS_PALETTE.length];
                 const isActive = !isHome && currentArtist?.id === a.id;
                 return (
                   <button
@@ -1201,8 +1206,8 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
                   </button>
                 );
               })}
-            </>
-          )}
+            </div>
+          ))}
 
           <div className="ws-dropdown-footer">
             Opening an artist enters its isolated workspace — Shows · Crew · Tools appear in the nav. Return here anytime via Global Home.
@@ -1216,6 +1221,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
 // ── New Artist modal ───────────────────────────────────────────────────────────
 function NewArtistModal({ onClose, onCreate }) {
   const [name, setName] = useState('');
+  const [workType, setWorkType] = useState('production');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -1224,10 +1230,10 @@ function NewArtistModal({ onClose, onCreate }) {
     if (!trimmed) { setErr('Please enter a name'); return; }
     setBusy(true);
     try {
-      await onCreate(trimmed);
+      await onCreate(trimmed, workType);
       onClose();
     } catch {
-      setErr('Could not create artist — please try again');
+      setErr('Could not create workspace — please try again');
     } finally {
       setBusy(false);
     }
@@ -1236,13 +1242,28 @@ function NewArtistModal({ onClose, onCreate }) {
   return (
     <div className="modal-overlay confirm-overlay" onClick={onClose}>
       <div className="modal artist-modal" onClick={(e) => e.stopPropagation()}>
-        <h3 className="artist-modal-title">New Artist</h3>
+        <h3 className="artist-modal-title">New Workspace</h3>
+        {/* Template first: it decides the navigation and the screens this
+            workspace opens on, so it is a choice, not a setting to find later. */}
+        <div className="ws-type-picker">
+          {creatableTypes().map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`ws-type-option${workType === t.id ? ' ws-type-option--active' : ''}`}
+              onClick={() => setWorkType(t.id)}
+            >
+              <span className="ws-type-option-label">{t.label}</span>
+              <span className="ws-type-option-hint">{t.hint}</span>
+            </button>
+          ))}
+        </div>
         <input
           className="artist-modal-input"
           type="text"
           value={name}
           onChange={(e) => { setName(e.target.value); setErr(''); }}
-          placeholder="Artist name"
+          placeholder="Workspace name"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleCreate();

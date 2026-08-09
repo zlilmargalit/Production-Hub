@@ -10445,3 +10445,16 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .nset-footer { flex-direction: column-reverse; align-items: stretch; }
   .nset-save-btn, .nset-test-btn { width: 100%; }
 }
+
+/* ── Workspace template picker (New Workspace modal) ───────────────────────── */
+.ws-type-picker { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.ws-type-option {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 10px 12px; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  font-family: inherit;
+}
+.ws-type-option:hover { border-color: var(--border-strong); }
+.ws-type-option--active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ws-type-option-label { font-weight: 600; font-size: 0.875rem; color: var(--text); }
+.ws-type-option-hint  { font-size: 0.75rem; color: var(--text-3); }
