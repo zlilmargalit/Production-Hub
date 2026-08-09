@@ -447,10 +447,6 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <div className="detail-full">
               <div className="field-label-row">
                 <strong>Notes</strong>
-                <label className="pdf-toggle" title="Show in coordination sheet">
-                  <input type="checkbox" checked={isPdfOn('notes')} onChange={() => togglePdf('notes')} />
-                  <span className="pdf-toggle-text">PDF</span>
-                </label>
               </div>
               <p dir="auto">{show.notes}</p>
             </div>
