@@ -74,43 +74,68 @@ function App({ demoMode = false }) {
     return id ? `?artistId=${encodeURIComponent(id)}` : '';
   };
 
+  // Guard against a slow response for the previous artist landing after a switch
+  // and overwriting the new artist's data on screen. switchAbortRef existed but
+  // its signal was never passed to any fetch, so aborting did nothing — and abort
+  // alone can't help once a response is already in flight. Instead each fetch
+  // records which artist it was issued for and simply declines to commit if the
+  // workspace has changed since.
+  const fetchedFor = () => currentArtistRef.current;
+  const stillCurrent = (issuedFor) => currentArtistRef.current === issuedFor;
+
   const fetchShows = useCallback(async () => {
+    const issuedFor = fetchedFor();
     const res = await fetch(`/api/shows${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load shows');
-    setShows(await res.json());
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setShows(data);
   }, []);
 
   const fetchCrew = useCallback(async () => {
+    const issuedFor = fetchedFor();
     const res = await fetch(`/api/crew${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load crew');
-    setCrew(await res.json());
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setCrew(data);
   }, []);
 
   const fetchTemplates = useCallback(async () => {
+    const issuedFor = fetchedFor();
     const res = await fetch(`/api/templates${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load templates');
-    setTemplates(await res.json());
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setTemplates(data);
   }, []);
 
   const fetchFieldTemplates = useCallback(async () => {
+    const issuedFor = fetchedFor();
     const res = await fetch(`/api/field-templates${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load field templates');
-    setFieldTemplates(await res.json());
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setFieldTemplates(data);
   }, []);
 
   const fetchEventTypes = useCallback(async () => {
+    const issuedFor = fetchedFor();
     const res = await fetch(`/api/event-types${artistQS()}`);
     if (!res.ok) throw new Error('Failed to load event types');
-    setEventTypes(await res.json());
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setEventTypes(data);
     // Load checklists alongside event types
     const cr = await fetch(`/api/event-types/checklists${artistQS()}`);
-    if (cr.ok) setEventTypeChecklists(await cr.json());
+    if (cr.ok) {
+      const checklists = await cr.json();
+      if (stillCurrent(issuedFor)) setEventTypeChecklists(checklists);
+    }
   }, []);
 
   const fetchTasks = useCallback(async () => {
     if (demoMode) return;
+    const issuedFor = fetchedFor();
     const res = await fetch(`/api/tasks${artistQS()}`);
-    if (res.ok) setTasks(await res.json());
+    if (!res.ok) return;
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setTasks(data);
   }, [demoMode]);
 
   // ── Initial load ──────────────────────────────────────────────────────────
