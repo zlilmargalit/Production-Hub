@@ -200,6 +200,56 @@ function mergeRunsInXml(xml) {
   return xml.replace(re, (match) => match.replace(new RegExp(rb, 'g'), ''));
 }
 
+// Locate a section in document.xml: the paragraph holding {{PLACEHOLDER}} plus
+// the header paragraph immediately before it. Returns character offsets.
+function findBriefSection(xml, ph) {
+  const phIdx = xml.indexOf(ph);
+  if (phIdx === -1) return null;
+  const valStart  = xml.lastIndexOf('<w:p ', phIdx);
+  const valEndTag = xml.indexOf('</w:p>', phIdx);
+  if (valStart === -1 || valEndTag === -1) return null;
+  const hdrStart = xml.lastIndexOf('<w:p ', valStart - 1);
+  if (hdrStart === -1) return null;
+  return { hdrStart, valStart, valEnd: valEndTag + '</w:p>'.length };
+}
+
+// Build a new section by cloning an existing one, so injected fields inherit the
+// template's exact fonts, borders and RTL settings rather than being hand-rolled.
+// The cloned chunk contains exactly two text nodes — the header label and the
+// placeholder — which makes the substitution unambiguous.
+function buildBriefSection(xml, label, valueXml) {
+  const ref = findBriefSection(xml, '{{CONTACTS}}');
+  if (!ref) return '';
+  let chunk = xml.slice(ref.hdrStart, ref.valEnd);
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let seen = 0;
+  chunk = chunk.replace(/(<w:t[^>]*>)([^<]*)(<\/w:t>)/g, (m, open, _txt, close) => {
+    seen += 1;
+    if (seen === 1) return `${open}${esc(label)}${close}`;   // header label
+    if (seen === 2) return `${open}${valueXml}${close}`;     // value
+    return m;
+  });
+  return chunk;
+}
+
+// Insert extra sections the template has no placeholder for, each after the
+// section it should follow, so the brief carries the same fields as the PDF.
+function insertBriefExtras(xml, extras, toDocx) {
+  for (const { after, label, value } of extras) {
+    const section = buildBriefSection(xml, label, toDocx(value));
+    if (!section) continue;
+    const anchor = findBriefSection(xml, after);
+    if (anchor) xml = xml.slice(0, anchor.valEnd) + section + xml.slice(anchor.valEnd);
+    else {
+      // Anchor missing (its field was empty and the section removed) — fall back
+      // to placing it before the closing body so the content is never dropped.
+      const end = xml.lastIndexOf('</w:body>');
+      if (end !== -1) xml = xml.slice(0, end) + section + xml.slice(end);
+    }
+  }
+  return xml;
+}
+
 // Remove a whole section from the brief's document.xml: the value paragraph that
 // holds {{PLACEHOLDER}} plus the section-header paragraph immediately before it.
 // Used to drop fields that are empty/unchecked so only selected fields render.
@@ -243,6 +293,12 @@ async function createBriefDoc(payload) {
       : `</w:t></w:r><w:r><w:br/></w:r><w:r>${noB}<w:t xml:space="preserve">${x(l)}`
     ).join('');
   };
+
+  // Inject the fields the template has no placeholder for FIRST, while their
+  // anchor sections still exist — the removal pass below may delete some of them.
+  if (Array.isArray(payload.extras) && payload.extras.length) {
+    docXml = insertBriefExtras(docXml, payload.extras, toDocx);
+  }
 
   // Drop any section whose field is empty/unchecked — remove its header AND its
   // value paragraph so the brief shows ONLY the fields that are toggled on and
@@ -647,10 +703,22 @@ router.post('/:id/brief', async (req, res) => {
       .filter(Boolean)
       .join('\n');
 
-    // Exactly the fields the DOCX template has placeholders for. The brief is
-    // deliberately a short sheet — musicians, food, notes, sound, lighting,
-    // backline, crewEmails and custom fields are intentionally NOT on it (they
-    // are on the PDF). They used to be computed here and silently dropped.
+    // The brief must carry exactly what the PDF carries, driven by the same
+    // per-field toggles. The template only has placeholders for some of these;
+    // the rest are injected as new sections in createBriefDoc (see extras).
+    // Same catering line the PDF builds: name · phone · arrival time
+    const foodLine = [
+      show.foodContactName || show.food || '',
+      show.foodContactPhone || '',
+      show.foodContactTime || '',
+    ].filter(Boolean).join(' · ');
+    const musiciansText = inPdf('musicians') ? musicians : '';
+    const extraDetails  = [
+      inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
+      checkItems,
+      customFieldsText,
+    ].filter(Boolean).join('\n');
+
     const basePayload = {
       eventName:         show.name,
       date:              formatShowDate(show.date),
@@ -661,7 +729,16 @@ router.post('/:id/brief', async (req, res) => {
       transportation:    inPdf('transportation')    ? transportText(show)            : '',
       schedule:          inPdf('schedule')          ? scheduleToString(show.schedule) : '',
       contacts:          inPdf('contacts')          ? (show.contacts          || '') : '',
-      additionalDetails: inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
+      additionalDetails: extraDetails,
+      // Sections the template has no placeholder for — injected so the brief
+      // matches the PDF. Each is { after, label, value }: `after` is the
+      // placeholder whose section it should follow, keeping the PDF's order.
+      extras: [
+        { after: '{{DATE}}',          label: 'סוג אירוע',   value: show.eventType || '' },
+        { after: '{{TECHNICA_CREW}}', label: 'הרכב נגנים',  value: musiciansText },
+        { after: '{{TRANSPORTATION}}',label: 'אוכל',        value: inPdf('food') ? foodLine : '' },
+        { after: '{{CONTACTS}}',      label: 'הערות',       value: inPdf('notes') ? (show.notes || '') : '' },
+      ].filter((e) => e.value && String(e.value).trim()),
     };
 
     // ── Respond immediately with jobId ─────────────────────────────────────
