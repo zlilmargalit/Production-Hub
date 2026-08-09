@@ -525,22 +525,25 @@ function isSafeArtistId(id) {
     && SAFE_ID_RE.test(id) && !id.includes('__art__');
 }
 
-// Artist ids this user may legitimately scope to: the ones they own, plus (for
-// non-admins) the ones the admin granted them through team settings.
-async function permittedArtistIds(req) {
-  const ids = new Set();
+// Decide whether this user may scope to `artistId`, and how:
+//   owned   → it's in their own artists.json; full access to their own data.
+//   granted → the admin shared it via team settings; they read the ADMIN's data
+//             as a limited team member (read-only unless given edit rubrics).
+async function resolveArtistAccess(req, artistId) {
   try {
     const own = await readJsonCached(
       udCacheKey(req.userId, 'artists'), udDataPath(req.userId, 'artists.json'), []
     );
-    for (const a of own) if (a?.id) ids.add(a.id);
+    if (own.some((a) => a?.id === artistId)) return { allowed: true, owned: true };
   } catch { /* no own artists file */ }
+
   if (req.userRole !== 'admin') {
     try {
-      for (const id of Object.keys(normalizeUserAccess(loadTeamSettings(), req.userId))) ids.add(id);
+      const access = normalizeUserAccess(loadTeamSettings(), req.userId)[artistId];
+      if (access) return { allowed: true, owned: false, access };
     } catch { /* no team grants */ }
   }
-  return ids;
+  return { allowed: false };
 }
 
 app.use(async (req, res, next) => {
@@ -553,17 +556,29 @@ app.use(async (req, res, next) => {
     console.warn(`[security] rejected malformed artistId from user ${req.userId}:`, String(artistId).slice(0, 80));
     return res.status(400).json({ error: 'Invalid artistId' });
   }
+  let verdict;
   try {
-    const allowed = await permittedArtistIds(req);
-    if (!allowed.has(artistId)) {
-      console.warn(`[security] user ${req.userId} denied access to artist ${artistId}`);
-      return res.status(403).json({ error: 'No access to this artist' });
-    }
+    verdict = await resolveArtistAccess(req, artistId);
   } catch (err) {
     console.error('[security] artist authorization check failed:', err.message);
     return res.status(500).json({ error: 'Authorization check failed' });
   }
-  req.userId = artistScopedId(req.userId, artistId);
+  if (!verdict.allowed) {
+    console.warn(`[security] user ${req.userId} denied access to artist ${artistId}`);
+    return res.status(403).json({ error: 'No access to this artist' });
+  }
+
+  if (verdict.owned) {
+    req.userId = artistScopedId(req.userId, artistId);   // their own artist, own data
+  } else {
+    // Shared artist: read the ADMIN's data (that's the point of granting access),
+    // and set the team-member flags the shows router already enforces — without
+    // them the read-only / rubric guards silently never fire.
+    req.userId          = artistScopedId('admin', artistId);
+    req.teamMemberView  = true;
+    req.visibleRubrics  = verdict.access?.visibleRubrics || [];
+    req.editableRubrics = verdict.access?.editRubrics    || [];
+  }
   next();
 });
 
