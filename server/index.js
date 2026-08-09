@@ -1227,6 +1227,50 @@ app.post('/api/admin/dedupe-shows', async (req, res) => {
   }
 });
 
+// ── Admin: clean non-task entries out of shows[].tasks ──────────────────────
+// A custom-field definition (a base64 stage-layout PDF) was written into a
+// show's tasks array. It is ~1.28MB — about half of shows.json — and is read and
+// rewritten on every shows operation. A real task has `text`; anything without
+// it does not belong here. Entries carrying a payload are only removed when the
+// identical payload is confirmed present in customFields, so this can never be
+// the last copy. dryRun by default; the version history makes it reversible.
+app.post('/api/admin/cleanup-show-tasks', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { artistId, dryRun = true } = req.body || {};
+  const uid = artistId ? artistScopedId('admin', artistId) : req.userId;
+  const key = udCacheKey(uid, 'shows');
+  const p   = udDataPath(uid, 'shows.json');
+  const crypto = require('crypto');
+  const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
+  try {
+    const shows = await readJsonCached(key, p, []);
+    const removed = [], kept = [];
+    const next = shows.map((s) => {
+      if (!Array.isArray(s.tasks) || !s.tasks.length) return s;
+      const cfHashes = new Set(
+        Object.values(s.customFields || {})
+          .map((v) => (typeof v === 'string' ? v : v?.data))
+          .filter((d) => typeof d === 'string')
+          .map(sha)
+      );
+      const tasks = s.tasks.filter((t) => {
+        if (t && typeof t.text === 'string') return true;          // a real task
+        const payload = typeof t?.data === 'string' ? t.data : null;
+        if (payload && !cfHashes.has(sha(payload))) {
+          kept.push({ show: s.name, id: t?.id, label: t?.label, reason: 'payload not duplicated in customFields — kept' });
+          return true;                                              // never drop a sole copy
+        }
+        removed.push({ show: s.name, id: t?.id, label: t?.label, bytes: JSON.stringify(t).length });
+        return false;
+      });
+      return tasks.length === s.tasks.length ? s : { ...s, tasks };
+    });
+    const bytes = removed.reduce((n, r) => n + r.bytes, 0);
+    if (!dryRun && removed.length) await writeJsonAndCache(key, p, next);
+    res.json({ dryRun, removedCount: removed.length, bytesFreed: bytes, removed, keptForSafety: kept });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Admin: backup status + manual run ───────────────────────────────────────
 // The status endpoint exists so a backup that quietly stopped working is
 // visible; `stale: true` means nothing succeeded in the last 48h.
