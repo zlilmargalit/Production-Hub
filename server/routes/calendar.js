@@ -1,4 +1,5 @@
 const express = require('express');
+const { scheduleToString } = require('../utils/schedule');
 const router  = express.Router();
 const { google } = require('googleapis');
 const fs   = require('fs');
@@ -274,12 +275,15 @@ router.post('/insert-show-event', async (req, res) => {
   const show   = shows.find((s) => s.id === showId);
   if (!show) return res.status(404).json({ error: 'Show not found' });
   if (!show.date) return res.status(400).json({ error: 'Show has no date set' });
-  if (!show.schedule || !show.schedule.trim()) {
+  // schedule may be a string or a legacy array of { time, activity } rows —
+  // normalise before use, otherwise .trim() throws on the array form.
+  const scheduleText = scheduleToString(show.schedule).trim();
+  if (!scheduleText) {
     return res.status(400).json({ error: 'This show has no schedule text to export. Add a schedule first.' });
   }
 
   // Only the schedule goes into the event description — nothing else
-  const description = show.schedule.trim();
+  const description = scheduleText;
 
   // Patch body — only update description, nothing else
   const eventBody = { description };

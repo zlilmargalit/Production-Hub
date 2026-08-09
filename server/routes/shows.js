@@ -14,17 +14,7 @@ const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { htmlToPdfBuffer } = require('../pdf');
 const { dataPath, cacheKey, DATA_DIR, parseUserId } = require('../utils/userData');
 
-function scheduleToString(schedule) {
-  if (!schedule) return '';
-  if (Array.isArray(schedule)) {
-    return schedule
-      .filter((r) => r && (r.time || r.activity))
-      .map((r) => (r.time ? `${r.time} ${r.activity || ''}`.trim() : r.activity || ''))
-      .filter(Boolean)
-      .join('\n');
-  }
-  return String(schedule);
-}
+const { scheduleToString } = require('../utils/schedule');
 
 const execFileP = promisify(execFile);
 

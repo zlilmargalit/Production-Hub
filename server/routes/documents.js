@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { google } = require('googleapis');
+const { scheduleToString } = require('../utils/schedule');
 
 const { readJsonCached } = require('../cache');
 const { dataPath, cacheKey } = require('../utils/userData');
@@ -52,7 +53,7 @@ router.get('/:id', async (req, res) => {
       '{{EVENT_NAME}}':         show.name              || '',
       '{{CREW_LIST}}':          show.technicalCrew     || '',
       '{{PARKING}}':            show.parking           || '',
-      '{{SCHEDULE}}':           show.schedule          || '',
+      '{{SCHEDULE}}':           scheduleToString(show.schedule),
       '{{CONTACTS}}':           show.contacts          || '',
       '{{ADDITIONAL_DETAILS}}': show.additionalDetails || '',
       '{{checkItems}}':         '',
