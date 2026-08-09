@@ -15,6 +15,9 @@ docs/claude-schedule-automation-*.json
 *.iam.gserviceaccount.com.json
 # Runtime data files — managed on server, not tracked in git
 server/data/*.json
+# Backup archives — contain real personal data, must never be committed
+server/data/_backups/
+*.zip
 server/data/users/
 server/data/artists/
 # macOS metadata

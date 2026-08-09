@@ -1227,6 +1227,33 @@ app.post('/api/admin/dedupe-shows', async (req, res) => {
   }
 });
 
+// ── Admin: backup status + manual run ───────────────────────────────────────
+// The status endpoint exists so a backup that quietly stopped working is
+// visible; `stale: true` means nothing succeeded in the last 48h.
+app.get('/api/admin/backup-status', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try { res.json(require('./backup').status()); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/backup/run', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try { res.json(await require('./backup').runBackup({ trigger: 'manual' })); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Download a specific local snapshot (or the newest) — the "get my data out" path.
+app.get('/api/admin/backup/download', (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const { BACKUP_DIR } = require('./backup');
+    const files = fs.readdirSync(BACKUP_DIR).filter((f) => f.endsWith('.zip')).sort();
+    if (!files.length) return res.status(404).json({ error: 'No local backups yet' });
+    const name = req.query.name && files.includes(req.query.name) ? req.query.name : files[files.length - 1];
+    res.download(path.join(BACKUP_DIR, name), name);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Setlists ─────────────────────────────────────────────────────────────────
 const SETLISTS_FILE = path.join(DATA_DIR, 'setlists.json');
 function loadSetlists() {
@@ -1819,4 +1846,5 @@ app.listen(PORT, () => {
   startGmailPolling();
   startAutomationsCron();    // daily 09:00 early-coordination alerts
   startNotificationCron();   // every 15 min — task reminders, digest, overdue
+  require('./backup').startSchedule();  // daily 03:30 — snapshot DATA_DIR
 });
