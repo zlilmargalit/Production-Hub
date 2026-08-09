@@ -514,11 +514,56 @@ app.use((req, res, next) => {
 // tasks) send ?artistId=<uuid>.  By rewriting req.userId here, every downstream
 // readJsonCached / writeJsonAndCache call automatically lands in the correct
 // server/data/artists/<artistId>/ directory without changing a single route.
-app.use((req, res, next) => {
-  const artistId = req.query.artistId;
-  if (artistId && typeof artistId === 'string' && artistId.length > 0) {
-    req.userId = artistScopedId(req.userId, artistId);
+// SECURITY: artistId arrives from the client, so it must be BOTH sanitised (it
+// becomes a filesystem path segment) and authorised (it selects whose data you
+// read/write). Previously it was trusted raw, which allowed (a) any logged-in
+// user to read/write any artist by editing the query param, and (b) path
+// traversal out of DATA_DIR via "../..".
+const SAFE_ID_RE = /^[A-Za-z0-9_-]+$/;
+function isSafeArtistId(id) {
+  return typeof id === 'string' && id.length > 0 && id.length <= 128
+    && SAFE_ID_RE.test(id) && !id.includes('__art__');
+}
+
+// Artist ids this user may legitimately scope to: the ones they own, plus (for
+// non-admins) the ones the admin granted them through team settings.
+async function permittedArtistIds(req) {
+  const ids = new Set();
+  try {
+    const own = await readJsonCached(
+      udCacheKey(req.userId, 'artists'), udDataPath(req.userId, 'artists.json'), []
+    );
+    for (const a of own) if (a?.id) ids.add(a.id);
+  } catch { /* no own artists file */ }
+  if (req.userRole !== 'admin') {
+    try {
+      for (const id of Object.keys(normalizeUserAccess(loadTeamSettings(), req.userId))) ids.add(id);
+    } catch { /* no team grants */ }
   }
+  return ids;
+}
+
+app.use(async (req, res, next) => {
+  const artistId = req.query.artistId;
+  if (!artistId) return next();
+  // /api/artists manages the artist list itself — never scope it to an artist.
+  if (req.path.startsWith('/api/artists')) return next();
+
+  if (!isSafeArtistId(artistId)) {
+    console.warn(`[security] rejected malformed artistId from user ${req.userId}:`, String(artistId).slice(0, 80));
+    return res.status(400).json({ error: 'Invalid artistId' });
+  }
+  try {
+    const allowed = await permittedArtistIds(req);
+    if (!allowed.has(artistId)) {
+      console.warn(`[security] user ${req.userId} denied access to artist ${artistId}`);
+      return res.status(403).json({ error: 'No access to this artist' });
+    }
+  } catch (err) {
+    console.error('[security] artist authorization check failed:', err.message);
+    return res.status(500).json({ error: 'Authorization check failed' });
+  }
+  req.userId = artistScopedId(req.userId, artistId);
   next();
 });
 
@@ -1399,27 +1444,11 @@ app.get('/api/team/artists', async (req, res) => {
 // ── Artist management (uses real req.userId — must be before scope middleware) ─
 app.use('/api/artists', artistsRouter);
 
-// ── Artist-scope middleware ───────────────────────────────────────────────────
-// If a request carries ?artistId=<id>, verify it belongs to the current user
-// and rewrite req.userId to the compound scoped key so every downstream route
-// automatically reads/writes artist-isolated data without any route changes.
-app.use('/api', async (req, res, next) => {
-  const artistId = req.query.artistId;
-  if (!artistId) return next();
-  // Never scope the artists-management routes themselves
-  if (req.originalUrl.startsWith('/api/artists')) return next();
-  try {
-    const artists = await readJsonCached(
-      udCacheKey(req.userId, 'artists'),
-      udDataPath(req.userId, 'artists.json'),
-      []
-    );
-    if (artists.some((a) => a.id === artistId)) {
-      req.userId = `${req.userId}__art__${artistId}`;
-    }
-  } catch { /* leave req.userId unchanged on any read error */ }
-  next();
-});
+// NOTE: a second artist-scope middleware used to live here. It was dead code —
+// by the time it ran, req.userId had already been scoped by the middleware
+// above, so it looked for artists.json inside the artist's own directory, found
+// nothing, and never authorised anything. Scoping + authorisation now happen in
+// one place (see the artist-scope middleware near the auth gate).
 
 // ── Team: activity log ───────────────────────────────────────────────────────
 app.get('/api/team/activity', (req, res) => {
