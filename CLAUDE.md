@@ -3,7 +3,12 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Language Rule
-Always respond in English only, regardless of what language the user writes in.
+Reply to the user in Hebrew.
+
+Separate from how you reply: the **product's UI chrome is English** — labels,
+buttons, headings, tabs, statuses, empty states. Only content the user types
+(project, client, shop and people names, notes) is Hebrew, and that renders RTL.
+Do not translate UI strings to Hebrew and do not add an i18n layer.
 
 ## Common commands
 
