@@ -370,6 +370,17 @@ function slimShow(show) {
     }
     result.customFields = slim;
   }
+  // Same treatment for anything carrying a base64 payload inside tasks[]. A real
+  // task never does, but a stage-layout PDF ended up there on one older show, and
+  // without this the list endpoint ships ~1.3MB to the browser on every load.
+  // The data itself is untouched on disk and still served in full by GET /:id.
+  if (Array.isArray(result.tasks)) {
+    result.tasks = result.tasks.map((t) =>
+      (t && typeof t.data === 'string' && t.data.startsWith('data:'))
+        ? { ...t, data: null, _hasData: true }
+        : t
+    );
+  }
   return result;
 }
 
