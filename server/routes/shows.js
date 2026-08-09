@@ -326,6 +326,18 @@ function showFieldInPdf(show, key) {
   return !show.pdfFields || show.pdfFields[key] !== false;
 }
 
+// Transport: the structured fields (transportMode / transportDriver /
+// transportTime) are the source of truth. The free-text `transportation` is a
+// legacy duplicate, kept only as a fallback for older shows that have text but
+// no structured values, so nothing already written disappears.
+function transportText(show) {
+  const parts = [];
+  if (show.transportMode)   parts.push(show.transportMode);
+  if (show.transportDriver) parts.push(`נהג: ${show.transportDriver}`);
+  if (show.transportTime)   parts.push(show.transportTime);
+  return parts.length ? parts.join(' — ') : (show.transportation || '');
+}
+
 // crewIds is the real link; technicalCrew is a denormalised text copy of it that
 // the brief and PDF fall back to when no crew is assigned. Nothing kept the two
 // in step, so swapping a sound engineer updated crewIds and left the old name in
@@ -635,6 +647,10 @@ router.post('/:id/brief', async (req, res) => {
       .filter(Boolean)
       .join('\n');
 
+    // Exactly the fields the DOCX template has placeholders for. The brief is
+    // deliberately a short sheet — musicians, food, notes, sound, lighting,
+    // backline, crewEmails and custom fields are intentionally NOT on it (they
+    // are on the PDF). They used to be computed here and silently dropped.
     const basePayload = {
       eventName:         show.name,
       date:              formatShowDate(show.date),
@@ -642,20 +658,10 @@ router.post('/:id/brief', async (req, res) => {
       address:           inPdf('address')           ? (show.address           || '') : '',
       parking:           inPdf('parking')           ? (show.parking           || '') : '',
       technicalCrew:     inPdf('technicalCrew')     ? techCrew                       : '',
-      musicians:         inPdf('musicians')         ? musicians                      : '',
-      transportation:    inPdf('transportation')    ? (show.transportation    || '') : '',
+      transportation:    inPdf('transportation')    ? transportText(show)            : '',
       schedule:          inPdf('schedule')          ? scheduleToString(show.schedule) : '',
       contacts:          inPdf('contacts')          ? (show.contacts          || '') : '',
-
       additionalDetails: inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
-      food:              inPdf('food')              ? [show.foodContactName || show.food || '', show.foodContactPhone || '', show.foodContactTime || ''].filter(Boolean).join(' · ') : '',
-      notes:             inPdf('notes')             ? (show.notes             || '') : '',
-      sound:             show.sound    || '',
-      lighting:          show.lighting || '',
-      backline:          show.backline || '',
-      crewEmails:        (show.crewEmails || []).join(', '),
-      customFields:      customFieldsText,
-      checkItems,
     };
 
     // ── Respond immediately with jobId ─────────────────────────────────────
@@ -863,7 +869,7 @@ ${inPdf('address') && show.address ? `<div class="row"><span class="label">כת�
 ${inPdf('parking') && show.parking ? `<div class="row"><span class="label">חניה:</span><span class="value">${esc(show.parking)}</span></div>` : ''}
 
 ${inPdf('technicalCrew') && (techCrewText || show.technicalCrew) ? `<div class="row"><span class="label">צוות טכני:</span><span class="value">${esc(techCrewText || show.technicalCrew)}</span></div>` : ''}
-${inPdf('transportation') && show.transportation ? `<div class="row"><span class="label">הסעה:</span><span class="value">${esc(show.transportation)}</span></div>` : ''}
+${inPdf('transportation') && transportText(show) ? `<div class="row"><span class="label">הסעה:</span><span class="value">${esc(transportText(show))}</span></div>` : ''}
 ${inPdf('food') && foodLine ? `<div class="row"><span class="label">אוכל:</span><span class="value">${esc(foodLine)}</span></div>` : ''}
 ${inPdf('contacts') && show.contacts ? `<div class="row"><span class="label">אנשי קשר:</span><span class="value">${esc(show.contacts)}</span></div>` : ''}
 ${(show.pdfFields?.musicians !== false) && musicians ? `<div class="musicians"><span class="label">הרכב נגנים: </span>${esc(musicians)}</div>` : ''}
