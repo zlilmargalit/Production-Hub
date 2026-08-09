@@ -1,7 +1,7 @@
 // Self-contained login + register page.
 // No external assets — works on first paint even before the app bundle loads.
 
-module.exports = function loginPage({ error = false, username = '', tab = 'login', regError = '', step = '', error2fa = '' } = {}) {
+module.exports = function loginPage({ error = false, username = '', tab = 'login', regError = '', step = '', error2fa = '', message = '' } = {}) {
   // ── 2FA verification screen ───────────────────────────────────────────────
   if (step === '2fa') {
     return `<!DOCTYPE html>
@@ -220,7 +220,7 @@ module.exports = function loginPage({ error = false, username = '', tab = 'login
         <input type="password" id="password" name="password" autocomplete="current-password" required />
 
         <button class="submit-btn" type="submit">Sign in</button>
-        ${error ? '<div class="error">Wrong username or password</div>' : ''}
+        ${error ? `<div class="error">${message ? escapeHtml(message) : 'Wrong username or password'}</div>` : ''}
       </form>
     </div>
 

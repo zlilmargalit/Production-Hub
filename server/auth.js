@@ -197,12 +197,25 @@ function verifyPending2faToken(token) {
  * Returns { userId, username, role } or null.
  * Priority: admin env vars → users.json
  */
+// Constant-time string compare that tolerates different lengths.
+// crypto.timingSafeEqual THROWS when the two buffers differ in length, so
+// calling it directly on a submitted password blew up on nearly every wrong
+// password — a 500 instead of "wrong password", and worse: in
+// verifyCredentials the throw happened before the users lookup, so ANY external
+// user whose password length differed from the admin's could never sign in.
+// Hashing both sides first makes the inputs equal-length and keeps the
+// comparison constant-time.
+function safeEqual(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a ?? '')).digest();
+  const hb = crypto.createHash('sha256').update(String(b ?? '')).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
 function verifyCredentials(username, password) {
   const AUTH_USER     = process.env.AUTH_USER || 'admin';
   const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
 
-  const pwOk = AUTH_PASSWORD &&
-    crypto.timingSafeEqual(Buffer.from(password || ''), Buffer.from(AUTH_PASSWORD));
+  const pwOk = !!AUTH_PASSWORD && safeEqual(password, AUTH_PASSWORD);
   if (username === AUTH_USER && pwOk) {
     return { userId: 'admin', username: AUTH_USER, role: 'admin' };
   }
@@ -262,7 +275,7 @@ function getAuthUser(req) {
         const AUTH_USER     = process.env.AUTH_USER || 'admin';
         const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
         const basicPwOk = AUTH_PASSWORD &&
-          crypto.timingSafeEqual(Buffer.from(p || ''), Buffer.from(AUTH_PASSWORD));
+          safeEqual(p, AUTH_PASSWORD);
         if (u === AUTH_USER && basicPwOk) {
           return { userId: 'admin', username: AUTH_USER, role: 'admin' };
         }
@@ -277,7 +290,84 @@ function checkAuthed(req) {
   return !!getAuthUser(req);
 }
 
+// ── Login throttling ────────────────────────────────────────────────────────
+// There was no limit on failed logins, so a password could be attacked at
+// whatever rate the network allowed. Two in-memory counters, both needed:
+//   per ip+username — stops hammering one account
+//   per ip          — stops spraying one password across many usernames
+// Counters are cleared on success and decay after the window. Single process,
+// so a plain Map is enough; a restart clears them, which is acceptable here.
+const LOGIN_WINDOW_MS  = 15 * 60 * 1000;
+const MAX_PER_ACCOUNT  = 5;
+const MAX_PER_IP       = 20;
+const _loginFails = new Map();   // key → { count, first }
+
+function _bump(key, max) {
+  const now = Date.now();
+  const e = _loginFails.get(key);
+  if (!e || now - e.first > LOGIN_WINDOW_MS) {
+    _loginFails.set(key, { count: 1, first: now });
+    return { blocked: false };
+  }
+  e.count += 1;
+  return { blocked: e.count > max, retryAfterMs: LOGIN_WINDOW_MS - (now - e.first) };
+}
+
+function _peek(key, max) {
+  const e = _loginFails.get(key);
+  if (!e || Date.now() - e.first > LOGIN_WINDOW_MS) return { blocked: false };
+  return { blocked: e.count > max, retryAfterMs: LOGIN_WINDOW_MS - (Date.now() - e.first) };
+}
+
+/** Call BEFORE checking credentials. Returns { blocked, retryAfterSec }. */
+function checkLoginAllowed(ip, username) {
+  const u = String(username || '').trim().toLowerCase();
+  const a = _peek(`u:${ip}:${u}`, MAX_PER_ACCOUNT);
+  const b = _peek(`i:${ip}`, MAX_PER_IP);
+  const hit = a.blocked ? a : (b.blocked ? b : null);
+  return hit
+    ? { blocked: true, retryAfterSec: Math.max(1, Math.ceil(hit.retryAfterMs / 1000)) }
+    : { blocked: false };
+}
+
+/** Call after a failed attempt (bad password OR bad 2FA code). */
+function recordLoginFailure(ip, username) {
+  const u = String(username || '').trim().toLowerCase();
+  _bump(`u:${ip}:${u}`, MAX_PER_ACCOUNT);
+  _bump(`i:${ip}`, MAX_PER_IP);
+}
+
+/** Call after a fully successful login so a legitimate user isn't penalised. */
+function recordLoginSuccess(ip, username) {
+  const u = String(username || '').trim().toLowerCase();
+  _loginFails.delete(`u:${ip}:${u}`);
+  _loginFails.delete(`i:${ip}`);
+}
+
+// ── TOTP replay guard ───────────────────────────────────────────────────────
+// verifyTotp accepts the previous, current and next 30s step, so a code stays
+// valid for ~90s. Without this, a code observed once (shoulder-surfed, or left
+// in a shared screen) could be submitted again inside that window. Remember the
+// last accepted code per user and refuse to accept the same one twice.
+const _usedTotp = new Map();     // userId → { code, at }
+function isTotpReplay(userId, code) {
+  const e = _usedTotp.get(userId);
+  return !!(e && e.code === String(code).trim() && Date.now() - e.at < 120_000);
+}
+function markTotpUsed(userId, code) {
+  _usedTotp.set(userId, { code: String(code).trim(), at: Date.now() });
+  if (_usedTotp.size > 500) {      // bound memory
+    const cutoff = Date.now() - 120_000;
+    for (const [k, v] of _usedTotp) if (v.at < cutoff) _usedTotp.delete(k);
+  }
+}
+
 module.exports = {
+  checkLoginAllowed,
+  recordLoginFailure,
+  recordLoginSuccess,
+  isTotpReplay,
+  markTotpUsed,
   COOKIE_NAME,
   signToken,
   verifyToken,

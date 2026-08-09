@@ -17,8 +17,21 @@ const {
   generateTotpSecret, verifyTotp, buildOtpAuthUri,
   PENDING_2FA_COOKIE, signPending2faToken, verifyPending2faToken,
   getCookie,
+  checkLoginAllowed,
+  recordLoginFailure,
+  recordLoginSuccess,
+  isTotpReplay,
+  markTotpUsed,
 } = require('./auth');
 const loginPage  = require('./login-page');
+
+// Client IP for login throttling. Railway terminates TLS upstream, so the real
+// address is in x-forwarded-for; fall back to the socket for local runs.
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length) return fwd.split(',')[0].trim();
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
 const invitePage = require('./invite-page');
 
 const artistsRouter       = require('./routes/artists');
@@ -212,8 +225,20 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { username, password } = req.body || {};
+  const ip = clientIp(req);
+
+  const gate = checkLoginAllowed(ip, username);
+  if (gate.blocked) {
+    console.warn(`[auth] login throttled for ${ip} (${username || 'no username'})`);
+    return res.status(429).type('html').send(loginPage({
+      error: true, username,
+      message: `Too many failed attempts. Try again in ${Math.ceil(gate.retryAfterSec / 60)} minute(s).`,
+    }));
+  }
+
   const authUser = verifyCredentials(username, password);
   if (!authUser) {
+    recordLoginFailure(ip, username);
     return res.status(401).type('html').send(loginPage({ error: true, username }));
   }
 
@@ -237,6 +262,7 @@ app.post('/login', (req, res) => {
     return res.redirect('/login?step=2fa');
   }
 
+  recordLoginSuccess(ip, authUser.username);
   res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
   logActivity(authUser.userId, authUser.username, 'login', 'Signed in');
   return res.redirect('/');
@@ -275,10 +301,32 @@ app.post('/login/2fa', (req, res) => {
     }
   }
 
+  const ip2 = clientIp(req);
+  const gate2 = checkLoginAllowed(ip2, userId);
+  if (gate2.blocked) {
+    console.warn(`[auth] 2FA throttled for ${ip2} (user ${userId})`);
+    return res.status(429).type('html').send(loginPage({
+      step: '2fa',
+      error2fa: `Too many attempts. Try again in ${Math.ceil(gate2.retryAfterSec / 60)} minute(s).`,
+    }));
+  }
+
+  // A TOTP code stays valid for ~90s across the accepted step window, so refuse
+  // one that has already been used rather than letting it be replayed.
+  if (isTotpReplay(userId, code.trim())) {
+    recordLoginFailure(ip2, userId);
+    console.warn(`[auth] TOTP replay refused for user ${userId}`);
+    return res.type('html').send(loginPage({ step: '2fa', error2fa: 'That code was already used — wait for the next one.' }));
+  }
+
   if (!secret || !verifyTotp(secret, code.trim())) {
+    recordLoginFailure(ip2, userId);
     return res.type('html').send(loginPage({ step: '2fa', error2fa: 'Invalid code — please try again.' }));
   }
 
+  markTotpUsed(userId, code.trim());
+  recordLoginSuccess(ip2, userId);
+  recordLoginSuccess(ip2, authUser.username);
   res.clearCookie(PENDING_2FA_COOKIE, { path: '/' });
   res.cookie(COOKIE_NAME, signToken(authUser), cookieOptions(req));
   logActivity(authUser.userId, authUser.username, 'login', 'Signed in (2FA)');
