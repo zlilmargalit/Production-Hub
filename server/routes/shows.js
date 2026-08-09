@@ -706,12 +706,6 @@ router.post('/:id/brief', async (req, res) => {
     // The brief must carry exactly what the PDF carries, driven by the same
     // per-field toggles. The template only has placeholders for some of these;
     // the rest are injected as new sections in createBriefDoc (see extras).
-    // Same catering line the PDF builds: name · phone · arrival time
-    const foodLine = [
-      show.foodContactName || show.food || '',
-      show.foodContactPhone || '',
-      show.foodContactTime || '',
-    ].filter(Boolean).join(' · ');
     const musiciansText = inPdf('musicians') ? musicians : '';
     const extraDetails  = [
       inPdf('additionalDetails') ? (show.additionalDetails || '') : '',
@@ -733,11 +727,10 @@ router.post('/:id/brief', async (req, res) => {
       // Sections the template has no placeholder for — injected so the brief
       // matches the PDF. Each is { after, label, value }: `after` is the
       // placeholder whose section it should follow, keeping the PDF's order.
+      // אוכל and הערות are deliberately not on the brief — they stay on the PDF.
       extras: [
-        { after: '{{DATE}}',          label: 'סוג אירוע',   value: show.eventType || '' },
-        { after: '{{TECHNICA_CREW}}', label: 'הרכב נגנים',  value: musiciansText },
-        { after: '{{TRANSPORTATION}}',label: 'אוכל',        value: inPdf('food') ? foodLine : '' },
-        { after: '{{CONTACTS}}',      label: 'הערות',       value: inPdf('notes') ? (show.notes || '') : '' },
+        { after: '{{DATE}}',          label: 'סוג אירוע',  value: show.eventType || '' },
+        { after: '{{TECHNICA_CREW}}', label: 'הרכב נגנים', value: musiciansText },
       ].filter((e) => e.value && String(e.value).trim()),
     };
 
