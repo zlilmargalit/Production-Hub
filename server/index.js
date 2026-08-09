@@ -1234,6 +1234,40 @@ app.post('/api/admin/dedupe-shows', async (req, res) => {
 // it does not belong here. Entries carrying a payload are only removed when the
 // identical payload is confirmed present in customFields, so this can never be
 // the last copy. dryRun by default; the version history makes it reversible.
+// ── Admin: resync technicalCrew from crewIds across existing shows ──────────
+// New saves stay in step automatically (see syncTechnicalCrew in routes/shows.js);
+// this back-fills shows that drifted before that existed. Shows with no crew
+// assigned are skipped — their stored text is the only source (imported schedules).
+app.post('/api/admin/resync-technical-crew', async (req, res) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { artistId, dryRun = true } = req.body || {};
+  const uid = artistId ? artistScopedId('admin', artistId) : req.userId;
+  const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
+  try {
+    const shows = await readJsonCached(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), []);
+    const crew  = await readJsonCached(udCacheKey(uid, 'crew'),  udDataPath(uid, 'crew.json'),  []);
+    const changed = [], skipped = [];
+    const next = shows.map((s) => {
+      if (!Array.isArray(s.crewIds) || s.crewIds.length === 0) {
+        if ((s.technicalCrew || '').trim()) skipped.push({ show: s.name, reason: 'no crew assigned — stored text kept' });
+        return s;
+      }
+      const text = s.crewIds
+        .map((id) => crew.find((m) => m.id === id))
+        .filter((m) => m && !MUSICIAN_ROLES.has(m.role))
+        .map((m) => `${m.role} – ${m.name}`)
+        .join(' | ');
+      if (!text || text === s.technicalCrew) return s;
+      changed.push({ show: s.name, before: s.technicalCrew || '', after: text });
+      return { ...s, technicalCrew: text };
+    });
+    if (!dryRun && changed.length) {
+      await writeJsonAndCache(udCacheKey(uid, 'shows'), udDataPath(uid, 'shows.json'), next);
+    }
+    res.json({ dryRun, total: shows.length, changedCount: changed.length, skipped, changed });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/admin/cleanup-show-tasks', async (req, res) => {
   if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { artistId, dryRun = true } = req.body || {};
