@@ -35,6 +35,8 @@ function clientIp(req) {
 const invitePage = require('./invite-page');
 
 const artistsRouter       = require('./routes/artists');
+const clientsRouter       = require('./routes/clients');
+const projectsRouter      = require('./routes/projects');
 const showsRouterModule   = require('./routes/shows');
 const showsRouter         = showsRouterModule;
 const slimShow            = showsRouterModule.slimShow;
@@ -1773,6 +1775,8 @@ app.get('/api/tasks', async (req, res, next) => {
 });
 
 // ── API routers ──────────────────────────────────────────────────────────────
+app.use('/api/clients',        clientsRouter);
+app.use('/api/projects',       projectsRouter);
 app.use('/api/shows',          showsRouter);
 app.use('/api/documents',      documentsRouter);
 app.use('/api/crew',           crewRouter);
