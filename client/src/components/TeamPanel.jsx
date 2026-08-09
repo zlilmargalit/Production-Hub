@@ -201,26 +201,25 @@ function InlinePermissions({ userId, perms, onSave }) {
 }
 
 // ── Expandable user details ────────────────────────────────────────────────────
-function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
+function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow, onCreateTask, onToggleTask }) {
   const [section, setSection] = useState('tasks');
   const today = new Date().toISOString().slice(0, 10);
 
-  // Assigned open tasks — prefer the global tasks array (keyed by assigneeId);
-  // fall back to legacy show.tasks for backward compat with older data.
+  // Assigned open tasks, read from tasks.json — the single authoritative store.
+  //
+  // This used to fall back to legacy show.tasks whenever the global array was
+  // empty, but the check was GLOBAL: one task created anywhere by anyone made
+  // every embedded task disappear from this panel — including ones this panel
+  // had just created itself. Writing here now goes to the same store this reads
+  // from, so there is nothing to fall back to.
   const showMap = Object.fromEntries(shows.map(s => [s.id, s]));
-  const assignedTasks = tasks.length > 0
-    ? tasks
-        .filter(t => !t.completed && t.assigneeId === user.id)
-        .map(t => ({
-          ...t,
-          showName: showMap[t.showId]?.name || '',
-          showObj:  showMap[t.showId] || null,
-        }))
-    : shows.flatMap(s =>
-        (s.tasks || [])
-          .filter(t => !t.completed && (t.assignedToUserId === user.id || t.assignedTo === user.id))
-          .map(t => ({ ...t, showName: s.name, showId: s.id, showObj: s }))
-      );
+  const assignedTasks = tasks
+    .filter(t => !t.completed && t.assigneeId === user.id)
+    .map(t => ({
+      ...t,
+      showName: showMap[t.showId]?.name || '',
+      showObj:  showMap[t.showId] || null,
+    }));
 
   // Upcoming shows (next 5 where user is assigned)
   const upcomingShows = shows
@@ -237,11 +236,9 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
     .filter(e => e.userId === user.id || e.username === user.username)
     .slice(0, 3);
 
-  const markDone = (showId, taskId, showObj) => {
-    const updatedTasks = (showObj.tasks || []).map(t =>
-      t.id === taskId ? { ...t, completed: true } : t
-    );
-    onUpdateShow(showId, { ...showObj, tasks: updatedTasks });
+  // Complete a task in tasks.json (the store assignedTasks reads from).
+  const markDone = (showId, taskId) => {
+    onToggleTask?.(taskId, true);
   };
 
   const [newTask, setNewTask]   = useState('');
@@ -250,8 +247,15 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
     if (!newTask.trim() || !taskShowId) return;
     const show = shows.find(s => s.id === taskShowId);
     if (!show) return;
-    const task = { id: `t${Date.now()}`, text: newTask.trim(), completed: false, assignedToUserId: user.id };
-    onUpdateShow(taskShowId, { ...show, tasks: [...(show.tasks || []), task] });
+    // Create in tasks.json rather than embedding in the show record, so the task
+    // is visible everywhere tasks are shown (and survives, unlike embedded ones).
+    onCreateTask?.({
+      text:         newTask.trim(),
+      showId:       taskShowId,
+      showIds:      [taskShowId],
+      assigneeId:   user.id,
+      assigneeName: user.displayName || user.username || '',
+    });
     setNewTask('');
   };
 
@@ -284,7 +288,7 @@ function UserExpanded({ user, shows, tasks = [], activityLog, onUpdateShow }) {
                     <input
                       type="checkbox"
                       checked={false}
-                      onChange={() => markDone(t.showId, t.id, t.showObj)}
+                      onChange={() => markDone(t.showId, t.id)}
                     />
                   </label>
                   <span className="tm-task-text">{t.text}</span>
@@ -483,6 +487,8 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       tasks={tasks}
                       activityLog={activityLog}
                       onUpdateShow={onUpdateShow}
+                      onCreateTask={onCreateTask}
+                      onToggleTask={onToggleTask}
                     />
                   </>
                 )}
@@ -829,7 +835,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
 // ────────────────────────────────────────────────────────────────────────────
 //  Main TeamPanel
 // ────────────────────────────────────────────────────────────────────────────
-function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = null }) {
+function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = null, onCreateTask, onToggleTask }) {
   const [tab,              setTab]              = useState('members');
   const [users,            setUsers]            = useState([]);
   const [unboundUsers,     setUnboundUsers]     = useState([]);

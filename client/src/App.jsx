@@ -722,7 +722,7 @@ function App({ demoMode = false }) {
         ) : page === 'teams' ? (
           <TeamsPage />
         ) : page === 'team' && userRole === 'admin' ? (
-          <TeamPanel artists={artists} shows={shows} tasks={tasks} onUpdateShow={updateShow} artistId={currentArtist?.id || null} />
+          <TeamPanel artists={artists} shows={shows} tasks={tasks} onUpdateShow={updateShow} artistId={currentArtist?.id || null} onCreateTask={createTask} onToggleTask={toggleTask} />
         ) : page === 'tasks' ? (
           <GlobalTaskPanel
             tasks={tasks}
