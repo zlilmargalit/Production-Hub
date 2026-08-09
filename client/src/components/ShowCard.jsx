@@ -107,17 +107,21 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     setBriefStatus('loading');
     setBriefError(null);
     setBriefDocUrl(null);
-    // Re-enable the button after 15s even if the doc is still generating in the
-    // background — the poll below still flips it to Sent ✓ / Open doc when ready.
-    setTimeout(() => setBriefStatus((s) => (s === 'loading' ? null : s)), 15000);
+    // After 15s, revert to the plain "Brief" button no matter the state — even a
+    // finished "Sent ✓". The "Open doc" link (if any) is kept; the background
+    // poll is blocked from re-showing Sent once we've reverted.
+    let reset = false;
+    setTimeout(() => { reset = true; setBriefStatus(null); setBriefError(null); }, 15000);
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
       const res  = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setBriefStatus('error');
-        setBriefError(data.error || 'Brief creation failed');
-        setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+        if (!reset) {
+          setBriefStatus('error');
+          setBriefError(data.error || 'Brief creation failed');
+          setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+        }
         return;
       }
       // Server processes asynchronously — poll status until done or timeout (2 min)
@@ -128,14 +132,16 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           const sr = await fetch(`/api/shows/${show.id}/brief/${jobId}${qs}`);
           const sd = await sr.json().catch(() => ({}));
           if (sd.status === 'done') {
-            setBriefStatus('sent');
-            if (sd.docUrl) setBriefDocUrl(sd.docUrl);
-            return; // keep "Sent ✓" + link visible until user navigates away
+            if (sd.docUrl) setBriefDocUrl(sd.docUrl); // keep the doc link available
+            if (!reset) setBriefStatus('sent');       // only show Sent ✓ before the 15s revert
+            return;
           }
           if (sd.status === 'error') {
-            setBriefStatus('error');
-            setBriefError(sd.error || 'Brief creation failed');
-            setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+            if (!reset) {
+              setBriefStatus('error');
+              setBriefError(sd.error || 'Brief creation failed');
+              setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+            }
             return;
           }
         } catch {
@@ -144,13 +150,17 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         await delay(2000);
       }
       // timed out
-      setBriefStatus('error');
-      setBriefError('Timed out — check Google Drive in a few minutes');
-      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
+      if (!reset) {
+        setBriefStatus('error');
+        setBriefError('Timed out — check Google Drive in a few minutes');
+        setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
+      }
     } catch (e) {
-      setBriefStatus('error');
-      setBriefError(e.message || 'Network error');
-      setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+      if (!reset) {
+        setBriefStatus('error');
+        setBriefError(e.message || 'Network error');
+        setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
+      }
     }
   };
 
