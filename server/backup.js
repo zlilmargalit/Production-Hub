@@ -36,7 +36,13 @@ const KEEP_REMOTE  = Number(process.env.BACKUP_KEEP_REMOTE || 30);
 
 // Never archived: secrets, the demo fixture, and the backup folder itself.
 const EXCLUDE = new Set(['gmail-token.json', 'gmail-credentials.json', 'service-account.json', 'demo.json']);
-const EXCLUDE_DIRS = new Set(['_backups', 'node_modules']);
+// _versions is the on-volume undo history (see cache.js). It is intentionally
+// not archived: it would multiply the archive size, and it protects against a
+// different failure (a bad edit) than this backup does (losing the volume).
+const EXCLUDE_DIRS = new Set(['_backups', '_versions', 'node_modules']);
+
+// Who to warn when a backup fails. Falls back to the Gmail account the app uses.
+const ALERT_TO = process.env.BACKUP_ALERT_EMAIL || process.env.GMAIL_USER || 'zlilmargalit0@gmail.com';
 
 function stamp(d) {
   const p = (n) => String(n).padStart(2, '0');
@@ -150,7 +156,37 @@ async function runBackup({ trigger = 'cron' } = {}) {
   result.finishedAt = new Date().toISOString();
   await writeStatus(result).catch(() => {});
   console.log(`[backup] ${result.ok ? 'OK' : 'FAILED'} ${name} local=${result.local} drive=${result.drive}${result.driveError ? ' (' + result.driveError + ')' : ''}`);
+
+  // A backup that stops working silently is the failure that actually costs you
+  // data, so warn on any degradation — not only on total failure. The off-site
+  // copy dying (expired Google token) still leaves local copies, which look fine
+  // until the volume is lost.
+  if (!result.ok || result.drive !== 'ok') await alert(result).catch(() => {});
   return result;
+}
+
+async function alert(result) {
+  const { sendEmail, emailConfigured } = require('./utils/email');
+  if (!emailConfigured || !emailConfigured()) {
+    console.error('[backup] ALERT (email not configured):', result.error || result.driveError || result.localError);
+    return;
+  }
+  const total = !result.ok;
+  const subject = total ? 'Production Hub — BACKUP FAILED' : 'Production Hub — off-site backup failed';
+  const body = [
+    total
+      ? 'The nightly backup did not complete. Your data currently has no fresh copy.'
+      : 'The local snapshot succeeded, but the upload to Google Drive failed — so there is no fresh OFF-SITE copy. If the Railway volume were lost now, the local copies would go with it.',
+    '',
+    `Archive:  ${result.name}`,
+    `Local:    ${result.local || 'n/a'}${result.localError ? ' — ' + result.localError : ''}`,
+    `Drive:    ${result.drive || 'n/a'}${result.driveError ? ' — ' + result.driveError : ''}`,
+    result.error ? `Error:    ${result.error}` : '',
+    '',
+    'Most common cause: the Google authorization expired — the same one used by Brief/PDF export.',
+  ].filter(Boolean).join('\n');
+  await sendEmail(ALERT_TO, subject, body);
+  console.log('[backup] failure alert emailed to', ALERT_TO);
 }
 
 function status() {
@@ -171,9 +207,24 @@ function status() {
 function startSchedule() {
   let cron;
   try { cron = require('node-cron'); } catch { return; }
-  // 03:30 Israel time — quiet hours, after the day's edits
-  cron.schedule('30 3 * * *', () => runBackup({ trigger: 'cron' }), { timezone: 'Asia/Jerusalem' });
-  console.log('[backup] Daily backup scheduled (03:30 Asia/Jerusalem)');
+  // Every 6 hours rather than nightly: a daily archive means losing a volume at
+  // 20:00 costs the whole day's work. Per-write undo is handled separately by
+  // the version history in cache.js; this bounds the OFF-SITE gap to ~6h.
+  cron.schedule('30 */6 * * *', () => runBackup({ trigger: 'cron' }), { timezone: 'Asia/Jerusalem' });
+  console.log('[backup] Backup scheduled every 6h (Asia/Jerusalem)');
+
+  // Watchdog: the staleness flag is only meaningful if something looks at it.
+  // Once a day, check and email if no backup has succeeded recently.
+  cron.schedule('0 10 * * *', async () => {
+    const s = status();
+    if (s.stale) {
+      await alert({
+        name: '(none)', ok: false,
+        error: `No successful backup in ${s.ageHours === null ? 'any recorded run' : s.ageHours + 'h'}`,
+      }).catch(() => {});
+    }
+  }, { timezone: 'Asia/Jerusalem' });
+  console.log('[backup] Staleness watchdog scheduled (10:00 Asia/Jerusalem)');
 }
 
 module.exports = { runBackup, status, startSchedule, BACKUP_DIR };
