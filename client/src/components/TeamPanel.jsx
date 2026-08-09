@@ -373,7 +373,7 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       userArtistAccess, userPermissions,
                       onDeleteUser, onEditEmail,
                       onSaveAccess, onSavePerms, onUpdateShow,
-                      artistId, onBindUser }) {
+                      artistId, onBindUser, onCreateTask, onToggleTask }) {
 
   const [localPerms,  setLocalPerms]  = useState(userPermissions || {});
   const [expandedId,  setExpandedId]  = useState(null);
@@ -982,6 +982,8 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
               onSaveAccess={saveAccess}
               onSavePerms={savePerms}
               onUpdateShow={onUpdateShow}
+              onCreateTask={onCreateTask}
+              onToggleTask={onToggleTask}
               artistId={artistId}
               onBindUser={bindUserToWorkspace}
             />
