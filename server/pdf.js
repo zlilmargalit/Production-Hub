@@ -192,7 +192,33 @@ function getBrowser() {
 
 // ── Render HTML → PDF Buffer ─────────────────────────────────────────────────
 
+// Reject if a step hangs. page.pdf() takes no timeout option, so without this a
+// wedged render leaves the HTTP request open forever — the user sees a spinner
+// that never resolves and the page is never closed.
+function withTimeout(promise, ms, label) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
+// Chromium runs with --single-process here, so parallel renders contend for one
+// process and a burst can exhaust memory. Serialise: PDFs are infrequent and a
+// short queue is far better than a crashed browser taking every request with it.
+let _renderQueue = Promise.resolve();
+
 async function htmlToPdfBuffer(html, options = {}) {
+  const run = () => _htmlToPdfBuffer(html, options);
+  const queued = _renderQueue.then(run, run);
+  _renderQueue = queued.then(() => {}, () => {});   // keep the chain, swallow rejections
+  return queued;
+}
+
+async function _htmlToPdfBuffer(html, options = {}) {
+  const PDF_TIMEOUT_MS = Number(process.env.PDF_TIMEOUT_MS || 60_000);
   // Two attempts: on the first failure (stale singleton) recycle the browser
   // and retry once with a fresh launch.
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -209,13 +235,13 @@ async function htmlToPdfBuffer(html, options = {}) {
         page.evaluate('document.fonts.ready'),
         new Promise((r) => setTimeout(r, 3000)),
       ]).catch(() => {});
-      const buffer = await page.pdf({
+      const buffer = await withTimeout(page.pdf({
         format:          options.format || 'A4',
         printBackground: true,
         margin:          options.margin || { top: '0', right: '0', bottom: '0', left: '0' },
         preferCSSPageSize: true,
         ...options.pdf,
-      });
+      }), PDF_TIMEOUT_MS, 'PDF render');
       await page.close().catch(() => {});
       return buffer;
     } catch (err) {
