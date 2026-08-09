@@ -107,11 +107,14 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     setBriefStatus('loading');
     setBriefError(null);
     setBriefDocUrl(null);
-    // After 15s, revert to the plain "Brief" button no matter the state — even a
-    // finished "Sent ✓". The "Open doc" link (if any) is kept; the background
-    // poll is blocked from re-showing Sent once we've reverted.
+    // After 15s the Brief button returns to its plain state completely — no
+    // "Sent ✓", no error, and no "Open doc" link. The reset flag also stops the
+    // background poll from re-showing any of them afterwards.
     let reset = false;
-    setTimeout(() => { reset = true; setBriefStatus(null); setBriefError(null); }, 15000);
+    setTimeout(() => {
+      reset = true;
+      setBriefStatus(null); setBriefError(null); setBriefDocUrl(null);
+    }, 15000);
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     try {
       const res  = await fetch(`/api/shows/${show.id}/brief${qs}`, { method: 'POST' });
@@ -132,8 +135,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           const sr = await fetch(`/api/shows/${show.id}/brief/${jobId}${qs}`);
           const sd = await sr.json().catch(() => ({}));
           if (sd.status === 'done') {
-            if (sd.docUrl) setBriefDocUrl(sd.docUrl); // keep the doc link available
-            if (!reset) setBriefStatus('sent');       // only show Sent ✓ before the 15s revert
+            // Only surface Sent ✓ + the doc link if we haven't already reverted
+            if (!reset) {
+              if (sd.docUrl) setBriefDocUrl(sd.docUrl);
+              setBriefStatus('sent');
+            }
             return;
           }
           if (sd.status === 'error') {

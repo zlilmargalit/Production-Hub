@@ -12,7 +12,7 @@ const { google } = require('googleapis');
 
 const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { htmlToPdfBuffer } = require('../pdf');
-const { dataPath, cacheKey, DATA_DIR } = require('../utils/userData');
+const { dataPath, cacheKey, DATA_DIR, parseUserId } = require('../utils/userData');
 
 function scheduleToString(schedule) {
   if (!schedule) return '';
@@ -324,6 +324,26 @@ function formatShowDate(d) {
 function showFieldInPdf(show, key) {
   if (key.startsWith('check_')) return show.pdfFields?.[key] === true;
   return !show.pdfFields || show.pdfFields[key] !== false;
+}
+
+// Short artist tag inserted into the PDF filename. Artist records store Latin
+// names ("Assaf Amdursky"), but the coordination sheets are filed in Hebrew —
+// so map to a Hebrew tag, falling back to the artist's own name for anyone not
+// listed. Override/extend via ARTIST_FILENAME_TAGS (JSON: {"<artistId>":"תג"}).
+const ARTIST_TAG_BY_NAME = { 'assaf amdursky': 'אמדורסקי', 'hila ruach': 'הילה רוח' };
+function getArtistFilenameTag(userId) {
+  try {
+    const { artistId } = parseUserId(userId);
+    if (!artistId) return '';
+    const overrides = process.env.ARTIST_FILENAME_TAGS ? JSON.parse(process.env.ARTIST_FILENAME_TAGS) : {};
+    if (overrides[artistId]) return overrides[artistId];
+    const artists = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'artists.json'), 'utf8'));
+    const artist = artists.find((a) => a.id === artistId);
+    if (!artist?.name) return '';
+    return ARTIST_TAG_BY_NAME[artist.name.trim().toLowerCase()] || artist.name;
+  } catch {
+    return '';
+  }
 }
 
 // ── slimShow: strip heavy payloads for the list endpoint ─────────────────────
@@ -823,7 +843,10 @@ ${imageSectionHtml}
 
     const dateStr = formatShowDate(show.date);
     const safeName = show.name.replace(/[/\\:*?"<>|]/g, '_');
-    const filename = `דף תיאום - ${safeName}${dateStr ? ' ' + dateStr : ''}.pdf`;
+    // Filename carries the artist tag right after "דף תיאום - ", e.g.
+    // "דף תיאום - אמדורסקי סולו מועדון הג'ורג' ת״א 13.8.2026.pdf"
+    const artistTag = getArtistFilenameTag(req.userId);
+    const filename = `דף תיאום - ${artistTag ? artistTag + ' ' : ''}${safeName}${dateStr ? ' ' + dateStr : ''}.pdf`;
 
     // Render to a Buffer using the cached Puppeteer browser.
     const pdfBuffer = await htmlToPdfBuffer(html);
