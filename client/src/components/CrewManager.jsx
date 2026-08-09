@@ -173,10 +173,16 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
     return next;
   });
 
+  // Group by the DISPLAY label, not the raw stored value: "הפקה" and "Production"
+  // are the same role and must land in one group (they previously rendered as two
+  // identical "PRODUCTION" headings). Case/whitespace variants merge too.
   const byRole = crew.reduce((acc, m) => {
-    const role = m.role || 'Other';
-    if (!acc[role]) acc[role] = [];
-    acc[role].push(m);
+    const raw   = (m.role || '').trim();
+    const label = ROLE_DISPLAY[raw]
+      || ROLE_DISPLAY[Object.keys(ROLE_DISPLAY).find((k) => k.toLowerCase() === raw.toLowerCase())]
+      || (raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : 'Other');
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(m);
     return acc;
   }, {});
 
@@ -230,7 +236,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                     >
                       {collapsedRoles.has(role) ? '+' : '−'}
                     </button>
-                    <span className="crew-group-label">{ROLE_DISPLAY[role] || role}</span>
+                    <span className="crew-group-label">{role}</span>
                     <span className="crew-group-count">{members.length}</span>
                   </h3>
                   {!collapsedRoles.has(role) && (
