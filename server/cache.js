@@ -9,8 +9,16 @@ const fs  = require('fs');
 const fsp = require('fs').promises;
 
 // stdTTL=0 → entries never expire by time; we manage invalidation explicitly.
-// useClones=false → returns the same object reference (faster, but callers
-// must NOT mutate cached objects in place. All our writes replace the array.)
+//
+// useClones=TRUE → get() returns a deep clone, so mutating a value you read
+// does NOT change what is cached. That is the safe direction: a caller can't
+// corrupt the cache by accident. Two consequences worth knowing:
+//   - Mutating a read and skipping the write silently does nothing. Always
+//     write back through writeJsonAndCache / updateJsonAndCache.
+//   - Every cache hit pays a deep clone, which is not free on the larger files.
+// This comment previously described useClones=false and warned against in-place
+// mutation; it contradicted the constructor. The constructor is authoritative —
+// do not "fix" one to match the other without re-checking every caller.
 const cache = new NodeCache({ stdTTL: 0, useClones: true });
 
 // Read a JSON file through the cache. If the key is hot we skip disk entirely.
