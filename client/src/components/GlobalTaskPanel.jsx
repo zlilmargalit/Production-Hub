@@ -218,7 +218,7 @@ function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, set
             />
             <span
               className="gtask-text"
-              dir="rtl"
+              dir="auto"
               onClick={toggleExpand}
               style={{ cursor: 'pointer', flex: 1 }}
             >

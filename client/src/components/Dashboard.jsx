@@ -252,7 +252,7 @@ function GuestListCard({ show, onSaveGuests }) {
       <div className="cl-card-header gl-card-header">
         <div className="cl-card-title-group">
           <span className="cl-card-title">Guest list</span>
-          <span className="cl-card-time" dir="rtl">רשימת מוזמנים</span>
+          <span className="cl-card-time" dir="auto">רשימת מוזמנים</span>
         </div>
         {count > 0 && <span className="gl-count-pill">{count}</span>}
         {trimmed && (
@@ -439,7 +439,7 @@ function EventPill({ show, onClick }) {
     >
       <span className="ev-pill-bar" />
       {time && <span className="ev-pill-time">{time}</span>}
-      <span className="ev-pill-name">{show.name}</span>
+      <span className="ev-pill-name" dir="auto">{show.name}</span>
     </button>
   );
 }

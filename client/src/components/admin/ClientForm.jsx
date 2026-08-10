@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import IconButton from '../ui/IconButton';
+import { digitsOnly, phoneChars, isEmail } from '../../utils/fieldInput';
 
 // Add / edit a client. Same modal shape as CrewManager's form so the two screens
 // feel like one app.
@@ -21,14 +22,29 @@ export default function ClientForm({ client = null, onSave, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Fields that can only hold digits are filtered here, so the character is
+  // never accepted rather than rejected after the fact.
+  const CLEAN = {
+    paymentTerms: Number,
+    businessId:   digitsOnly,
+    phone:        phoneChars,
+  };
+
   const set = (e) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: name === 'paymentTerms' ? Number(value) : value }));
+    const clean = CLEAN[name];
+    setForm((f) => ({ ...f, [name]: clean ? clean(value) : value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (saving) return;                       // double-submit would create twice
+    // Email is judged whole, not per keystroke — an address is only wrong once
+    // it is finished being typed.
+    if (!isEmail(form.email)) {
+      setError('Enter a valid email address, or leave it empty.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -63,7 +79,7 @@ export default function ClientForm({ client = null, onSave, onClose }) {
             <div className="form-group">
               <label>Business number</label>
               <input dir="auto" name="businessId" value={form.businessId} onChange={set}
-                     placeholder="ח.פ. / ע.מ." />
+                     inputMode="numeric" placeholder="ח.פ. / ע.מ." />
             </div>
 
             <div className="form-group">
@@ -91,10 +107,12 @@ export default function ClientForm({ client = null, onSave, onClose }) {
 
             <div className="form-group span-2">
               <label>Email</label>
-              {/* Deliberately type="text": type="email" blocks submit on anything
-                  without an @, and invoices go to real addresses that are pasted,
-                  not typed. The server stores it as free text. */}
-              <input dir="auto" name="email" value={form.email} onChange={set} />
+              {/* type="text" with our own check on submit, not type="email": the
+                  native validation bubble is styled and worded by the browser and
+                  ignores this app's error line. isEmail() allows an empty value,
+                  because the field is optional. */}
+              <input dir="auto" name="email" value={form.email} onChange={set}
+                     inputMode="email" placeholder="name@company.com" />
             </div>
 
             <div className="form-group span-2">

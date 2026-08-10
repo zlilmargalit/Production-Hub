@@ -250,7 +250,10 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
             <button className="btn-action btn-action--danger" onClick={() => onDelete(show.id)}>Delete</button>
           </div>
         </div>
-        <h2 lang={isHebrew} dir={isHebrew === 'he' ? 'rtl' : 'ltr'}>{show.name}</h2>
+        {/* lang still drives the font; direction is left to dir="auto", which
+            reads the first strong character instead of "contains any Hebrew" —
+            "Show at בארבי" is an English title and should read left-to-right. */}
+        <h2 lang={isHebrew} dir="auto">{show.name}</h2>
         <div className="show-meta">
           {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
           {show.venue && <><span className="meta-dot">·</span><span className="meta-item" dir="auto">{show.venue}</span></>}
@@ -299,7 +302,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                 {assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).map((m) => (
                   <div key={m.id} className="crew-chip">
                     <span className="crew-chip-avatar" style={{ background: colorFor(m.id) }}>{initialsFor(m.name)}</span>
-                    <span className="crew-chip-name">{m.name}</span>
+                    <span className="crew-chip-name" dir="auto">{m.name}</span>
                     {m.role && <span className="crew-chip-role">{m.role}</span>}
                   </div>
                 ))}

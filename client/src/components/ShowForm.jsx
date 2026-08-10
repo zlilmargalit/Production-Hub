@@ -374,7 +374,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                       ref={(el) => { schedTimeRefs.current[idx] = el; }}
                     />
                     <input
-                      dir="rtl"
+                      dir="auto"
                       className="sf-inp sf-sched-activity"
                       value={row.activity}
                       onChange={(e) => updateScheduleRow(idx, 'activity', e.target.value)}
@@ -522,7 +522,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                 <div className="sf-grid2">
                   {customDefs.map((def) => (
                     <div key={def.id} className={`sf-field${def.type === 'textarea' ? ' full' : ''}`}>
-                      <label dir="rtl">{def.label}</label>
+                      <label dir="auto">{def.label}</label>
                       {def.type === 'text' && (
                         <input dir="auto" className="sf-inp"
                           value={form.customFields?.[def.id] || ''}

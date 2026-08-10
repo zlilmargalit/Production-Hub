@@ -297,7 +297,7 @@ function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateT
                       onChange={() => markDone(t.showId, t.id)}
                     />
                   </label>
-                  <span className="tm-task-text">{t.text}</span>
+                  <span className="tm-task-text" dir="auto">{t.text}</span>
                   <span className="tm-task-show" dir="auto">{t.showName}</span>
                 </li>
               ))}

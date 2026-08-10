@@ -83,7 +83,7 @@ function TimeRow({ e, last, onToggle, onEdit }) {
     <div className={`tlog-row${last ? ' tlog-row--last' : ''}`}>
       <span className="tlog-row-date">{e.date}</span>
       <div><ArtistTag artist={e.artist} /></div>
-      <span className={`tlog-row-desc${e.billed ? ' is-billed' : ''}`}>{e.desc}</span>
+      <span dir="auto" className={`tlog-row-desc${e.billed ? ' is-billed' : ''}`}>{e.desc}</span>
       <div className="tlog-row-hours">
         <span className={`tlog-row-hours-num${e.billed ? ' is-billed' : ''}`}>{fmtHours(e.hours)}</span>
         <span className="tlog-row-hours-unit">h</span>

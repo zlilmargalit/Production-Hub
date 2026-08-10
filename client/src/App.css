@@ -3347,6 +3347,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .form-group textarea::placeholder { color: var(--text-3); }
 
 .field-hint { font-size: 0.75rem; color: var(--text-3); margin-top: 2px; font-style: italic; }
+/* Sits where the hint would, so nothing below it moves when it appears. */
+.field-error { font-size: 0.75rem; color: var(--danger); margin-top: 2px; }
 
 .form-actions {
   display: flex;
@@ -9766,9 +9768,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .tlog-title-row { flex-wrap: wrap; }
   .tlog-grid-head, .tlog-row { grid-template-columns: 50px 110px 1fr 70px 26px 30px; gap: 10px; padding-left: 14px; padding-right: 14px; }
   .tlog-tag { font-size: 0.68rem; padding: 3px 7px; }
-  /* Description column: header right-aligned to match Hebrew RTL content */
+  /* Description column: alignment follows the entry's own direction, so an
+     English description reads left-aligned and a Hebrew one right-aligned. */
   .tlog-grid-head-label:nth-child(3) { text-align: right; }
-  .tlog-row-desc { text-align: right; direction: rtl; }
+  .tlog-row-desc { text-align: start; }
   /* Prevent timelog grid from causing horizontal scroll */
   .tlog-grid { overflow-x: hidden; }
 }
@@ -10459,10 +10462,18 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .ws-type-option-label { font-weight: 600; font-size: 0.875rem; color: var(--text); }
 .ws-type-option-hint  { font-size: 0.75rem; color: var(--text-3); }
 
-/* ── Administration workspace ──────────────────────────────────────────────
-   UI chrome is English/LTR. Only user content is Hebrew: `.he` flips it, and
-   `.n` keeps numbers, dates and currency LTR inside that RTL text.          */
-.he { direction: rtl; text-align: right; }
+/* ── User-entered content ──────────────────────────────────────────────────
+   UI chrome is English/LTR. Content the user typed can be either language, so
+   direction is never hard-coded: the element carries dir="auto" and the browser
+   reads it off the first strong character. A Hebrew client name goes RTL, an
+   English one goes LTR, in the same list.
+
+   `.he` therefore only handles alignment — `start` follows whatever direction
+   dir="auto" resolved to. It does NOT set direction; setting it here would
+   defeat the point. Always pair the class with dir="auto" on the element.
+
+   `.n` keeps numbers, dates and currency LTR when they sit inside RTL text.  */
+.he { text-align: start; }
 table .he { text-align: left; }            /* column alignment wins in a table */
 .n {
   font-variant-numeric: tabular-nums;

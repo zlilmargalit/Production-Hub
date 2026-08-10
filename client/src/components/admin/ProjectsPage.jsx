@@ -8,7 +8,7 @@ import {
 // same tab bar, same two-column card grid.
 //
 // UI chrome is English. Only user-entered content (project, client, brand) is
-// Hebrew and carries dir="rtl" via `.he`.
+// Hebrew and carries dir="auto" — direction follows the value, not the app.
 
 const TYPE_LABEL = {
   advertising: 'Advertising', film: 'Film', talent: 'Talent', other: 'Other',
@@ -44,8 +44,8 @@ function ProjectCard({ project, onOpen }) {
           <span className="adm-card-date n">{dateRange(project)}</span>
         </div>
 
-        <h3 className="adm-card-name he">{project.name}</h3>
-        {secondary && <p className="adm-card-sub he">{secondary}</p>}
+        <h3 dir="auto" className="adm-card-name he">{project.name}</h3>
+        {secondary && <p dir="auto" className="adm-card-sub he">{secondary}</p>}
 
         {alert && (
           <p className={`adm-line adm-line--${alert.level}`}>{alert.text}</p>

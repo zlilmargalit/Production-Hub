@@ -39,14 +39,19 @@ export default function ClientsPage({ clients = [], projects = [], loading = fal
               <div key={c.id} className="adm-client-card" onClick={() => onOpen?.(c)}
                    role="button" tabIndex={0}
                    onKeyDown={(e) => e.key === 'Enter' && onOpen?.(c)}>
-                <h3 className="adm-client-name he">{c.name}</h3>
+                <h3 dir="auto" className="adm-client-name he">{c.name}</h3>
                 <p className="adm-client-caption">
                   {c.businessId ? <span className="n">{c.businessId}</span> : 'No business number'}
                   {' · '}<span className="n">Net {c.paymentTerms}</span>
                 </p>
+                {/* The separator belongs between two values, so it only appears
+                    when there are two — a phone with no contact name must not
+                    render as "· 052 000 0000". */}
                 {(c.contactName || c.phone) && (
-                  <p className="adm-client-contact he">
-                    {c.contactName}{c.phone ? <> · <span className="n">{c.phone}</span></> : null}
+                  <p dir="auto" className="adm-client-contact he">
+                    {c.contactName}
+                    {c.contactName && c.phone ? ' · ' : null}
+                    {c.phone ? <span className="n">{c.phone}</span> : null}
                   </p>
                 )}
                 <div className="adm-client-foot">

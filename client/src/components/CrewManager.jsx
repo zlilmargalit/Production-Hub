@@ -4,6 +4,7 @@ import { etColorIdx } from '../utils/etColor';
 import SegmentedControl from './ui/SegmentedControl';
 import IconButton from './ui/IconButton';
 import PageBar from './ui/PageBar';
+import { phoneChars, isEmail } from '../utils/fieldInput';
 const uuidv4 = () => crypto.randomUUID();
 
 // ── Per-group color helpers ─────────────────────────────────────────────────
@@ -509,7 +510,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                   </button>
                   <IconButton danger onClick={() => deleteEventType(et)} title="Delete event type">✕</IconButton>
                 </div>
-                <span className="template-type" dir="rtl">{et}</span>
+                <span className="template-type" dir="auto">{et}</span>
               </div>
 
               {/* ── Crew editor — toggle independently ── */}
@@ -519,7 +520,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                     {crew.map((m) => (
                       <label key={m.id} className="crew-pick-row">
                         <input type="checkbox" checked={localIds.includes(m.id)} onChange={() => toggleId(m.id)} />
-                        <span className="crew-pick-name">{m.name}</span>
+                        <span className="crew-pick-name" dir="auto">{m.name}</span>
                         <span className="crew-pick-role">{m.role}</span>
                       </label>
                     ))}
@@ -542,13 +543,13 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                             style={{ opacity: dragCrewIdx === idx ? 0.35 : 1, cursor: 'grab' }}
                           >
                             <span className="drag-handle">⠿</span>
-                            <span className="template-order-text">{m.role} – {m.name}</span>
+                            <span className="template-order-text" dir="auto">{m.role} – {m.name}</span>
                           </div>
                         );
                       })}
                       <div className="template-preview">
                         <span className="crew-section-label">Preview:</span>
-                        <span className="template-preview-text" dir="rtl">{buildCrewText(localIds, crew)}</span>
+                        <span className="template-preview-text" dir="auto">{buildCrewText(localIds, crew)}</span>
                       </div>
                     </div>
                   )}
@@ -564,7 +565,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                 <div className="template-editor" style={isEditingCrew ? { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' } : {}}>
                   <div className="field-add-row">
                     <input
-                      dir="rtl"
+                      dir="auto"
                       className="task-input"
                       value={newFieldLabel}
                       onChange={(e) => setNewFieldLabel(e.target.value)}
@@ -596,7 +597,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                           style={{ opacity: dragFieldIdx === idx ? 0.35 : 1, cursor: 'grab' }}
                         >
                           <span className="drag-handle">⠿</span>
-                          <span className="field-def-label" dir="rtl">{f.label}</span>
+                          <span className="field-def-label" dir="auto">{f.label}</span>
                           <span className="field-def-type">{FIELD_TYPES.find((t) => t.value === f.type)?.label || f.type}</span>
                           <div className="field-def-actions">
                             <button className="btn-icon btn-danger" onClick={() => removeField(f.id)}>✕</button>
@@ -678,7 +679,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
       {/* ── Add new event type ── */}
       <div className="event-type-add" style={{ marginTop: 14 }}>
         <input
-          dir="rtl"
+          dir="auto"
           className="task-input"
           value={newTypeName}
           onChange={(e) => setNewTypeName(e.target.value)}
@@ -708,16 +709,20 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
       : { ...BLANK_MEMBER }
   );
   const [addingRole, setAddingRole] = useState(false);
+  const [emailError, setEmailError] = useState(false);
   const [newRoleInput, setNewRoleInput] = useState('');
 
   const allRoles = [...CREW_ROLES, ...customRoles];
 
   const set = (e) => {
-    if (e.target.name === 'role' && e.target.value === '__add_new__') {
+    const { name, value } = e.target;
+    if (name === 'role' && value === '__add_new__') {
       setAddingRole(true);
       return;
     }
-    setForm({ ...form, [e.target.name]: e.target.value });
+    // A phone number has no valid spelling with letters in it, so they are
+    // filtered out as typed rather than rejected on save.
+    setForm({ ...form, [name]: name === 'phone' ? phoneChars(value) : value });
   };
 
   const confirmNewRole = () => {
@@ -745,6 +750,9 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Judged whole on submit, not per keystroke — half-typed is not yet wrong.
+    if (!isEmail(form.email)) { setEmailError(true); return; }
+    setEmailError(false);
     onSubmit(form);
   };
 
@@ -787,17 +795,22 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
             </div>
             <div className="form-group">
               <label>Phone</label>
-              <input name="phone" value={form.phone} onChange={set} placeholder="050-..." type="tel" />
+              <input dir="auto" name="phone" value={form.phone} onChange={set}
+                     placeholder="050-..." inputMode="tel" />
             </div>
             <div className="form-group span-2">
               <label>Email</label>
-              <input name="email" value={form.email} onChange={set} placeholder="email@example.com" type="email" />
+              <input dir="auto" name="email" value={form.email} onChange={set}
+                     placeholder="email@example.com" inputMode="email" />
+              {emailError && (
+                <span className="field-error">Enter a valid email address, or leave it empty.</span>
+              )}
             </div>
             <div className="form-group span-2">
               <label>Usually works with</label>
               <div className="checkbox-row" style={{ flexWrap: 'wrap' }}>
                 {(eventTypes || []).map((t) => (
-                  <label key={t} className="checkbox-label" dir="rtl">
+                  <label key={t} className="checkbox-label" dir="auto">
                     <input
                       type="checkbox"
                       checked={form.eventTypes.includes(t)}
