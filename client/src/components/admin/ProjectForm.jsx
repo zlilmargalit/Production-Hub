@@ -37,7 +37,7 @@ const EMPTY = {
 
 // Work days carry a local key so React can track rows that have no id yet.
 let rowSeq = 0;
-const blankDay = () => ({ localKey: `new-${rowSeq++}`, date: '', location: '', callTime: '' });
+const blankDay = () => ({ localKey: `new-${rowSeq++}`, date: '' });
 
 // Sentinel option, same shape CrewManager uses for "add new role".
 const ADD_CLIENT = '__add_client__';
@@ -239,17 +239,14 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
               <label>Work days</label>
               {days.length === 0 && (
                 <span className="field-hint">
-                  No work days yet. Without one this project has no date and stays under UPCOMING.
+                  No work days yet. A day is what assistants are paid for and what
+                  purchases attach to — without one this project has no date.
                 </span>
               )}
               {days.map((d) => (
                 <div key={d.localKey} className="adm-day-row">
                   <input type="date" value={d.date || ''}
                          onChange={(e) => setDay(d.localKey, 'date', e.target.value)} />
-                  <input dir="auto" value={d.location || ''} placeholder="Location"
-                         onChange={(e) => setDay(d.localKey, 'location', e.target.value)} />
-                  <input dir="auto" value={d.callTime || ''} placeholder="Call time"
-                         onChange={(e) => setDay(d.localKey, 'callTime', e.target.value)} />
                   <IconButton danger onClick={() => removeDay(d.localKey)} title="Remove work day">✕</IconButton>
                 </div>
               ))}

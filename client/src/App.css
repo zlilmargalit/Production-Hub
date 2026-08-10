@@ -10700,8 +10700,8 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 
 /* One work-day row: date, location, call time, remove. */
 .adm-day-row {
-  display: grid; grid-template-columns: 150px 1fr 110px auto;
-  gap: 8px; align-items: center; margin-bottom: 8px;
+  display: grid; grid-template-columns: 170px auto;
+  gap: 8px; align-items: center; margin-bottom: 8px; justify-content: start;
 }
 .adm-day-add { align-self: flex-start; margin-top: 2px; }
 @media (max-width: 720px) {
@@ -10845,4 +10845,49 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 [dir="rtl"] .mcal-day-hdr,
 [dir="rtl"] .mcal-week-wday {
   font-size: 0.6875rem; letter-spacing: 0.02em; text-transform: none;
+}
+
+/* ── Expanded project card ────────────────────────────────────────────────
+   The project expands in place, like a show card. An open card spans the grid
+   so its content is not squeezed into one column. */
+.adm-card--open { grid-column: 1 / -1; }
+.adm-card-expand {
+  margin-inline-start: auto; font-family: inherit; font-size: 1rem; line-height: 1;
+  width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; color: var(--text-2); cursor: pointer; flex: 0 0 auto;
+}
+.adm-card-expand:hover { border-color: var(--text-3); color: var(--text); }
+/* An open card spans the full grid, so a Hebrew title that dir="auto" resolved
+   to RTL would sit alone at the far edge, away from everything it heads. The
+   title keeps its direction; only the alignment follows the layout. */
+.adm-card--open .adm-card-name,
+.adm-card--open .adm-card-sub { text-align: left; }
+
+.adm-card-open-body {
+  padding: 14px 16px 12px; margin-top: 10px;
+  border-top: 1px solid var(--border-light);
+  display: grid; gap: 18px 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.adm-card-open-body .adm-section { border: none; background: transparent; padding: 0; }
+.adm-card-open-body .adm-panel-row,
+.adm-card-open-body .show-expand-panel { grid-column: 1 / -1; }
+.adm-panel-row { display: flex; gap: 8px; align-items: center; padding-top: 4px; }
+
+/* Day-level expense checkpoint. */
+.adm-day-check {
+  margin-inline-start: auto; font-family: inherit; font-size: 0.6875rem;
+  letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px;
+  background: transparent; color: var(--orange-deep); cursor: pointer;
+}
+.adm-day-check--done { color: var(--text-3); }
+.adm-day-check:disabled { opacity: .5; cursor: default; }
+
+.adm-day-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.adm-booking--expense .adm-booking-name { color: var(--text-2); }
+.adm-booking-state--static { border-color: transparent; color: var(--text-3); cursor: default; }
+.adm-inline-check {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.8125rem; color: var(--text-2); white-space: nowrap;
 }

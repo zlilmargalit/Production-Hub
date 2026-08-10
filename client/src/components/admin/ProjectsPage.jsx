@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import PageBar from '../ui/PageBar';
+import ProjectCard from './ProjectCard';
 import {
   ils, fmtDate, dateRange, todayStr, ballInCourt, projectAlert, firstWorkDay,
 } from './adminFormat';
@@ -10,75 +11,9 @@ import {
 // UI chrome is English. Only user-entered content (project, client, brand) is
 // Hebrew and carries dir="auto" — direction follows the value, not the app.
 
-const TYPE_LABEL = {
-  advertising: 'Advertising', film: 'Film', talent: 'Talent', other: 'Other',
-};
-
-// Top bar colour is the PROJECT TYPE, never the status — status is carried by
-// the ball-in-court line instead.
-const TYPE_COLOR = {
-  advertising: '#3852B4', film: '#7A4E8C', talent: '#C26C1F', other: '#4E7265',
-};
-
-function ProjectCard({ project, onOpen }) {
-  const status = ballInCourt(project);
-  const alert  = projectAlert(project);
-  const days   = (project.workDays || []).length;
-  const isPaid = project.status === 'paid';
-
-  // Kept as separate parts, NOT joined into one string. "אדלר חומסקי · 2 work
-  // days" in a single dir="auto" element resolves to RTL off the Hebrew, and
-  // bidi reorders the English run to the far end — it renders as "work days 2 ·
-  // אדלר חומסקי". Giving each part its own dir="auto" lets every part settle in
-  // its own direction while the separators keep the reading order.
-  const secondary = [project.clientNameSnapshot, project.brand,
-    days ? `${days} work day${days === 1 ? '' : 's'}` : null].filter(Boolean);
-
-  return (
-    <div
-      className={`adm-card${isPaid ? ' adm-card--settled' : ''}`}
-      onClick={() => onOpen?.(project)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onOpen?.(project)}
-    >
-      <div className="adm-card-bar" style={{ background: TYPE_COLOR[project.projectType] || TYPE_COLOR.other }} />
-      <div className="adm-card-body">
-        <div className="adm-card-top">
-          <span className="adm-card-type">{TYPE_LABEL[project.projectType] || 'Other'}</span>
-          <span className="adm-card-date n">{dateRange(project)}</span>
-        </div>
-
-        <h3 dir="auto" className="adm-card-name he">{project.name}</h3>
-        {/* dir on the paragraph aligns it with the title above; dir on each part
-            makes it a bidi isolate, so parts cannot reorder around each other. */}
-        {secondary.length > 0 && (
-          <p dir="auto" className="adm-card-sub he">
-            {secondary.map((part, i) => (
-              <span key={i}>
-                {i > 0 ? ' · ' : null}
-                <span dir="auto">{part}</span>
-              </span>
-            ))}
-          </p>
-        )}
-
-        {alert && (
-          <p className={`adm-line adm-line--${alert.level}`}>{alert.text}</p>
-        )}
-      </div>
-
-      <div className="adm-card-foot">
-        <span className={`adm-ball adm-ball--${status.marker}`} />
-        <span className="adm-ball-label">{status.label}</span>
-        <span className="adm-ball-caption">{status.caption}</span>
-      </div>
-    </div>
-  );
-}
-
 export default function ProjectsPage({
-  projects = [], loading = false, onOpen, onNew, onAddClient, hasClients = true,
+  projects = [], assistants = [], busy = false, loading = false,
+  onNew, onEdit, onAddClient, makeHandlers, hasClients = true,
 }) {
   const [tab, setTab] = useState('upcoming');
   const today = todayStr();
@@ -174,7 +109,12 @@ export default function ProjectsPage({
         <p className="adm-none">No projects here.</p>
       ) : (
         <div className="adm-grid">
-          {visible.map((p) => <ProjectCard key={p.id} project={p} onOpen={onOpen} />)}
+          {visible.map((p) => (
+            <ProjectCard
+              key={p.id} project={p} assistants={assistants} busy={busy}
+              onEdit={onEdit} handlers={makeHandlers(p)}
+            />
+          ))}
         </div>
       )}
     </div>

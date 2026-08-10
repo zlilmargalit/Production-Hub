@@ -19,7 +19,6 @@ import ProjectsPage from './components/admin/ProjectsPage';
 import ClientsPage from './components/admin/ClientsPage';
 import ClientForm from './components/admin/ClientForm';
 import ProjectForm from './components/admin/ProjectForm';
-import ProjectDetail from './components/admin/ProjectDetail';
 import AssistantsPage from './components/admin/AssistantsPage';
 import AssistantForm from './components/admin/AssistantForm';
 import { isOverdue } from './components/admin/adminFormat';
@@ -58,10 +57,6 @@ function App({ demoMode = false }) {
   // null = closed; an object = editing that record; {} = creating a new one.
   const [clientForm, setClientForm]   = useState(null);
   const [projectForm, setProjectForm] = useState(null);
-  // Id, not the object: the project is re-read from `projects` on every render
-  // so an edit made in the modal shows here without a second copy to keep in
-  // sync.
-  const [openProjectId, setOpenProjectId] = useState(null);
   const [assistants, setAssistants]       = useState([]);
   const [assistantForm, setAssistantForm] = useState(null);
   const [adminBusy, setAdminBusy]         = useState(false);
@@ -158,11 +153,14 @@ function App({ demoMode = false }) {
   // Administration slices. Only fetched for an administration workspace, so a
   // production workspace never pays for them. Same stale-response guard as the
   // other fetchers: a response for the previous workspace must not land here.
-  const fetchAdminData = useCallback(async () => {
+  // `silent` skips the loading flag. A refetch triggered by an action must not
+  // swap the cards for skeletons: that unmounts them, and an expanded card
+  // would collapse itself every time you booked someone or marked a payment.
+  const fetchAdminData = useCallback(async ({ silent = false } = {}) => {
     if (demoMode) return;
     const issuedFor = fetchedFor();
     if (!issuedFor) { setProjects([]); setClients([]); setAssistants([]); return; }
-    setAdminLoading(true);
+    if (!silent) setAdminLoading(true);
     try {
       const [p, c, a] = await Promise.all([
         fetch(`/api/projects${artistQS()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
@@ -174,7 +172,7 @@ function App({ demoMode = false }) {
       setClients(Array.isArray(c) ? c : []);
       setAssistants(Array.isArray(a) ? a : []);
     } finally {
-      if (stillCurrent(issuedFor)) setAdminLoading(false);
+      if (!silent && stillCurrent(issuedFor)) setAdminLoading(false);
     }
   }, [demoMode]);
 
@@ -258,25 +256,38 @@ function App({ demoMode = false }) {
   // disagree with the rows it is supposed to be summing.
   const bookingAction = useCallback(async (fn) => {
     setAdminBusy(true);
-    try { await fn(); await fetchAdminData(); }
+    try { await fn(); await fetchAdminData({ silent: true }); }
     finally { setAdminBusy(false); }
   }, [fetchAdminData]);
 
-  const bookAssistant = useCallback((projectId) => (dayId, booking) =>
-    bookingAction(() => adminApi(`/projects/${projectId}/work-days/${dayId}/assistants`, 'POST', booking)),
-  [adminApi, bookingAction]);
+  // One bundle per project, so a card never has to know its own id to act.
+  // expensesFor reads from the project the caller already holds — expenses are
+  // stored on the project and tagged with a workDayId, not nested in the day.
+  const projectHandlers = useCallback((project) => ({
+    book: (dayId, booking) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/work-days/${dayId}/assistants`, 'POST', booking)),
 
-  const setBookingPaid = useCallback((projectId) => (dayId, bookingId, paid) =>
-    bookingAction(() => adminApi(
-      `/projects/${projectId}/work-days/${dayId}/assistants/${bookingId}`, 'PUT',
-      { paidAt: paid ? new Date().toISOString() : null },
-    )),
-  [adminApi, bookingAction]);
+    setPaid: (dayId, bookingId, paid) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/work-days/${dayId}/assistants/${bookingId}`, 'PUT',
+        { paidAt: paid ? new Date().toISOString() : null })),
 
-  const unbookAssistant = useCallback((projectId) => (dayId, bookingId) =>
-    bookingAction(() => adminApi(
-      `/projects/${projectId}/work-days/${dayId}/assistants/${bookingId}`, 'DELETE')),
-  [adminApi, bookingAction]);
+    unbook: (dayId, bookingId) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/work-days/${dayId}/assistants/${bookingId}`, 'DELETE')),
+
+    // Only expensesCheckedAt is sent; the day's date falls back to what is
+    // stored, so this can never blank it.
+    setChecked: (dayId, checked) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/work-days/${dayId}`, 'PUT',
+        { expensesCheckedAt: checked ? new Date().toISOString() : null })),
+
+    addExpense: (expense) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/expenses`, 'POST', expense)),
+
+    removeExpense: (expenseId) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/expenses/${expenseId}`, 'DELETE')),
+
+    expensesFor: (dayId) => (project.expenses || []).filter((e) => e.workDayId === dayId),
+  }), [adminApi, bookingAction]);
 
   const fetchTasks = useCallback(async () => {
     if (demoMode) return;
@@ -735,9 +746,7 @@ function App({ demoMode = false }) {
               .map((item) => (
                 <button
                   key={item.page}
-                  // The project detail screen is a child of Projects, not a nav
-                  // destination of its own, so Projects stays lit while it is open.
-                  className={`nav-btn ${page === item.page || (page === 'project' && item.page === 'projects') ? 'active' : ''}`}
+                  className={`nav-btn ${page === item.page ? 'active' : ''}`}
                   onClick={() => setPage(item.page)}
                 >
                   {item.label}
@@ -886,22 +895,14 @@ function App({ demoMode = false }) {
         ) : page === 'projects' ? (
           <ProjectsPage
             projects={projects}
+            assistants={assistants}
+            busy={adminBusy}
             loading={adminLoading}
             hasClients={clients.length > 0}
             onNew={() => setProjectForm({})}
-            onOpen={(p) => { setOpenProjectId(p.id); setPage('project'); }}
-            onAddClient={() => { setPage('clients'); setClientForm({}); }}
-          />
-        ) : page === 'project' ? (
-          <ProjectDetail
-            project={projects.find((p) => p.id === openProjectId) || null}
-            assistants={assistants}
-            busy={adminBusy}
-            onBack={() => { setOpenProjectId(null); setPage('projects'); }}
             onEdit={(p) => setProjectForm(p)}
-            onBook={bookAssistant(openProjectId)}
-            onSetPaid={setBookingPaid(openProjectId)}
-            onUnbook={unbookAssistant(openProjectId)}
+            makeHandlers={projectHandlers}
+            onAddClient={() => { setPage('clients'); setClientForm({}); }}
           />
         ) : page === 'finance' ? (
           // Finance arrives in phase 5. Without this branch the render chain
