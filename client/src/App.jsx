@@ -18,6 +18,7 @@ import { groupByWorkType, resolveWorkType, creatableTypes, workspaceConfig } fro
 import ProjectsPage from './components/admin/ProjectsPage';
 import ClientsPage from './components/admin/ClientsPage';
 import ClientForm from './components/admin/ClientForm';
+import ProjectForm from './components/admin/ProjectForm';
 import { isOverdue } from './components/admin/adminFormat';
 
 function App({ demoMode = false }) {
@@ -51,8 +52,9 @@ function App({ demoMode = false }) {
   const [projects, setProjects] = useState([]);
   const [clients,  setClients]  = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
-  // null = closed; an object = editing that client; {} = creating a new one.
-  const [clientForm, setClientForm] = useState(null);
+  // null = closed; an object = editing that record; {} = creating a new one.
+  const [clientForm, setClientForm]   = useState(null);
+  const [projectForm, setProjectForm] = useState(null);
   const [currentArtist, setCurrentArtist] = useState(null);
   const [newArtistModal, setNewArtistModal] = useState(false);
   // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
@@ -179,6 +181,44 @@ function App({ demoMode = false }) {
       : [...list, saved]));
     return saved;
   }, []);
+
+  const adminApi = useCallback(async (path, method, body) => {
+    const res = await fetch(`/api${path}${artistQS()}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Request failed (${res.status})`);
+    }
+    return res.status === 204 ? null : res.json();
+  }, []);
+
+  // Two steps, because work days are their own nested collection on the server:
+  // save the project, then reconcile its days. A day is matched by id — anything
+  // the form dropped is deleted, anything without an id is new.
+  const saveProject = useCallback(async (fields, days) => {
+    const saved = fields.id
+      ? await adminApi(`/projects/${fields.id}`, 'PUT', fields)
+      : await adminApi('/projects', 'POST', fields);
+
+    const before = (fields.workDays || []).map((d) => d.id);
+    const kept   = new Set(days.map((d) => d.id).filter(Boolean));
+    await Promise.all([
+      ...before.filter((id) => !kept.has(id))
+        .map((id) => adminApi(`/projects/${saved.id}/work-days/${id}`, 'DELETE')),
+      ...days.map((d) => (d.id
+        ? adminApi(`/projects/${saved.id}/work-days/${d.id}`, 'PUT', d)
+        : adminApi(`/projects/${saved.id}/work-days`, 'POST', d))),
+    ]);
+
+    // Re-read rather than patching state by hand: paymentDueAt, ballInCourt and
+    // the rest are derived server-side and would otherwise be stale until the
+    // next fetch.
+    await fetchAdminData();
+    return saved;
+  }, [adminApi, fetchAdminData]);
 
   const fetchTasks = useCallback(async () => {
     if (demoMode) return;
@@ -788,7 +828,8 @@ function App({ demoMode = false }) {
             projects={projects}
             loading={adminLoading}
             hasClients={clients.length > 0}
-            onNew={() => {}}
+            onNew={() => setProjectForm({})}
+            onOpen={(p) => setProjectForm(p)}
             onAddClient={() => { setPage('clients'); setClientForm({}); }}
           />
         ) : page === 'finance' ? (
@@ -905,6 +946,15 @@ function App({ demoMode = false }) {
           client={clientForm.id ? clientForm : null}
           onSave={saveClient}
           onClose={() => setClientForm(null)}
+        />
+      )}
+
+      {projectForm && (
+        <ProjectForm
+          project={projectForm.id ? projectForm : null}
+          clients={clients}
+          onSave={saveProject}
+          onClose={() => setProjectForm(null)}
         />
       )}
 

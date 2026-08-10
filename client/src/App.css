@@ -10579,6 +10579,16 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 }
 .adm-add-card:hover { color: var(--text); border-color: var(--text-3); }
 
+/* One work-day row: date, location, call time, remove. */
+.adm-day-row {
+  display: grid; grid-template-columns: 150px 1fr 110px auto;
+  gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.adm-day-add { align-self: flex-start; margin-top: 2px; }
+@media (max-width: 720px) {
+  .adm-day-row { grid-template-columns: 1fr 1fr; }
+}
+
 /* Save error, shown above the form actions so it is never scrolled past. */
 .adm-form-error {
   margin: 18px 0 0; padding: 10px 12px; font-size: 0.875rem;

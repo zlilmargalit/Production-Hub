@@ -30,6 +30,17 @@ export const phoneChars = (v) => String(v ?? '')
   .replace(/ {2,}/g, ' ')
   .replace(/^ +/, '');
 
+/**
+ * Money and percentages: digits and at most one decimal point. Kept as a string
+ * so a half-typed "1200." survives being re-rendered — Number() would collapse
+ * it to 1200 and eat the point the moment it was typed.
+ */
+export const decimalOnly = (v) => {
+  const cleaned = String(v ?? '').replace(/[^\d.]/g, '');
+  const [head, ...rest] = cleaned.split('.');
+  return rest.length ? `${head}.${rest.join('')}` : head;
+};
+
 // Deliberately loose: something@something.tld. Stricter patterns reject valid
 // addresses (plus-tags, new TLDs, unicode domains), and the cost of a false
 // rejection here is a user who cannot save a real client.

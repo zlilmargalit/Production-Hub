@@ -26,8 +26,13 @@ function ProjectCard({ project, onOpen }) {
   const days   = (project.workDays || []).length;
   const isPaid = project.status === 'paid';
 
+  // Kept as separate parts, NOT joined into one string. "אדלר חומסקי · 2 work
+  // days" in a single dir="auto" element resolves to RTL off the Hebrew, and
+  // bidi reorders the English run to the far end — it renders as "work days 2 ·
+  // אדלר חומסקי". Giving each part its own dir="auto" lets every part settle in
+  // its own direction while the separators keep the reading order.
   const secondary = [project.clientNameSnapshot, project.brand,
-    days ? `${days} work day${days === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ');
+    days ? `${days} work day${days === 1 ? '' : 's'}` : null].filter(Boolean);
 
   return (
     <div
@@ -45,7 +50,18 @@ function ProjectCard({ project, onOpen }) {
         </div>
 
         <h3 dir="auto" className="adm-card-name he">{project.name}</h3>
-        {secondary && <p dir="auto" className="adm-card-sub he">{secondary}</p>}
+        {/* dir on the paragraph aligns it with the title above; dir on each part
+            makes it a bidi isolate, so parts cannot reorder around each other. */}
+        {secondary.length > 0 && (
+          <p dir="auto" className="adm-card-sub he">
+            {secondary.map((part, i) => (
+              <span key={i}>
+                {i > 0 ? ' · ' : null}
+                <span dir="auto">{part}</span>
+              </span>
+            ))}
+          </p>
+        )}
 
         {alert && (
           <p className={`adm-line adm-line--${alert.level}`}>{alert.text}</p>
