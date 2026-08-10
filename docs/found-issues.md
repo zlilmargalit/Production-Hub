@@ -74,6 +74,24 @@ link. Worth deciding before a team relies on it.
 An Apple limitation, noted in the engineering brief. Currently nothing in the UI
 says so, so it will read as broken rather than as a platform constraint.
 
+**Adding to the home screen does not subscribe — and nothing says so**
+Installing the PWA is necessary but not sufficient: a subscription only exists
+after the user opens the installed app and taps Enable in Notification
+Settings, which is what triggers `Notification.requestPermission()` and
+`pushManager.subscribe()`. Confirmed by reading `pushSubscribe.js` against
+`NotificationSettingsScreen.jsx`. Reported by the user as "notifications don't
+work" after installing. The install step is the discoverable one, so this will
+keep being read as a bug.
+
+**A dead push channel produces no server-side signal**
+`deliver()` in `notifications.js` computes `result.push = 'no-subscription'`,
+but the three cron call sites (lines 222, 243, 255 in `runTick`) discard the
+return value entirely. So a push channel that has never delivered anything
+logs nothing at all — indistinguishable from one that is working. Confirmed by
+reading the call sites. Costs: the only way to find out push is dead is for a
+human to notice missing notifications, which is exactly what happened here.
+One `console.log` of the per-user result in `runTick` would close it.
+
 ### Dead / structural
 
 **`ArtistSwitcher` is unrendered dead code**
@@ -104,6 +122,18 @@ checked is a confusing affordance.
 
 ## Fixed while found (kept for the record)
 
+- **Push subscription failures were completely invisible.**
+  `subscribeToPush()` never checked the response of
+  `POST /api/automations/push/subscribe`, so a server-side rejection still
+  resolved successfully: the toggle flipped on, the UI said "Push notifications
+  enabled", and nothing was ever delivered. Reported by the user as push not
+  working with the switch showing on. Now checks `res.ok`, rolls the browser
+  subscription back so device and server agree, and surfaces the server's error.
+- **The push toggle showed session state, not subscription state.**
+  `pushEnabled` was `useState(false)` with nothing syncing it to
+  `pushManager.getSubscription()`, so it read off after every reload even when
+  subscribed — and could read on while the server had no record. Now derived
+  from the real subscription on mount.
 - Login threw a 500 on almost every wrong password, and **blocked external users
   from signing in at all** — `timingSafeEqual` on different-length buffers. Fixed
   in `9ce306b`; this one was critical and could not wait.
