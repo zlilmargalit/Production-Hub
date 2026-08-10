@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import IconButton from '../ui/IconButton';
+import PurchasesPanel from './PurchasesPanel';
 import { decimalOnly } from '../../utils/fieldInput';
 import {
   ils, fmtDate, dateRange, todayStr, ballInCourt, projectAlert, daysBetween,
@@ -300,9 +301,7 @@ export default function ProjectCard({
 
           {panel === 'purchases' && (
             <div className="show-expand-panel">
-              <p className="adm-none">
-                Not built yet — shop receipts, what came back, and what is still out.
-              </p>
+              <PurchasesPanel project={project} busy={busy} handlers={handlers} />
             </div>
           )}
         </div>

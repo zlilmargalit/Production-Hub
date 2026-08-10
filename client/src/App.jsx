@@ -287,6 +287,20 @@ function App({ demoMode = false }) {
       adminApi(`/projects/${project.id}/expenses/${expenseId}`, 'DELETE')),
 
     expensesFor: (dayId) => (project.expenses || []).filter((e) => e.workDayId === dayId),
+
+    addPurchase: (purchase) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/purchases`, 'POST', purchase)),
+
+    removePurchase: (purchaseId) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/purchases/${purchaseId}`, 'DELETE')),
+
+    // Patch, not replace: validatePurchase merges against the stored record, so
+    // sending one flag cannot blank the shop name or the receipt.
+    setPurchaseFlag: (purchaseId, patch) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/purchases/${purchaseId}`, 'PUT', patch)),
+
+    addReturn: (purchaseId, ret) => bookingAction(() =>
+      adminApi(`/projects/${project.id}/purchases/${purchaseId}/returns`, 'POST', ret)),
   }), [adminApi, bookingAction]);
 
   const fetchTasks = useCallback(async () => {

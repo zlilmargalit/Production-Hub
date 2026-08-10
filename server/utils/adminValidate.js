@@ -188,6 +188,10 @@ function validatePurchase(body, existing = null) {
   if (!isPlainObject(body)) fail('Body must be an object');
   const base = existing || {};
   return {
+    // Free text, not a roster. Shops are long-tail and mostly one-off — a
+    // managed list would be more upkeep than the thing it names. storeId stays
+    // reserved in case the regulars ever justify one.
+    storeName:      str(body.storeName ?? base.storeName, 'storeName', { max: 200 }),
     storeId:        body.storeId ?? base.storeId ?? null,
     date:           dateStr(body.date ?? base.date, 'date', { required: true }),
     // Gross, as charged to the card — deliberately the opposite convention to

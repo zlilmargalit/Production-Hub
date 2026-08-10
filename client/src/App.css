@@ -10891,3 +10891,34 @@ table .he { text-align: start; }            /* column alignment wins in a table 
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 0.8125rem; color: var(--text-2); white-space: nowrap;
 }
+
+/* ── Purchases & returns panel ────────────────────────────────────────────── */
+.adm-purchases { display: flex; flex-direction: column; gap: 10px; }
+.adm-purchase-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.adm-purchase {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; background: var(--surface);
+}
+/* Only the states that need chasing are tinted. Settled and kept stay plain. */
+.adm-purchase--overdue { border-color: var(--danger); }
+.adm-purchase--open    { border-color: var(--border-strong); }
+
+.adm-purchase-head { display: flex; align-items: baseline; gap: 10px; }
+.adm-purchase-store  { font-weight: 600; color: var(--text); }
+.adm-purchase-date   { font-size: 0.8125rem; color: var(--text-3); }
+.adm-purchase-amount { margin-inline-start: auto; font-weight: 600; color: var(--text); }
+.adm-purchase-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.adm-purchase-issue { margin: 6px 0 0; font-size: 0.8125rem; color: var(--danger); }
+.adm-purchase-form { display: flex; flex-direction: column; gap: 6px; }
+.adm-purchase-total { margin: 0; }
+
+.adm-returns { list-style: none; margin: 6px 0 0; padding: 0 0 0 10px;
+  border-inline-start: 2px solid var(--border-light); }
+.adm-return { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; font-size: 0.8125rem; }
+.adm-return-date   { color: var(--text-2); }
+.adm-return-amount { margin-inline-start: auto; color: var(--text-2); }
+.adm-return-receipt { font-size: 0.75rem; color: var(--accent); }
+.adm-return-receipt--none { color: var(--text-3); }
+.adm-return--total { border-top: 1px solid var(--border-light); margin-top: 3px; padding-top: 5px; }
+.adm-return--total .adm-return-date,
+.adm-return--total .adm-return-amount { color: var(--text); font-weight: 600; }
