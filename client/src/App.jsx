@@ -725,6 +725,7 @@ function App({ demoMode = false }) {
             onSwitch={handleWorkspaceSwitch}
             onGoHome={() => setPage('home')}
             onOpenTimeLog={() => setPage('timelog')}
+            onAddNew={userRole === 'admin' ? () => setNewArtistModal(true) : null}
             demoMode={demoMode}
           />
           {!demoMode && <UserMenu username={username} userRole={userRole} onOpenSettings={() => setShowSettings(true)} avatarUrl={avatarUrl} />}
@@ -1183,7 +1184,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
 // ── Workspace Selector ────────────────────────────────────────────────────────
 const WS_PALETTE = ['#3852B4', '#F08D39', '#C79A3F', '#4E7265'];
 
-function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, onOpenTimeLog, demoMode = false }) {
+function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, onOpenTimeLog, onAddNew, demoMode = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -1289,6 +1290,25 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
               })}
             </div>
           ))}
+
+          {/* Entry point for creating a workspace. The template picker was
+              unreachable without this: ArtistSwitcher owns an add button but is
+              not rendered anywhere, so NewArtistModal could never open. */}
+          {!demoMode && onAddNew && (
+            <>
+              <div className="ws-dropdown-divider" />
+              <button
+                className="ws-dropdown-item ws-dropdown-item--add"
+                onClick={() => { setOpen(false); onAddNew(); }}
+              >
+                <span className="ws-dropdown-item-add-icon">+</span>
+                <span className="ws-dropdown-item-text">
+                  <span className="ws-dropdown-item-name">New workspace</span>
+                  <span className="ws-dropdown-item-sub">Production or Administration</span>
+                </span>
+              </button>
+            </>
+          )}
 
           <div className="ws-dropdown-footer">
             Opening an artist enters its isolated workspace — Shows · Crew · Tools appear in the nav. Return here anytime via Global Home.

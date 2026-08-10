@@ -10568,3 +10568,9 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 }
 .adm-add-card:hover { color: var(--text); border-color: var(--text-3); }
 .nav-badge--warn { background: var(--danger); color: #fff; }
+.ws-dropdown-item--add .ws-dropdown-item-add-icon {
+  width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--text-3); border-radius: 4px; color: var(--text-2);
+  font-size: 0.8125rem; line-height: 1; flex: 0 0 auto;
+}
+.ws-dropdown-item--add:hover .ws-dropdown-item-add-icon { border-color: var(--text); color: var(--text); }
