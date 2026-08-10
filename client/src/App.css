@@ -10567,6 +10567,14 @@ table .he { text-align: left; }            /* column alignment wins in a table *
   padding: 22px; cursor: pointer; color: var(--text-2); font-family: inherit; font-size: 0.875rem;
 }
 .adm-add-card:hover { color: var(--text); border-color: var(--text-3); }
+
+/* Save error, shown above the form actions so it is never scrolled past. */
+.adm-form-error {
+  margin: 18px 0 0; padding: 10px 12px; font-size: 0.875rem;
+  color: var(--danger); background: var(--surface-sunk);
+  border: 1px solid var(--danger); border-radius: var(--radius);
+}
+
 .nav-badge--warn { background: var(--danger); color: #fff; }
 .ws-dropdown-item--add .ws-dropdown-item-add-icon {
   width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;

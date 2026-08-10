@@ -17,6 +17,7 @@ import TimeLog from './components/TimeLog';
 import { groupByWorkType, resolveWorkType, creatableTypes, workspaceConfig } from './config/workspaceTypes';
 import ProjectsPage from './components/admin/ProjectsPage';
 import ClientsPage from './components/admin/ClientsPage';
+import ClientForm from './components/admin/ClientForm';
 import { isOverdue } from './components/admin/adminFormat';
 
 function App({ demoMode = false }) {
@@ -50,6 +51,8 @@ function App({ demoMode = false }) {
   const [projects, setProjects] = useState([]);
   const [clients,  setClients]  = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
+  // null = closed; an object = editing that client; {} = creating a new one.
+  const [clientForm, setClientForm] = useState(null);
   const [currentArtist, setCurrentArtist] = useState(null);
   const [newArtistModal, setNewArtistModal] = useState(false);
   // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
@@ -156,6 +159,26 @@ function App({ demoMode = false }) {
       if (stillCurrent(issuedFor)) setAdminLoading(false);
     }
   }, [demoMode]);
+
+  // Create or update a client. Throws with the server's own message so the form
+  // can show which field it rejected instead of a generic failure.
+  const saveClient = useCallback(async (fields) => {
+    const editing = fields.id ? `/${fields.id}` : '';
+    const res = await fetch(`/api/clients${editing}${artistQS()}`, {
+      method: fields.id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Save failed (${res.status})`);
+    }
+    const saved = await res.json();
+    setClients((list) => (fields.id
+      ? list.map((c) => (c.id === saved.id ? saved : c))
+      : [...list, saved]));
+    return saved;
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     if (demoMode) return;
@@ -766,7 +789,7 @@ function App({ demoMode = false }) {
             loading={adminLoading}
             hasClients={clients.length > 0}
             onNew={() => {}}
-            onAddClient={() => setPage('clients')}
+            onAddClient={() => { setPage('clients'); setClientForm({}); }}
           />
         ) : page === 'finance' ? (
           // Finance arrives in phase 5. Without this branch the render chain
@@ -782,7 +805,8 @@ function App({ demoMode = false }) {
             clients={clients}
             projects={projects}
             loading={adminLoading}
-            onAdd={() => {}}
+            onAdd={() => setClientForm({})}
+            onOpen={(c) => setClientForm(c)}
           />
         ) : page === 'timelog' ? (
           <TimeLog onBack={() => setPage('home')} />
@@ -873,6 +897,14 @@ function App({ demoMode = false }) {
           eventTypes={eventTypes}
           onSubmit={handleSubmit}
           onClose={closeForm}
+        />
+      )}
+
+      {clientForm && (
+        <ClientForm
+          client={clientForm.id ? clientForm : null}
+          onSave={saveClient}
+          onClose={() => setClientForm(null)}
         />
       )}
 
