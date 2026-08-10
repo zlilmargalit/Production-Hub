@@ -29,14 +29,27 @@ export async function subscribeToPush() {
   });
 
   const json = sub.toJSON();
-  await fetch('/api/automations/push/subscribe', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({
+  const res = await fetch('/api/automations/push/subscribe', {
+    method:      'POST',
+    credentials: 'include',
+    headers:     { 'Content-Type': 'application/json' },
+    body:        JSON.stringify({
       endpoint: json.endpoint,
       p256dh:   json.keys.p256dh,
       auth:     json.keys.auth,
     }),
   });
+
+  // The browser subscription can succeed while the server refuses to store it
+  // (auth expired, validation, write failure). Without this check the caller
+  // reported "enabled", the toggle went on, and nothing was ever delivered —
+  // a failure with no symptom anywhere. Roll the local subscription back so the
+  // device state matches the server's.
+  if (!res.ok) {
+    const detail = await res.json().then((d) => d.error).catch(() => null);
+    await sub.unsubscribe().catch(() => {});
+    throw new Error(detail || `Server rejected the subscription (${res.status})`);
+  }
+
   return sub;
 }
