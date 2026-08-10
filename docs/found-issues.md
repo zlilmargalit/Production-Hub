@@ -38,6 +38,18 @@ against production before acting — this already caused one wrong conclusion
 about the stray PDF. Also: one local show has `schedule: "test"` written over it
 by a mistake of mine during testing. Production is unaffected.
 
+**Local server on :3001 runs stale code**
+Confirmed: creating a workspace against it dropped `workType`, which the current
+`server/routes/artists.js` handles correctly. Anything checked against :3001 can
+disagree with the source for no reason. Verification now runs a fresh instance on
+:3005 against a copy of the data instead. Restarting it needs PM2, which is the
+user's call.
+
+**Client save errors show the server's raw field name**
+"name is too long (max 200)" names the field, which is the useful half, but reads
+like an API response rather than a sentence. Fine while the only writer is the
+form; worth a friendlier mapping once there are more admin forms.
+
 ### Security / privacy
 
 **`docs/` tracks files containing real personal data**
