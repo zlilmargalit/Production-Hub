@@ -69,6 +69,12 @@ It was a read-only screen; it now also books, unbooks and marks paid, and holds
 the picker state for each work day. Still readable, but the work-day row is the
 natural place for the next split once purchases land on the same screen.
 
+**A project with a past first day but future days left is filed under PAST**
+`ProjectsPage.jsx` groups on `firstWorkDay`, so a two-day project whose first day
+has happened moves to PAST while a day is still ahead. Seen in the browser with
+days on 05/08 and 20/08. Grouping on the LAST day, or on "any day still ahead",
+would match how the project actually feels.
+
 ### Security / privacy
 
 **`docs/` tracks files containing real personal data**
@@ -141,6 +147,10 @@ checked is a confusing affordance.
 
 ## Fixed while found (kept for the record)
 
+- Every action inside an expanded project card collapsed it. `fetchAdminData`
+  raised the loading flag on action-triggered refetches, swapping cards for
+  skeletons and unmounting them. Fixed in `2578f84`; without it the expanding
+  card was unusable.
 - Administration's Team tab rendered `TeamPanel`, the production team screen, in
   the wrong workspace. Fixed in `3125e4e` as part of building the roster that
   belongs in that slot.
