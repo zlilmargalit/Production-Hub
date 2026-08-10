@@ -10579,6 +10579,81 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 }
 .adm-add-card:hover { color: var(--text); border-color: var(--text-3); }
 
+/* ── Project detail ───────────────────────────────────────────────────────── */
+/* text-align is stated explicitly because a block that dir="auto" resolves to
+   RTL aligns to the right by default, which would strand a Hebrew title at the
+   far edge of an LTR page, away from the meta line it heads. The name still
+   carries dir="auto", so its own characters order correctly either way —
+   direction belongs to the content, alignment belongs to the layout. */
+.adm-detail-name {
+  margin: 18px 0 6px; font-size: 1.5rem; font-weight: 700;
+  color: var(--text); text-align: left;
+}
+
+.adm-detail-head {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
+  font-size: 0.8125rem; color: var(--text-2);
+}
+.adm-detail-fact::after { content: '·'; margin-left: 10px; color: var(--text-3); }
+.adm-detail-fact:last-of-type::after { content: none; }
+
+.adm-detail-status {
+  display: flex; align-items: center; gap: 8px; margin: 14px 0 4px;
+}
+/* The caption is pushed right inside a card foot; here the row is page-wide, so
+   it would end up on the far edge, detached from the status it describes. */
+.adm-detail-status .adm-ball-caption { margin-left: 0; }
+
+.adm-detail-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px; margin-top: 18px;
+}
+.adm-section {
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); padding: 16px 18px;
+}
+.adm-section--wide { grid-column: 1 / -1; }
+.adm-section--pending { background: var(--surface-sunk); }
+.adm-section-title {
+  margin: 0 0 12px; font-size: 0.6875rem; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3); font-weight: 600;
+}
+
+/* Money facts — label left, figure right, so the numbers form a column. */
+.adm-facts { margin: 0; }
+.adm-facts > div {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 5px 0; border-bottom: 1px solid var(--border-light);
+}
+.adm-facts > div:last-child { border-bottom: none; }
+.adm-facts dt { font-size: 0.8125rem; color: var(--text-2); }
+.adm-facts dd { margin: 0; font-size: 0.875rem; color: var(--text); }
+.adm-fact--strong { font-weight: 700; }
+
+.adm-days { list-style: none; margin: 0; padding: 0; }
+.adm-day { padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+.adm-day:last-child { border-bottom: none; }
+.adm-day-when { display: flex; gap: 8px; align-items: baseline; }
+.adm-day-date { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.adm-day-rel  { font-size: 0.6875rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+.adm-day-what { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-top: 2px; }
+.adm-day-loc  { font-size: 0.8125rem; color: var(--text-2); }
+.adm-day-loc--empty { color: var(--text-3); font-style: italic; }
+.adm-day-call { font-size: 0.8125rem; color: var(--text-3); }
+.adm-day-notes { margin: 4px 0 0; font-size: 0.8125rem; color: var(--text-2); }
+.adm-detail-notes { margin: 0; font-size: 0.875rem; color: var(--text-2); white-space: pre-wrap; }
+
+@media (max-width: 720px) {
+  .adm-detail-grid { grid-template-columns: 1fr; }
+}
+
+/* Inline "add new client" row, under the client select. */
+.adm-inline-add {
+  display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap;
+}
+.adm-inline-add input  { flex: 1 1 140px; min-width: 0; }
+.adm-inline-add select { flex: 0 0 auto; }
+
 /* One work-day row: date, location, call time, remove. */
 .adm-day-row {
   display: grid; grid-template-columns: 150px 1fr 110px auto;

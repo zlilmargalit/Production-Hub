@@ -19,6 +19,7 @@ import ProjectsPage from './components/admin/ProjectsPage';
 import ClientsPage from './components/admin/ClientsPage';
 import ClientForm from './components/admin/ClientForm';
 import ProjectForm from './components/admin/ProjectForm';
+import ProjectDetail from './components/admin/ProjectDetail';
 import { isOverdue } from './components/admin/adminFormat';
 
 function App({ demoMode = false }) {
@@ -55,6 +56,10 @@ function App({ demoMode = false }) {
   // null = closed; an object = editing that record; {} = creating a new one.
   const [clientForm, setClientForm]   = useState(null);
   const [projectForm, setProjectForm] = useState(null);
+  // Id, not the object: the project is re-read from `projects` on every render
+  // so an edit made in the modal shows here without a second copy to keep in
+  // sync.
+  const [openProjectId, setOpenProjectId] = useState(null);
   const [currentArtist, setCurrentArtist] = useState(null);
   const [newArtistModal, setNewArtistModal] = useState(false);
   // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
@@ -677,7 +682,9 @@ function App({ demoMode = false }) {
               .map((item) => (
                 <button
                   key={item.page}
-                  className={`nav-btn ${page === item.page ? 'active' : ''}`}
+                  // The project detail screen is a child of Projects, not a nav
+                  // destination of its own, so Projects stays lit while it is open.
+                  className={`nav-btn ${page === item.page || (page === 'project' && item.page === 'projects') ? 'active' : ''}`}
                   onClick={() => setPage(item.page)}
                 >
                   {item.label}
@@ -829,8 +836,14 @@ function App({ demoMode = false }) {
             loading={adminLoading}
             hasClients={clients.length > 0}
             onNew={() => setProjectForm({})}
-            onOpen={(p) => setProjectForm(p)}
+            onOpen={(p) => { setOpenProjectId(p.id); setPage('project'); }}
             onAddClient={() => { setPage('clients'); setClientForm({}); }}
+          />
+        ) : page === 'project' ? (
+          <ProjectDetail
+            project={projects.find((p) => p.id === openProjectId) || null}
+            onBack={() => { setOpenProjectId(null); setPage('projects'); }}
+            onEdit={(p) => setProjectForm(p)}
           />
         ) : page === 'finance' ? (
           // Finance arrives in phase 5. Without this branch the render chain
@@ -954,6 +967,7 @@ function App({ demoMode = false }) {
           project={projectForm.id ? projectForm : null}
           clients={clients}
           onSave={saveProject}
+          onCreateClient={saveClient}
           onClose={() => setProjectForm(null)}
         />
       )}
@@ -1691,6 +1705,23 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
   const [spotifyConnected, setSpotifyConnected] = useState(false);
   const [intgLoading,     setIntgLoading]     = useState(true);
   const [intgMsg,         setIntgMsg]         = useState('');
+
+  // Reflect the REAL subscription state, not "was the toggle pressed this
+  // session". pushEnabled is component state, so without this the switch reads
+  // off after every reload even when the device is subscribed — and, worse, it
+  // could read on while the server had no record of the device at all.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (!cancelled) setPushEnabled(!!sub);
+      } catch { /* leave it off — the toggle will surface any real error */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Load data on mount ───────────────────────────────────────────────────
   useEffect(() => {

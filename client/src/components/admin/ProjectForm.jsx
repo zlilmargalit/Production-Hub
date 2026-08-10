@@ -39,7 +39,10 @@ const EMPTY = {
 let rowSeq = 0;
 const blankDay = () => ({ localKey: `new-${rowSeq++}`, date: '', location: '', callTime: '' });
 
-export default function ProjectForm({ project = null, clients = [], onSave, onClose }) {
+// Sentinel option, same shape CrewManager uses for "add new role".
+const ADD_CLIENT = '__add_client__';
+
+export default function ProjectForm({ project = null, clients = [], onSave, onCreateClient, onClose }) {
   const [form, setForm] = useState(() => {
     if (!project) return { ...EMPTY };
     return {
@@ -57,13 +60,46 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCl
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Inline client creation, like "New Folder" inside a save dialog: you should
+  // not have to abandon a half-filled project to go and add the client first.
+  // Name and terms only — the rest is filled in on the Clients screen, and the
+  // server defaults paymentTerms to 30 anyway.
+  const [addingClient, setAddingClient] = useState(false);
+  const [newClient, setNewClient] = useState({ name: '', paymentTerms: 30 });
+  const [clientBusy, setClientBusy] = useState(false);
+
   const CLEAN = { rate: decimalOnly, vatPercent: decimalOnly };
 
   const set = (e) => {
     const { name, value } = e.target;
+    if (name === 'clientId' && value === ADD_CLIENT) {
+      setAddingClient(true);
+      setNewClient({ name: '', paymentTerms: 30 });
+      return;                                  // leave the select where it was
+    }
     const clean = CLEAN[name];
     setForm((f) => ({ ...f, [name]: clean ? clean(value) : value }));
   };
+
+  const confirmNewClient = async () => {
+    const name = newClient.name.trim();
+    if (!name || clientBusy) return;
+    setClientBusy(true);
+    setError(null);
+    try {
+      const created = await onCreateClient({ name, paymentTerms: newClient.paymentTerms });
+      // Select it straight away — creating it and then having to find it in the
+      // list would defeat the point.
+      setForm((f) => ({ ...f, clientId: created.id }));
+      setAddingClient(false);
+    } catch (err) {
+      setError(err.message || 'Could not create the client');
+    } finally {
+      setClientBusy(false);
+    }
+  };
+
+  const cancelNewClient = () => { setAddingClient(false); setClientBusy(false); };
 
   const setDay = (key, field, value) =>
     setDays((list) => list.map((d) => (d.localKey === key ? { ...d, [field]: value } : d)));
@@ -127,10 +163,39 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCl
               <select name="clientId" value={form.clientId} onChange={set}>
                 <option value="">— No client —</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value={ADD_CLIENT}>＋ Add new client…</option>
               </select>
-              {!clients.length && (
-                <span className="field-hint">No clients yet — a project can be saved without one.</span>
-              )}
+
+              {addingClient ? (
+                <div className="adm-inline-add">
+                  <input
+                    autoFocus dir="auto" value={newClient.name}
+                    placeholder="Client name"
+                    onChange={(e) => setNewClient((c) => ({ ...c, name: e.target.value }))}
+                    onKeyDown={(e) => {
+                      // Enter must not submit the project — the user is naming a
+                      // client, not finishing the form.
+                      if (e.key === 'Enter') { e.preventDefault(); confirmNewClient(); }
+                      if (e.key === 'Escape') { e.preventDefault(); cancelNewClient(); }
+                    }}
+                  />
+                  <select
+                    value={newClient.paymentTerms}
+                    onChange={(e) => setNewClient((c) => ({ ...c, paymentTerms: Number(e.target.value) }))}
+                  >
+                    {[30, 60, 90].map((t) => <option key={t} value={t}>Net {t}</option>)}
+                  </select>
+                  <button type="button" className="btn-primary btn-sm"
+                          onClick={confirmNewClient} disabled={clientBusy || !newClient.name.trim()}>
+                    {clientBusy ? '…' : 'Add'}
+                  </button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={cancelNewClient}>
+                    Cancel
+                  </button>
+                </div>
+              ) : !clients.length ? (
+                <span className="field-hint">No clients yet — add one above, or save without.</span>
+              ) : null}
             </div>
 
             <div className="form-group">
