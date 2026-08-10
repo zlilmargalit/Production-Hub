@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import PageBar from '../ui/PageBar';
+import IconButton from '../ui/IconButton';
+import { decimalOnly } from '../../utils/fieldInput';
 import {
   ils, fmtDate, dateRange, todayStr, ballInCourt, projectAlert, daysBetween,
 } from './adminFormat';
@@ -41,11 +44,43 @@ function Money({ project }) {
   );
 }
 
-function WorkDay({ day, today }) {
+function WorkDay({ day, today, roster, onBook, onSetPaid, onUnbook, busy }) {
+  const [picking, setPicking] = useState(false);
+  const [pick, setPick] = useState({ assistantId: '', amount: '' });
+
   const away = daysBetween(today, day.date);
   // Only forward-looking days get a countdown; "in -12 days" is not a sentence.
   const when = away === 0 ? 'Today' : away === 1 ? 'Tomorrow'
     : away > 1 ? `In ${away} days` : null;
+
+  const booked = day.assistants || [];
+  // Someone already on this day should not be offered again for it.
+  const alreadyHere = new Set(booked.map((b) => b.assistantId).filter(Boolean));
+  const available = roster.filter((r) => !alreadyHere.has(r.id));
+
+  const chosen = roster.find((r) => r.id === pick.assistantId);
+
+  const startPicking = () => {
+    setPick({ assistantId: '', amount: '' });
+    setPicking(true);
+  };
+
+  // Choosing a person pre-fills their usual rate — a default to accept or
+  // override, never a link back to the roster.
+  const choose = (id) => {
+    const r = roster.find((x) => x.id === id);
+    setPick({ assistantId: id, amount: r?.dayRate ? String(r.dayRate) : '' });
+  };
+
+  const confirm = async () => {
+    if (!pick.assistantId) return;
+    await onBook(day.id, {
+      assistantId: pick.assistantId,
+      nameSnapshot: chosen?.name || '',
+      amount: Number(decimalOnly(pick.amount)) || 0,
+    });
+    setPicking(false);
+  };
 
   return (
     <li className="adm-day">
@@ -60,11 +95,60 @@ function WorkDay({ day, today }) {
         {day.callTime && <span className="adm-day-call n">Call {day.callTime}</span>}
       </div>
       {day.notes && <p dir="auto" className="adm-day-notes">{day.notes}</p>}
+
+      <ul className="adm-bookings">
+        {booked.map((b) => (
+          <li key={b.id} className={`adm-booking${b.paidAt ? ' adm-booking--paid' : ''}`}>
+            <span dir="auto" className="adm-booking-name">{b.nameSnapshot || 'Unnamed'}</span>
+            <span className="adm-booking-amount n">{ils(b.amount)}</span>
+            <button
+              type="button"
+              className="adm-booking-state"
+              disabled={busy}
+              onClick={() => onSetPaid(day.id, b.id, !b.paidAt)}
+              title={b.paidAt ? 'Mark as unpaid' : 'Mark as paid'}
+            >
+              {b.paidAt ? '✓ Paid' : 'Unpaid'}
+            </button>
+            <IconButton danger onClick={() => onUnbook(day.id, b.id)} title="Remove from this day">✕</IconButton>
+          </li>
+        ))}
+      </ul>
+
+      {picking ? (
+        <div className="adm-inline-add">
+          <select value={pick.assistantId} onChange={(e) => choose(e.target.value)}>
+            <option value="">— Choose —</option>
+            {available.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <input
+            dir="ltr" inputMode="decimal" placeholder="Amount"
+            value={pick.amount}
+            onChange={(e) => setPick((p) => ({ ...p, amount: decimalOnly(e.target.value) }))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); confirm(); }
+              if (e.key === 'Escape') { e.preventDefault(); setPicking(false); }
+            }}
+          />
+          <button type="button" className="btn-primary btn-sm"
+                  onClick={confirm} disabled={busy || !pick.assistantId}>Book</button>
+          <button type="button" className="btn-secondary btn-sm"
+                  onClick={() => setPicking(false)}>Cancel</button>
+        </div>
+      ) : available.length > 0 ? (
+        <button type="button" className="btn-ghost btn-sm adm-day-add" onClick={startPicking}>
+          + Book assistant
+        </button>
+      ) : roster.length === 0 ? (
+        <span className="field-hint">Add someone to the roster on Team first.</span>
+      ) : null}
     </li>
   );
 }
 
-export default function ProjectDetail({ project, onBack, onEdit }) {
+export default function ProjectDetail({
+  project, assistants = [], onBack, onEdit, onBook, onSetPaid, onUnbook, busy = false,
+}) {
   if (!project) {
     // Reachable if the project was deleted in another tab while this was open.
     return (
@@ -137,6 +221,13 @@ export default function ProjectDetail({ project, onBack, onEdit }) {
               {ils(project.outstandingOnCard)} still out on the card
             </p>
           )}
+          {/* Server-derived from the unpaid bookings below, so the two can never
+              disagree with each other. */}
+          {project.owedToAssistants > 0 && (
+            <p className="adm-line adm-line--waiting">
+              {ils(project.owedToAssistants)} owed to assistants
+            </p>
+          )}
         </section>
 
         <section className="adm-section">
@@ -145,7 +236,12 @@ export default function ProjectDetail({ project, onBack, onEdit }) {
             <p className="adm-none">No work days yet. Add them from Edit.</p>
           ) : (
             <ul className="adm-days">
-              {days.map((d) => <WorkDay key={d.id} day={d} today={today} />)}
+              {days.map((d) => (
+                <WorkDay
+                  key={d.id} day={d} today={today} roster={assistants} busy={busy}
+                  onBook={onBook} onSetPaid={onSetPaid} onUnbook={onUnbook}
+                />
+              ))}
             </ul>
           )}
         </section>

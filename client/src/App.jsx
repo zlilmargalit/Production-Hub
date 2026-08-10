@@ -20,6 +20,8 @@ import ClientsPage from './components/admin/ClientsPage';
 import ClientForm from './components/admin/ClientForm';
 import ProjectForm from './components/admin/ProjectForm';
 import ProjectDetail from './components/admin/ProjectDetail';
+import AssistantsPage from './components/admin/AssistantsPage';
+import AssistantForm from './components/admin/AssistantForm';
 import { isOverdue } from './components/admin/adminFormat';
 
 function App({ demoMode = false }) {
@@ -60,6 +62,9 @@ function App({ demoMode = false }) {
   // so an edit made in the modal shows here without a second copy to keep in
   // sync.
   const [openProjectId, setOpenProjectId] = useState(null);
+  const [assistants, setAssistants]       = useState([]);
+  const [assistantForm, setAssistantForm] = useState(null);
+  const [adminBusy, setAdminBusy]         = useState(false);
   const [currentArtist, setCurrentArtist] = useState(null);
   const [newArtistModal, setNewArtistModal] = useState(false);
   // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
@@ -86,6 +91,10 @@ function App({ demoMode = false }) {
   // Each fetcher reads currentArtistRef to append ?artistId when an artist is
   // active. The ref is updated synchronously before any fetch is triggered, so
   // there is no race between artist selection and the data request.
+  // One place decides whether this workspace is an administration one, so the
+  // nav and the render chain can never disagree about which screens exist.
+  const isAdministration = resolveWorkType(currentArtist?.workType) === 'administration';
+
   const artistQS = () => {
     const id = currentArtistRef.current;
     return id ? `?artistId=${encodeURIComponent(id)}` : '';
@@ -152,16 +161,18 @@ function App({ demoMode = false }) {
   const fetchAdminData = useCallback(async () => {
     if (demoMode) return;
     const issuedFor = fetchedFor();
-    if (!issuedFor) { setProjects([]); setClients([]); return; }
+    if (!issuedFor) { setProjects([]); setClients([]); setAssistants([]); return; }
     setAdminLoading(true);
     try {
-      const [p, c] = await Promise.all([
+      const [p, c, a] = await Promise.all([
         fetch(`/api/projects${artistQS()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
         fetch(`/api/clients${artistQS()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+        fetch(`/api/assistants${artistQS()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       ]);
       if (!stillCurrent(issuedFor)) return;
       setProjects(Array.isArray(p) ? p : []);
       setClients(Array.isArray(c) ? c : []);
+      setAssistants(Array.isArray(a) ? a : []);
     } finally {
       if (stillCurrent(issuedFor)) setAdminLoading(false);
     }
@@ -224,6 +235,48 @@ function App({ demoMode = false }) {
     await fetchAdminData();
     return saved;
   }, [adminApi, fetchAdminData]);
+
+  const saveAssistant = useCallback(async (fields) => {
+    const saved = fields.id
+      ? await adminApi(`/assistants/${fields.id}`, 'PUT', fields)
+      : await adminApi('/assistants', 'POST', fields);
+    setAssistants((list) => (fields.id
+      ? list.map((a) => (a.id === saved.id ? saved : a))
+      : [...list, saved]));
+    return saved;
+  }, [adminApi]);
+
+  // Removing someone from the roster leaves every booking they already have —
+  // the work day keeps its own name and amount. Nothing owed is lost.
+  const deleteAssistant = useCallback(async (assistant) => {
+    await adminApi(`/assistants/${assistant.id}`, 'DELETE');
+    setAssistants((list) => list.filter((a) => a.id !== assistant.id));
+  }, [adminApi]);
+
+  // Bookings are nested two deep, so each change re-reads rather than patching
+  // state by hand: owedToAssistants is derived server-side and would otherwise
+  // disagree with the rows it is supposed to be summing.
+  const bookingAction = useCallback(async (fn) => {
+    setAdminBusy(true);
+    try { await fn(); await fetchAdminData(); }
+    finally { setAdminBusy(false); }
+  }, [fetchAdminData]);
+
+  const bookAssistant = useCallback((projectId) => (dayId, booking) =>
+    bookingAction(() => adminApi(`/projects/${projectId}/work-days/${dayId}/assistants`, 'POST', booking)),
+  [adminApi, bookingAction]);
+
+  const setBookingPaid = useCallback((projectId) => (dayId, bookingId, paid) =>
+    bookingAction(() => adminApi(
+      `/projects/${projectId}/work-days/${dayId}/assistants/${bookingId}`, 'PUT',
+      { paidAt: paid ? new Date().toISOString() : null },
+    )),
+  [adminApi, bookingAction]);
+
+  const unbookAssistant = useCallback((projectId) => (dayId, bookingId) =>
+    bookingAction(() => adminApi(
+      `/projects/${projectId}/work-days/${dayId}/assistants/${bookingId}`, 'DELETE')),
+  [adminApi, bookingAction]);
 
   const fetchTasks = useCallback(async () => {
     if (demoMode) return;
@@ -485,7 +538,7 @@ function App({ demoMode = false }) {
     currentArtistRef.current = artist?.id || null;
     setCurrentArtist(artist);
     // Clear stale data so the UI doesn't briefly show the previous artist's content
-    setShows([]); setCrew([]); setTasks([]); setProjects([]); setClients([]);
+    setShows([]); setCrew([]); setTasks([]); setProjects([]); setClients([]); setAssistants([]);
     // Entering a workspace lands on the page its template defines, so an
     // administration workspace never opens on Shows.
     const cfg = workspaceConfig(artist);
@@ -677,7 +730,7 @@ function App({ demoMode = false }) {
           {/* Production keeps its existing buttons; an administration workspace
               renders its own nav from the template config instead. Adding a
               template must not mean editing this file. */}
-          {resolveWorkType(currentArtist?.workType) === 'administration' ? (
+          {isAdministration ? (
             workspaceConfig(currentArtist).nav
               .map((item) => (
                 <button
@@ -842,8 +895,13 @@ function App({ demoMode = false }) {
         ) : page === 'project' ? (
           <ProjectDetail
             project={projects.find((p) => p.id === openProjectId) || null}
+            assistants={assistants}
+            busy={adminBusy}
             onBack={() => { setOpenProjectId(null); setPage('projects'); }}
             onEdit={(p) => setProjectForm(p)}
+            onBook={bookAssistant(openProjectId)}
+            onSetPaid={setBookingPaid(openProjectId)}
+            onUnbook={unbookAssistant(openProjectId)}
           />
         ) : page === 'finance' ? (
           // Finance arrives in phase 5. Without this branch the render chain
@@ -909,6 +967,16 @@ function App({ demoMode = false }) {
           />
         ) : page === 'teams' ? (
           <TeamsPage />
+        ) : page === 'team' && isAdministration ? (
+          // Administration's Team is the assistant roster. Without this branch it
+          // fell through to TeamPanel — the production screen, wrong workspace.
+          <AssistantsPage
+            assistants={assistants}
+            projects={projects}
+            loading={adminLoading}
+            onAdd={() => setAssistantForm({})}
+            onOpen={(a) => setAssistantForm(a)}
+          />
         ) : page === 'team' && userRole === 'admin' ? (
           <TeamPanel artists={artists} shows={shows} tasks={tasks} onUpdateShow={updateShow} artistId={currentArtist?.id || null} onCreateTask={createTask} onToggleTask={toggleTask} />
         ) : page === 'tasks' ? (
@@ -969,6 +1037,15 @@ function App({ demoMode = false }) {
           onSave={saveProject}
           onCreateClient={saveClient}
           onClose={() => setProjectForm(null)}
+        />
+      )}
+
+      {assistantForm && (
+        <AssistantForm
+          assistant={assistantForm.id ? assistantForm : null}
+          onSave={saveAssistant}
+          onDelete={async (a) => { await deleteAssistant(a); setAssistantForm(null); }}
+          onClose={() => setAssistantForm(null)}
         />
       )}
 

@@ -10647,6 +10647,30 @@ table .he { text-align: left; }            /* column alignment wins in a table *
   .adm-detail-grid { grid-template-columns: 1fr; }
 }
 
+/* Assistants booked on a work day. */
+.adm-bookings { list-style: none; margin: 6px 0 0; padding: 0; }
+.adm-booking {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  font-size: 0.8125rem;
+}
+.adm-booking-name   { color: var(--text); }
+.adm-booking-amount { color: var(--text-2); }
+.adm-booking-state {
+  margin-left: auto; font-family: inherit; font-size: 0.6875rem;
+  letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 2px 9px; background: transparent; color: var(--orange-deep);
+  cursor: pointer;
+}
+.adm-booking-state:hover:not(:disabled) { border-color: var(--text-3); }
+.adm-booking-state:disabled { opacity: .5; cursor: default; }
+/* Paid is the settled state — it recedes rather than shouting. */
+.adm-booking--paid .adm-booking-state { color: var(--text-3); }
+.adm-booking--paid .adm-booking-name,
+.adm-booking--paid .adm-booking-amount { color: var(--text-3); }
+
+.adm-danger-action { color: var(--danger); margin-right: auto; }
+
 /* Inline "add new client" row, under the client select. */
 .adm-inline-add {
   display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap;
