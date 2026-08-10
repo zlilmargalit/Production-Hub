@@ -571,8 +571,9 @@ function App({ demoMode = false }) {
   // ── Workspace selector: switch to an artist workspace ─────────────────────
   const handleWorkspaceSwitch = useCallback(async (artist) => {
     setWsToast(`Entering ${artist.name}'s workspace…`);
+    // switchToArtist already lands on the template's defaultPage — do not
+    // override it here, or an administration workspace opens on Shows.
     await switchToArtist(artist);
-    setPage('shows');
     setTimeout(() => setWsToast(null), 2200);
   }, [switchToArtist]);
 
@@ -610,7 +611,6 @@ function App({ demoMode = false }) {
               template must not mean editing this file. */}
           {resolveWorkType(currentArtist?.workType) === 'administration' ? (
             workspaceConfig(currentArtist).nav
-              .filter((item) => item.page !== 'tools')
               .map((item) => (
                 <button
                   key={item.page}
@@ -687,7 +687,9 @@ function App({ demoMode = false }) {
             </button>
           )}
           </>)}
-          {!demoMode && (
+          {/* Both tools are Spotify/tech-rider specific, so they are hidden
+              wherever the template's nav doesn't ask for them. */}
+          {!demoMode && workspaceConfig(currentArtist).nav.some((i) => i.page === 'tools') && (
             <ToolsDropdown
               activeTool={page}
               onSelectTool={(tool) => setPage(tool)}
@@ -1311,7 +1313,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
           )}
 
           <div className="ws-dropdown-footer">
-            Opening an artist enters its isolated workspace — Shows · Crew · Tools appear in the nav. Return here anytime via Global Home.
+            Opening a workspace enters it in isolation, with the nav its template defines. Return here anytime via Global Home.
           </div>
         </div>
       )}

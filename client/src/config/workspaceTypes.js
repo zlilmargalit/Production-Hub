@@ -26,14 +26,19 @@ const PRODUCTION_NAV = [
 ];
 
 // Administration order is fixed by the design:
-// PROJECTS · FINANCE · TASKS · TEAM · CLIENTS · TOOLS
+// PROJECTS · FINANCE · TASKS · TEAM · CLIENTS
+//
+// TODO(tools): no Tools entry on purpose. The only two tools that exist —
+// Setlist Calculator and Tech Spec Parser — are both about live shows and mean
+// nothing to a stylist. Administration needs its own tools (the brief points at
+// a purchase-return tracker and an invoice generator); add a `tools` entry back
+// here once there is something behind it.
 const ADMINISTRATION_NAV = [
   { page: 'projects', label: 'Projects' },
   { page: 'finance',  label: 'Finance', badge: 'financeOverdue' },
   { page: 'tasks',    label: 'Tasks',   badge: 'tasks' },
   { page: 'team',     label: 'Team' },
   { page: 'clients',  label: 'Clients' },
-  { page: 'tools',    label: 'Tools',   dropdown: true },
 ];
 
 export const WORKSPACE_TYPES = {
