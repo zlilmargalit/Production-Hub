@@ -125,11 +125,22 @@ function validateProject(body, existing = null) {
 function validateWorkDay(body, existing = null) {
   if (!isPlainObject(body)) fail('Body must be an object');
   const base = existing || {};
+  // A work day is a billing unit, not a call sheet. The stylist does not run the
+  // shoot day, so location, call time and day notes are gone: nothing computes
+  // from them and nobody reads them. What survives is what costs or earns money.
+  //
+  // expensesCheckedAt is the "did anything get spent today that I have not
+  // written down" checkpoint. It is a timestamp rather than a boolean so a past
+  // day that was never checked can raise an alarm on its own.
+  const checkedAt = body.expensesCheckedAt === undefined
+    ? (base.expensesCheckedAt ?? null)
+    : body.expensesCheckedAt;
+  if (checkedAt !== null && !(typeof checkedAt === 'string' && !Number.isNaN(Date.parse(checkedAt)))) {
+    fail('expensesCheckedAt must be a timestamp or null');
+  }
   return {
-    date:     dateStr(body.date ?? base.date, 'date', { required: true }),
-    location: str(body.location ?? base.location, 'location', { max: 300 }),
-    callTime: str(body.callTime ?? base.callTime, 'callTime', { max: 20 }),
-    notes:    str(body.notes ?? base.notes, 'notes', { max: 5000 }),
+    date: dateStr(body.date ?? base.date, 'date', { required: true }),
+    expensesCheckedAt: checkedAt,
     // Assistants are edited through their own nested endpoints, never by
     // rewriting the work day — a day edit must not silently drop who was booked
     // on it, or what they are still owed.
@@ -270,11 +281,29 @@ function deriveProject(project, { paymentTerms = null } = {}) {
   const vatRate = Number(project.vatRate ?? 0.18);
   const rate    = Number(project.rate || 0);
 
+  // What actually goes on the invoice: the fee plus the expenses marked
+  // billable. `billable` is set per expense and is deliberately independent of
+  // `reimbursed` — a taxi an assistant paid for is both, parking absorbed into
+  // the day rate is only reimbursed, a garment on the client's card is neither.
+  const billableExpenses = (project.expenses || [])
+    .filter((e) => e.billable)
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const invoiceSubtotal = rate + billableExpenses;
+
+  // A day that has passed and was never checked is money that may be missing.
+  const unchecked = (project.workDays || [])
+    .filter((d) => d.date && d.date < todayStr() && !d.expensesCheckedAt)
+    .map((d) => d.date);
+
   return {
     ...project,
     purchases,
     // Every figure below is computed on read and must never be written back.
     rateInclVat: Math.round(rate * (1 + vatRate) * 100) / 100,
+    billableExpenses: Math.round(billableExpenses * 100) / 100,
+    invoiceSubtotal:  Math.round(invoiceSubtotal * 100) / 100,
+    invoiceTotal:     Math.round(invoiceSubtotal * (1 + vatRate) * 100) / 100,
+    uncheckedDays:    unchecked,
     outstandingOnCard: Math.round(outstandingOnCard * 100) / 100,
     keptOnPurposeTotal: Math.round(keptOnPurposeTotal * 100) / 100,
     owedToAssistants: Math.round(owedToAssistants * 100) / 100,
