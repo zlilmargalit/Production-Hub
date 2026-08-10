@@ -14,7 +14,10 @@ import AutomationsPage  from './components/automations/AutomationsPage';
 import BacklinerDashboard from './components/backliner/BacklinerDashboard';
 import Dashboard from './components/Dashboard';
 import TimeLog from './components/TimeLog';
-import { groupByWorkType, resolveWorkType, creatableTypes } from './config/workspaceTypes';
+import { groupByWorkType, resolveWorkType, creatableTypes, workspaceConfig } from './config/workspaceTypes';
+import ProjectsPage from './components/admin/ProjectsPage';
+import ClientsPage from './components/admin/ClientsPage';
+import { isOverdue } from './components/admin/adminFormat';
 
 function App({ demoMode = false }) {
   const [shows, setShows] = useState([]);
@@ -44,6 +47,9 @@ function App({ demoMode = false }) {
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [clients,  setClients]  = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [currentArtist, setCurrentArtist] = useState(null);
   const [newArtistModal, setNewArtistModal] = useState(false);
   // Ref holds the CURRENT artist ID so stable useCallback fetchers can read it
@@ -129,6 +135,27 @@ function App({ demoMode = false }) {
       if (stillCurrent(issuedFor)) setEventTypeChecklists(checklists);
     }
   }, []);
+
+  // Administration slices. Only fetched for an administration workspace, so a
+  // production workspace never pays for them. Same stale-response guard as the
+  // other fetchers: a response for the previous workspace must not land here.
+  const fetchAdminData = useCallback(async () => {
+    if (demoMode) return;
+    const issuedFor = fetchedFor();
+    if (!issuedFor) { setProjects([]); setClients([]); return; }
+    setAdminLoading(true);
+    try {
+      const [p, c] = await Promise.all([
+        fetch(`/api/projects${artistQS()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+        fetch(`/api/clients${artistQS()}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      ]);
+      if (!stillCurrent(issuedFor)) return;
+      setProjects(Array.isArray(p) ? p : []);
+      setClients(Array.isArray(c) ? c : []);
+    } finally {
+      if (stillCurrent(issuedFor)) setAdminLoading(false);
+    }
+  }, [demoMode]);
 
   const fetchTasks = useCallback(async () => {
     if (demoMode) return;
@@ -390,16 +417,21 @@ function App({ demoMode = false }) {
     currentArtistRef.current = artist?.id || null;
     setCurrentArtist(artist);
     // Clear stale data so the UI doesn't briefly show the previous artist's content
-    setShows([]); setCrew([]); setTasks([]);
+    setShows([]); setCrew([]); setTasks([]); setProjects([]); setClients([]);
+    // Entering a workspace lands on the page its template defines, so an
+    // administration workspace never opens on Shows.
+    const cfg = workspaceConfig(artist);
+    setPage(cfg.defaultPage);
     try {
       await Promise.all([
         fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
         fetchTasks(),
+        resolveWorkType(artist?.workType) === 'administration' ? fetchAdminData() : Promise.resolve(),
       ]);
     } catch (err) {
       if (err.name !== 'AbortError') console.error('[artist-switch]', err.message);
     }
-  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks, fetchAdminData]);
 
   const createArtist = useCallback(async (name, workType = 'production') => {
     const res = await fetch('/api/artists', {
@@ -573,6 +605,30 @@ function App({ demoMode = false }) {
 
         {/* Nav: home + timelog are global pages — no artist nav */}
         <nav className="page-nav">{(page === 'home' || page === 'timelog') ? null : (<>
+          {/* Production keeps its existing buttons; an administration workspace
+              renders its own nav from the template config instead. Adding a
+              template must not mean editing this file. */}
+          {resolveWorkType(currentArtist?.workType) === 'administration' ? (
+            workspaceConfig(currentArtist).nav
+              .filter((item) => item.page !== 'tools')
+              .map((item) => (
+                <button
+                  key={item.page}
+                  className={`nav-btn ${page === item.page ? 'active' : ''}`}
+                  onClick={() => setPage(item.page)}
+                >
+                  {item.label}
+                  {item.badge === 'tasks' && tasks.filter((t) => !t.completed).length > 0 && (
+                    <span className="nav-tasks-badge">{tasks.filter((t) => !t.completed).length}</span>
+                  )}
+                  {item.badge === 'financeOverdue' && projects.filter((p) => isOverdue(p)).length > 0 && (
+                    <span className="nav-tasks-badge nav-badge--warn">
+                      {projects.filter((p) => isOverdue(p)).length}
+                    </span>
+                  )}
+                </button>
+              ))
+          ) : (<>
           <button
             className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
             onClick={() => setPage('shows')}
@@ -630,6 +686,7 @@ function App({ demoMode = false }) {
               Teams
             </button>
           )}
+          </>)}
           {!demoMode && (
             <ToolsDropdown
               activeTool={page}
@@ -699,6 +756,30 @@ function App({ demoMode = false }) {
             eventTypeChecklists={eventTypeChecklists}
             demoMode={demoMode}
             demoShows={shows}
+          />
+        ) : page === 'projects' ? (
+          <ProjectsPage
+            projects={projects}
+            loading={adminLoading}
+            hasClients={clients.length > 0}
+            onNew={() => {}}
+            onAddClient={() => setPage('clients')}
+          />
+        ) : page === 'finance' ? (
+          // Finance arrives in phase 5. Without this branch the render chain
+          // falls through to CrewManager, which would show the Crew screen
+          // inside an administration workspace.
+          <div className="adm-page">
+            <div className="adm-empty">
+              <p>Finance is not built yet — it arrives in a later phase.</p>
+            </div>
+          </div>
+        ) : page === 'clients' ? (
+          <ClientsPage
+            clients={clients}
+            projects={projects}
+            loading={adminLoading}
+            onAdd={() => {}}
           />
         ) : page === 'timelog' ? (
           <TimeLog onBack={() => setPage('home')} />
