@@ -50,6 +50,25 @@ user's call.
 like an API response rather than a sentence. Fine while the only writer is the
 form; worth a friendlier mapping once there are more admin forms.
 
+**A work day with every assistant already booked offers nothing and says nothing**
+`ProjectDetail.jsx`. The "+ Book assistant" button hides once everyone on the
+roster is booked on that day, which is right, but the branch below it only
+explains itself when the roster is empty. With a one-person roster the control
+simply vanishes after the first booking. Confirmed in the browser. Cosmetic, but
+it reads as the feature breaking rather than as nothing left to add.
+
+**Marking a booking paid re-reads every project**
+Each paid/unpaid toggle calls `fetchAdminData()`, which refetches projects,
+clients and assistants. Correct — `owedToAssistants` is derived server-side and
+must not be guessed at — but it is three requests to reflect one boolean. Fine
+at 10–15 projects a month; worth narrowing to a single-project refetch if the
+Finance screen ever toggles many at once.
+
+**`ProjectDetail` grew a second job**
+It was a read-only screen; it now also books, unbooks and marks paid, and holds
+the picker state for each work day. Still readable, but the work-day row is the
+natural place for the next split once purchases land on the same screen.
+
 ### Security / privacy
 
 **`docs/` tracks files containing real personal data**
@@ -122,6 +141,17 @@ checked is a confusing affordance.
 
 ## Fixed while found (kept for the record)
 
+- Administration's Team tab rendered `TeamPanel`, the production team screen, in
+  the wrong workspace. Fixed in `3125e4e` as part of building the roster that
+  belongs in that slot.
+- **Any failed write under `withFileLock` killed the server process.** A
+  rejection derived from `run.finally(...)` was handled by nobody, so an ordinary
+  validation failure inside a mutator returned its 400 and then took Node down.
+  Reachable by any signed-in user with one wrong field — confirmed with
+  `{"paymentTerms":45}` on a client. Fixed in `9ba675b`; this one was critical
+  and could not wait.
+- A push subscription the server refused was still reported as enabled, so the
+  toggle went on and nothing was ever delivered. `a0c419b`.
 - **Push subscription failures were completely invisible.**
   `subscribeToPush()` never checked the response of
   `POST /api/automations/push/subscribe`, so a server-side rejection still
