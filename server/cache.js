@@ -87,10 +87,21 @@ const _locks = new Map();
 function withFileLock(filePath, fn) {
   const prev = _locks.get(filePath) || Promise.resolve();
   const run  = prev.then(fn, fn);                 // run regardless of prior outcome
-  // Keep the chain alive but don't retain rejections
-  _locks.set(filePath, run.then(() => {}, () => {}));
-  run.finally(() => { if (_locks.get(filePath) === undefined) _locks.delete(filePath); });
-  return run;
+
+  // `settled` never rejects: the next writer chains off it, and every promise
+  // derived from the chain must be handled. This used to be `run.finally(...)`,
+  // whose returned promise inherits run's rejection and was handled by nobody —
+  // so any error inside a locked write (a validation failure inside a mutator,
+  // for instance) became an unhandled rejection and killed the process, even
+  // though the caller's own try/catch had already dealt with it correctly.
+  const settled = run.then(() => {}, () => {});
+  _locks.set(filePath, settled);
+  // Drop the entry once this is the last queued work for the path, so the map
+  // doesn't grow forever. Comparing against `settled` is what makes that safe:
+  // if another writer has already queued behind us, the entry is theirs now.
+  settled.then(() => { if (_locks.get(filePath) === settled) _locks.delete(filePath); });
+
+  return run;                                     // the caller still sees errors
 }
 
 // Atomic JSON write: temp file in the same directory, then rename over the
