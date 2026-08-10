@@ -447,7 +447,12 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       </div>
                     ) : (
                       <span
-                        className={`tm-member-email${u.email ? '' : ' empty'}`}
+                        /* An address is always LTR, so state it rather than letting
+                           first-strong guess. The .ltr isolate is applied only to a
+                           real address — the placeholder is a sentence and must stay
+                           free to wrap. */
+                        dir="ltr"
+                        className={`tm-member-email${u.email ? ' ltr' : ' empty'}`}
                         title="Click to edit email"
                         onClick={e => { e.stopPropagation(); setEmailEditing(u.id); setEmailDraft(u.email || ''); }}
                       >
@@ -806,7 +811,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
           <div className="bkp-header-info">
             <h3 className="bkp-name">{user.username}</h3>
             <span className="bkp-role-tag">Backliner</span>
-            {user.email && <span className="bkp-email">{user.email}</span>}
+            {user.email && <span dir="ltr" className="bkp-email ltr">{user.email}</span>}
           </div>
           <button className="bkp-close" onClick={onClose} aria-label="Close">✕</button>
         </div>

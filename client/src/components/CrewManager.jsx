@@ -270,13 +270,17 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                                 {m.phone && (
                                   <div className="crew-contact-row">
                                     <span className="crew-contact-icon"><PhoneIcon /></span>
-                                    <a href={`tel:${m.phone}`} className="crew-contact-value">{m.phone}</a>
+                                    {/* dir="ltr", not "auto": a phone number opens with a
+                                        digit, which is bidi-neutral, so first-strong
+                                        detection inherits RTL and turns the number inside
+                                        out. The direction here is a fact, not a guess. */}
+                                    <a href={`tel:${m.phone}`} dir="ltr" className="crew-contact-value ltr">{m.phone}</a>
                                   </div>
                                 )}
                                 {m.email && (
                                   <div className="crew-contact-row">
                                     <span className="crew-contact-icon"><MailIcon /></span>
-                                    <a href={`mailto:${m.email}`} className="crew-contact-value">{m.email}</a>
+                                    <a href={`mailto:${m.email}`} dir="ltr" className="crew-contact-value ltr">{m.email}</a>
                                   </div>
                                 )}
                               </div>
@@ -543,7 +547,15 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                             style={{ opacity: dragCrewIdx === idx ? 0.35 : 1, cursor: 'grab' }}
                           >
                             <span className="drag-handle">⠿</span>
-                            <span className="template-order-text" dir="auto">{m.role} – {m.name}</span>
+                            {/* One dir="auto" on the whole compound is not enough — it
+                                picks a direction from the first strong character and
+                                then lets bidi reorder the other-direction part around
+                                the neutral dash. Isolate each part instead. */}
+                            <span className="template-order-text">
+                              <span dir="auto">{m.role}</span>
+                              {' – '}
+                              <span dir="auto">{m.name}</span>
+                            </span>
                           </div>
                         );
                       })}

@@ -69,13 +69,35 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
   const timeRange    = getTimeRange(show.schedule);
   const { pct: progressPct, missing: progressMissing } = calcProgress(show);
   const MUSICIAN_ROLES = new Set(['Musician', 'Musicians', 'נגן', 'נגנים']);
-  const musicians = assignedCrew
-    .filter((m) => MUSICIAN_ROLES.has(m.role))
-    .map((m) => m.name)
-    .join(' | ');
+
+  // Rendered as nodes, not joined strings. "Sound – יובל | Backline – נעם" in a
+  // single run is a chain of English and Hebrew parts separated by bidi-neutral
+  // dashes and pipes: the neutrals attach to whichever side wins, and the parts
+  // reorder. Isolating each atom lets DOM order carry the reading order while
+  // the visible text stays exactly what it was. The stored `technicalCrew`
+  // string is untouched — it is still the fallback below.
+  const joinIsolated = (people, render) =>
+    people.map((m, i) => (
+      <span key={m.id ?? i}>
+        {i > 0 ? ' | ' : null}
+        {render(m)}
+      </span>
+    ));
+
+  const musicianList = assignedCrew.filter((m) => MUSICIAN_ROLES.has(m.role));
+  const musicians = musicianList.length
+    ? joinIsolated(musicianList, (m) => <span dir="auto">{m.name}</span>)
+    : null;
+
   // Technical crew = everyone assigned who isn't a musician (backliner included).
-  const techCrewDisplay = assignedCrew.length > 0
-    ? assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).map((m) => `${m.role} – ${m.name}`).join(' | ')
+  const techCrew = assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role));
+  // Guard on techCrew, not assignedCrew: an all-musician crew leaves this empty,
+  // and an empty array is truthy — Field would print a blank instead of its
+  // placeholder.
+  const techCrewDisplay = techCrew.length > 0
+    ? joinIsolated(techCrew, (m) => (
+        <><span dir="auto">{m.role}</span>{' – '}<span dir="auto">{m.name}</span></>
+      ))
     : show.technicalCrew;
 
   const customDefs = (show.eventType && fieldTemplates?.[show.eventType]) || [];
@@ -257,8 +279,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         <div className="show-meta">
           {show.date && <span className="meta-date">{formatDate(show.date)}</span>}
           {show.venue && <><span className="meta-dot">·</span><span className="meta-item" dir="auto">{show.venue}</span></>}
+          {/* "18:15 – 22:20" is two neutral-led operands around a neutral dash.
+              Inside an RTL line it reorders to "22:20 – 18:15" — a show that
+              ends before it starts. .ltr isolates the whole atom. */}
           {timeRange && (
-            <><span className="meta-dot">·</span><span className="meta-time">{timeRange}</span></>
+            <><span className="meta-dot">·</span><span className="meta-time ltr">{timeRange}</span></>
           )}
           {assignedCrew.length > 0 && (
             <>
@@ -330,7 +355,10 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                 </div>
               </div>
               {calMsg && <p className={`cal-export-msg ${calStatus}`}>{calMsg}</p>}
-              <pre dir="auto">{scheduleToString(show.schedule)}</pre>
+              {/* Per-line direction: schedule rows are "18:15 הגעת צוות טכני",
+                  digits first then Hebrew. dir="auto" would resolve the whole
+                  block from the first line only. */}
+              <pre className="bidi-lines">{scheduleToString(show.schedule)}</pre>
             </div>
           )}
 
@@ -499,7 +527,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                'Brief'}
             </button>
             {briefError && <span className="btn-error-msg" title={briefError}>{briefError}</span>}
-            {briefDocUrl && <a className="btn-doc-link" href={briefDocUrl} target="_blank" rel="noreferrer">Open doc →</a>}
+            {briefDocUrl && <a className="btn-doc-link" href={briefDocUrl} target="_blank" rel="noreferrer">Open doc <span className="mirror" aria-hidden="true">→</span></a>}
           </div>
           <div className="btn-action-wrap">
             <button
@@ -544,9 +572,15 @@ function Field({ label, value, inPdf, onTogglePdf, multiline }) {
           </label>
         )}
       </div>
+      {/* Multi-line values (schedule, contacts, notes, guest list) mix languages
+          line by line, so one direction for the whole block is always wrong for
+          some of it. .bidi-lines applies unicode-bidi: plaintext, which resolves
+          each line independently — that is what makes "18:15 הגעת צוות טכני"
+          read RTL even though it opens with digits. Single-line values keep
+          dir="auto", where first-strong is the right call. */}
       <span
-        className="field-value"
-        dir="auto"
+        className={`field-value${multiline ? ' bidi-lines' : ''}`}
+        dir={multiline ? undefined : 'auto'}
         style={multiline ? { whiteSpace: 'pre-line' } : undefined}
       >{value || '—'}</span>
     </div>

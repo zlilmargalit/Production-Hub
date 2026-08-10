@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './App.css';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import { applyDirection } from './utils/direction';
+
+// TEMPORARY (stage 1): resolve dir/lang before the first render so there is no
+// LTR flash. See utils/direction.js — stage 2 replaces this with the real
+// per-user preference.
+applyDirection();
 
 // window.__DEMO__ is injected by the server at GET /demo.
 // As a belt-and-suspenders fallback, also detect it from the URL so that

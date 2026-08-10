@@ -85,7 +85,7 @@ function TimeRow({ e, last, onToggle, onEdit }) {
       <div><ArtistTag artist={e.artist} /></div>
       <span dir="auto" className={`tlog-row-desc${e.billed ? ' is-billed' : ''}`}>{e.desc}</span>
       <div className="tlog-row-hours">
-        <span className={`tlog-row-hours-num${e.billed ? ' is-billed' : ''}`}>{fmtHours(e.hours)}</span>
+        <span className={`tlog-row-hours-num ltr${e.billed ? ' is-billed' : ''}`}>{fmtHours(e.hours)}</span>
         <span className="tlog-row-hours-unit">h</span>
       </div>
       <div className="tlog-row-check">
@@ -287,7 +287,7 @@ export default function TimeLog({ onBack }) {
       {/* ── Back to home ── */}
       {onBack && (
         <button className="tlog-back" onClick={onBack} aria-label="Back to Today">
-          ← Today
+          <span className="mirror" aria-hidden="true">←</span> Today
         </button>
       )}
 
@@ -332,7 +332,7 @@ export default function TimeLog({ onBack }) {
               {p.dot && <span className="tlog-pill-dot" style={{ background: p.dot }} />}
               {p.label}
               <span className="tlog-pill-hours">
-                <span className="tlog-pill-hours-num">{fmtHours(p.hours)}</span>
+                <span className="tlog-pill-hours-num ltr">{fmtHours(p.hours)}</span>
                 <span className="tlog-pill-hours-unit">h</span>
               </span>
             </button>

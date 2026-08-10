@@ -504,7 +504,14 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                         onClick={() => toggleCrew(m.id)}
                       >
                         <span className="sf-crew-dot" style={{ background: groupColorFor(m.role) }} />
-                        {m.role} – {m.name}
+                        {/* Two bidi isolates, not one string. Role is English and
+                            name is usually Hebrew; in a single run the neutral en
+                            dash lets the parts swap, so "Sound – ‏יובל‏" renders with
+                            the name first. Separate dir="auto" spans let each part
+                            settle on its own while DOM order fixes the reading order. */}
+                        <span dir="auto">{m.role}</span>
+                        {' – '}
+                        <span dir="auto">{m.name}</span>
                       </button>
                     );
                   })

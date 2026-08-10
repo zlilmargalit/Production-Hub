@@ -4,10 +4,19 @@
    Soft warm off-whites, charcoal text, hairline borders, generous breathing room.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Heebo:wght@300;400;500;600;700;800&family=Rubik:wght@400;500;600;700;800&display=swap');
+/* Fonts are loaded by the single <link> in index.html <head>. A CSS @import
+   here would resolve later and delay first paint. Do not add one back. */
 
 /* ─── TOKENS — Light (default) — warm cream Nordic palette ──────────── */
 :root {
+  /* Horizontal direction multiplier. CSS has no logical equivalent of
+     translateX, so any transform that expresses MOVEMENT (a knob sliding, an
+     arrow nudging forward, a marquee scrolling) multiplies its offset by this
+     and mirrors automatically. Transforms that express CENTERING
+     (translateX(-50%) paired with left: 50%) must NOT use it — they are
+     direction-neutral and stay physical. */
+  --dir-x: 1;
+
   /* Surfaces — warm cream, refined from original #F0EDE8 / #FDFAF6 */
   --bg:            #F1EEE9;
   --surface:       #FBF8F2;
@@ -159,10 +168,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* When content is RTL/Hebrew, prefer Assistant + Heebo */
+/* Hebrew content: kerning on, tracking off.
+   The font-family override that used to live here has been REMOVED. It was
+   safe while only content spans carried dir="rtl"/lang=he, but the root now
+   carries them, so it applied globally and dropped 'Bricolage Grotesque' from
+   the whole UI — taking the numerals with it. The stack is deliberately left
+   as the body's: Bricolage has no Hebrew coverage, so Hebrew falls through to
+   Assistant per glyph while digits stay Bricolage. */
 [dir="rtl"],
 [dir="auto"]:lang(he) {
-  font-family: 'Assistant', 'Heebo', system-ui, sans-serif;
   font-feature-settings: "kern" 1;
   letter-spacing: 0;
 }
@@ -261,7 +275,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .page-nav {
   display: flex;
   gap: 4px;
-  margin-left: 48px;
+  margin-inline-start: 48px;
   flex-shrink: 1;        /* allow the nav to give up space before brand/header-right */
   min-width: 0;
   align-items: center;
@@ -270,7 +284,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 /* Tablet / narrow desktop — shrink nav text before it overflows */
 @media (max-width: 1020px) {
-  .page-nav { margin-left: 20px; gap: 0; }
+  .page-nav { margin-inline-start: 20px; gap: 0; }
   .nav-btn   { font-size: 0.6875rem; letter-spacing: 0.04em; margin: 0 8px; }
   .artist-switcher-label { max-width: 120px; }
   .artist-switcher-btn   { font-size: 0.6875rem; }
@@ -280,7 +294,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 
@@ -305,7 +319,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .nav-btn.active::after {
   content: "";
   position: absolute;
-  left: 0; right: 0;
+  inset-inline-start: 0; inset-inline-end: 0;
   bottom: -2px;
   height: 2px;
   background: var(--accent);
@@ -520,7 +534,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   text-transform: uppercase;
   color: var(--text-2);
   border: none;
-  border-left: 1px solid var(--text);
+  border-inline-start: 1px solid var(--text);
   background: transparent;
   box-shadow: none;
   text-shadow: none;
@@ -532,7 +546,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   white-space: nowrap;
   border-radius: 0;
 }
-.seg-btn:first-child { border-left: none; }
+.seg-btn:first-child { border-inline-start: none; }
 /* Calendar MONTH/WEEK toggle: thin black outline only — no offset shadow */
 .mcal-topbar .seg { box-shadow: none; }
 [data-theme="dark"] .mcal-topbar .seg { box-shadow: none; }
@@ -588,7 +602,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   display: inline-flex;
   align-items: baseline;
   gap: 3px;
-  margin-left: 4px;
+  margin-inline-start: 4px;
   padding: 3px 9px;
   border-radius: 999px;
   background: var(--surface-sunk);
@@ -669,7 +683,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .user-menu-panel {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  inset-inline-end: 0;
   min-width: 200px;
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -719,7 +733,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 10px 16px;
   background: none;
   border: none;
-  text-align: left;
+  text-align: start;
   font-size: 0.875rem;
   font-family: inherit;
   color: var(--text-1);
@@ -734,7 +748,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 11px 16px;
   background: none;
   border: none;
-  text-align: left;
+  text-align: start;
   font-size: 0.875rem;
   font-family: inherit;
   color: var(--clay);
@@ -830,7 +844,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .settings-toggle-thumb {
   position: absolute;
   top: 3px;
-  left: 3px;
+  inset-inline-start: 3px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -839,7 +853,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   transition: transform 0.2s ease;
   pointer-events: none;
 }
-.settings-toggle-switch.on .settings-toggle-thumb { transform: translateX(24px); }
+.settings-toggle-switch.on .settings-toggle-thumb { transform: translateX(calc(24px * var(--dir-x))); }
 .user-settings-msg {
   margin-top: 10px;
   font-size: 0.8125rem;
@@ -1014,7 +1028,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: var(--radius-pill);
   background: var(--border);
   color: var(--text-3);
-  margin-left: 8px;
+  margin-inline-start: 8px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   vertical-align: middle;
@@ -1301,7 +1315,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 9px 16px;
   background: none;
   border: none;
-  text-align: left;
+  text-align: start;
   font-size: 0.875rem;
   font-family: inherit;
   color: var(--text);
@@ -1370,7 +1384,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .artist-dots-menu {
   position: absolute;
-  right: 0;
+  inset-inline-end: 0;
   top: calc(100% + 2px);
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -1388,7 +1402,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: none;
   border: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-size: 0.8125rem;
   font-family: inherit;
   transition: background 0.1s;
@@ -1626,7 +1640,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 .page-marquee {
   position: absolute;
-  right: 0;
+  inset-inline-end: 0;
   bottom: 24px;
   max-width: 38%;
   overflow: hidden;
@@ -1649,7 +1663,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 @keyframes marquee {
   from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  to   { transform: translateX(calc(-50% * var(--dir-x))); }
 }
 
 @media (max-width: 768px) {
@@ -1733,7 +1747,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
      so the title sits at the exact same position as on a title-only page (Shows).
      Safe because the strip is display:none below 640px. */
   position: absolute;
-  right: 0;
+  inset-inline-end: 0;
   bottom: 0;
 }
 .pg-bar-stat {
@@ -1744,7 +1758,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   gap: 2px;
   min-width: 72px;
 }
-.pg-bar-stat + .pg-bar-stat { border-left: 1px solid var(--border); }
+.pg-bar-stat + .pg-bar-stat { border-inline-start: 1px solid var(--border); }
 .pg-bar-stat:first-child { background: var(--accent-soft); }
 .pg-bar-stat-val {
   font-family: 'Bricolage Grotesque', sans-serif;
@@ -1865,7 +1879,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .filter-drop-panel {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  inset-inline-end: 0;
   z-index: 200;
   background: var(--surface);
   border: 1px solid var(--text);
@@ -1966,7 +1980,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   gap: 10px;
   background: transparent;
   border: none;
-  border-right: 1px solid var(--text);
+  border-inline-end: 1px solid var(--text);
   color: var(--text-2);
   padding: 11px 22px;
   cursor: pointer;
@@ -1977,8 +1991,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
   text-transform: uppercase;
   transition: background 0.15s, color 0.15s;
 }
-[data-theme="dark"] .filter-btn { border-right-color: var(--border-strong); }
-.filter-btn:last-child { border-right: none; }
+[data-theme="dark"] .filter-btn { border-inline-end-color: var(--border-strong); }
+.filter-btn:last-child { border-inline-end: none; }
 .filter-btn:hover { color: var(--text); background: var(--surface-sunk); }
 .filter-btn.active {
   background: var(--accent);
@@ -2078,7 +2092,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex-shrink: 0;
 }
 
-/* Show name — full-width, right edge aligned with the "e" of Delete button */
+/* Show name — full-width, inline-end edge aligned with the "e" of Delete button */
 .show-card-header h2 {
   font-family: 'Rubik', 'Assistant', 'Heebo', sans-serif;
   font-size: clamp(1.2rem, 4vw, 1.75rem);
@@ -2089,12 +2103,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
   margin-bottom: 16px;
   font-optical-sizing: auto;
   font-variation-settings: "opsz" 48;
-  /* match btn-action right padding so text aligns under "e" of Delete */
-  padding-right: 9px;
-  /* Right-align the show name. The element's dir attribute handles bidi, so
+  /* match btn-action inline-end padding so text aligns under "e" of Delete */
+  padding-inline-end: 9px;
+  /* Aligns to the reading start. This was `right`, which only looked correct
+     because the document was forced to Hebrew; it left English titles floating
+     against the wrong edge. The element's dir attribute handles bidi, so
      embedded English words / numbers (e.g. "D ONE", "80") render correctly
      and are NOT reversed — do NOT use unicode-bidi: bidi-override here. */
-  text-align: right;
+  text-align: start;
   /* single line — truncate with ellipsis */
   white-space: nowrap;
   overflow: hidden;
@@ -2145,7 +2161,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border: 1px solid transparent;
   padding: 3px 10px;
   border-radius: var(--radius-pill);
-  margin-right: 10px;
+  margin-inline-end: 10px;
 }
 /* Tags without a color index keep a subtle neutral background */
 .crew-event-types .tag:not([data-et-idx]) {
@@ -2257,7 +2273,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   text-transform: uppercase;
   transition: background 0.15s, color 0.15s;
 }
-.show-expand-btn + .show-expand-btn { border-left: none; }
+.show-expand-btn + .show-expand-btn { border-inline-start: none; }
 .show-expand-btn:hover { background: var(--surface-sunk); }
 .show-expand-btn.active {
   background: var(--text);
@@ -2624,7 +2640,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-right: 6px;
+  margin-inline-end: 6px;
   border: 1px solid transparent;
 }
 .badge-archive { background: var(--slate-bg); color: var(--slate); border-color: rgba(94,122,196,0.25); }
@@ -2880,7 +2896,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: none;
   border: none;
   padding: 10px 14px;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   font-size: 0.8125rem;
   color: var(--text);
@@ -2974,7 +2990,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: var(--accent-soft);
   border-radius: var(--radius-sm);
   padding: 1px 5px;
-  margin-left: 6px;
+  margin-inline-start: 6px;
   vertical-align: middle;
   flex-shrink: 0;
 }
@@ -3410,7 +3426,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-size: 0.6875rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .checkbox-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
@@ -3466,7 +3482,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .crew-tab.active::after {
   content: "";
   position: absolute;
-  left: 0; right: 0;
+  inset-inline-start: 0; inset-inline-end: 0;
   bottom: -17px;
   height: 2px;
   background: var(--accent);
@@ -3660,7 +3676,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .crew-card-actions {
   position: absolute;
   top: 10px;
-  right: 10px;
+  inset-inline-end: 10px;
   display: flex;
   gap: 2px;
   flex-shrink: 0;
@@ -3694,7 +3710,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .template-card:hover { border-color: var(--border-strong); }
 .template-card[data-et-idx] {
-  border-left: 3px solid var(--et-color, var(--border));
+  border-inline-start: 3px solid var(--et-color, var(--border));
 }
 .template-card.editing {
   border-color: var(--text);
@@ -3947,7 +3963,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .page-nav {
     order: 99;
     flex: 0 0 100%;
-    margin-left: 0;
+    margin-inline-start: 0;
     gap: 2px;
     border-top: 1px solid var(--border-light);
     padding: 4px 4px 6px;
@@ -3975,10 +3991,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .nav-artist-desktop  { display: none; }
   .header-artist-mobile { display: flex; align-items: center; }
   .artist-switcher { flex: 0 0 auto; flex-shrink: 0; }
-  .artist-switcher-btn { margin: 0; font-size: 0.5625rem; min-width: 0; padding-left: 6px; padding-right: 6px; }
+  .artist-switcher-btn { margin: 0; font-size: 0.5625rem; min-width: 0; padding-inline-start: 6px; padding-inline-end: 6px; }
   .artist-switcher-label { max-width: 72px; }
   /* Panel opens left so it doesn't overflow the right edge */
-  .artist-switcher-panel { right: 0; left: auto; transform: none; }
+  .artist-switcher-panel { inset-inline-end: 0; inset-inline-start: auto; transform: none; }
 
   /* + New: hide from header, show in subtitle row */
   .btn-new-desktop { display: none !important; }
@@ -3987,7 +4003,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
   /* right-side buttons go right of brand on row 1 */
   .header-right {
-    margin-left: auto;
+    margin-inline-start: auto;
     gap: 6px;
     padding-bottom: 10px;
   }
@@ -4043,7 +4059,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .custom-fields-grid { grid-template-columns: 1fr; }
 
   /* User menu panel: anchor right edge to viewport */
-  .user-menu-panel { right: -8px; min-width: 180px; }
+  .user-menu-panel { inset-inline-end: -8px; min-width: 180px; }
 }
 
 /* ─── Tasks nav badge ────────────────────────────────────────────────────── */
@@ -4060,7 +4076,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1;
-  margin-left: 6px;
+  margin-inline-start: 6px;
 }
 
 /* ─── Crew task badge (next to name in Crew & Types) ─────────────────────── */
@@ -4076,7 +4092,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   color: #fff;
   font-size: 0.6rem;
   font-weight: 700;
-  margin-left: 7px;
+  margin-inline-start: 7px;
   vertical-align: middle;
 }
 
@@ -4341,7 +4357,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .gtask-add-details-btn {
   background: none; border: none; cursor: pointer;
   font-size: 0.75rem; color: var(--text-3); padding: 4px 0;
-  font-family: inherit; text-align: left;
+  font-family: inherit; text-align: start;
   transition: color .15s;
 }
 .gtask-add-details-btn:hover { color: var(--accent); }
@@ -4349,7 +4365,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 /* ── ShowMultiPicker dropdown ───────────────────────────────────────────── */
 .gtask-show-picker { position: relative; flex: 1; min-width: 140px; }
 .gtask-show-picker-btn {
-  width: 100%; text-align: left; display: flex; align-items: center;
+  width: 100%; text-align: start; display: flex; align-items: center;
   justify-content: space-between; gap: 4px;
   background: var(--surface); border: 1px solid var(--border);
   padding: 6px 10px; font-size: 0.8125rem; font-family: inherit;
@@ -4359,7 +4375,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .gtask-show-picker-btn:hover { border-color: var(--border-strong); }
 .gtask-picker-caret { font-size: 0.6rem; opacity: 0.6; flex-shrink: 0; }
 .gtask-show-picker-dropdown {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+  position: absolute; top: 100%; inset-inline-start: 0; inset-inline-end: 0; z-index: 200;
   background: var(--surface); border: 1px solid var(--border);
   box-shadow: 3px 3px 0 var(--border-strong);
   max-height: 220px; overflow-y: auto;
@@ -4462,7 +4478,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-size: 0.62rem;
   font-style: italic;
   color: var(--text-3);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .gtask-board-empty {
   padding: 16px 14px;
@@ -4491,14 +4507,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 4px;
-  padding-left: 24px;
+  padding-inline-start: 24px;
 }
 .gtask-board-row-hover-actions {
   display: flex;
   gap: 4px;
   opacity: 0;
   transition: opacity 0.15s;
-  margin-left: auto;
+  margin-inline-start: auto;
   flex-shrink: 0;
 }
 .gtask-board-row:hover .gtask-board-row-hover-actions { opacity: 1; }
@@ -4527,8 +4543,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 @media (max-width: 640px) {
   .gtask-add-card,
   .gtask-filter-bar,
-  .gtask-list { padding-left: 16px; padding-right: 16px; margin-left: 0; margin-right: 0; }
-  .gtask-add-card { margin-left: 16px; margin-right: 16px; }
+  .gtask-list { padding-inline-start: 16px; padding-inline-end: 16px; margin-inline-start: 0; margin-inline-end: 0; }
+  .gtask-add-card { margin-inline-start: 16px; margin-inline-end: 16px; }
   .gtask-add-meta { flex-direction: column; }
   .gtask-date-input, .gtask-time-input, .gtask-select { min-width: unset; }
   .crew-pick-grid { column-count: 2; }
@@ -4636,7 +4652,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   min-width: 560px;
 }
 .team-table th {
-  text-align: left;
+  text-align: start;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -5121,7 +5137,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-size: 0.8125rem;
 }
 .settings-table th {
-  text-align: left;
+  text-align: start;
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -5376,12 +5392,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .tools-nav-dropdown { position: relative; }
 .tools-nav-dropdown-trigger { display: flex; align-items: center; gap: 5px; }
 .tools-nav-caret {
-  font-size: 0.55rem; opacity: 0.5; margin-left: 1px;
+  font-size: 0.55rem; opacity: 0.5; margin-inline-start: 1px;
   transition: transform 0.15s;
 }
 .tools-nav-dropdown-trigger[aria-expanded="true"] .tools-nav-caret { transform: rotate(180deg); }
 .tools-nav-dropdown-panel {
-  position: absolute; top: calc(100% + 4px); left: 0;
+  position: absolute; top: calc(100% + 4px); inset-inline-start: 0;
   min-width: 180px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow-md);
@@ -5390,7 +5406,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 [data-theme="dark"] .tools-nav-dropdown-panel { background: var(--surface-2); }
 .tools-nav-dropdown-item {
   display: block; width: 100%; padding: 8px 14px;
-  background: none; border: none; text-align: left;
+  background: none; border: none; text-align: start;
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
   font-size: 0.8125rem; font-weight: 500; color: var(--text-2);
   cursor: pointer; transition: background 0.1s, color 0.1s;
@@ -5411,7 +5427,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 /* ── Sidebar ── */
 .tools-sidebar {
   width: 220px; flex-shrink: 0;
-  background: var(--surface); border-right: 1px solid var(--border);
+  background: var(--surface); border-inline-end: 1px solid var(--border);
   padding: 28px 0 16px; display: flex; flex-direction: column;
   overflow: hidden;
 }
@@ -5425,7 +5441,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .tools-nav-item {
   display: flex; align-items: center; gap: 9px;
   width: 100%; padding: 9px 18px;
-  background: none; border: none; text-align: left;
+  background: none; border: none; text-align: start;
   font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
   font-size: 0.8125rem; font-weight: 500; color: var(--text-2);
   cursor: pointer; position: relative;
@@ -5435,7 +5451,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .tools-nav-item--active { color: var(--text); background: var(--bg); font-weight: 600; }
 [data-theme="dark"] .tools-nav-item--active { background: var(--surface); }
 .tools-nav-item--active::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0;
   width: 2px; background: var(--accent);
 }
 .tools-nav-icon { width: 13px; height: 13px; flex-shrink: 0; color: currentColor; }
@@ -5475,7 +5491,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .slc-saved-item:hover { background: var(--surface-sunk); }
 .slc-saved-item.active { background: var(--surface-sunk); }
 .slc-saved-item.active::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  content: ''; position: absolute; inset-inline-start: 0; top: 0; bottom: 0;
   width: 3px; background: var(--accent);
 }
 .slc-saved-name { font-size: 0.8125rem; font-weight: 600; color: var(--text); line-height: 1.3; }
@@ -5498,7 +5514,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   letter-spacing: 0.01em;
 }
 .slc-saved-del {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%);
   background: none; border: none; font-size: 0.7rem; cursor: pointer;
   color: var(--text-3); padding: 2px 4px; opacity: 0;
   transition: opacity 0.15s;
@@ -5571,7 +5587,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .slc-format-seg--song  { background: var(--surface-sunk); color: var(--text-2); font-weight: 600; flex: 1.2; }
 .slc-format-seg--dash  {
   background: var(--surface-sunk); color: var(--text-3);
-  padding: 5px 7px; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  padding: 5px 7px; border-inline-start: 1px solid var(--border); border-inline-end: 1px solid var(--border);
   font-size: 0.6875rem; display: flex; align-items: center;
 }
 /* Artist segment — slightly lighter gray */
@@ -5620,7 +5636,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex: 1.5; min-width: 140px; appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 10px center;
-  padding-right: 28px;
+  padding-inline-end: 28px;
 }
 .slc-save-btn {
   padding: 8px 16px; background: var(--text); color: var(--surface);
@@ -5691,14 +5707,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .slc-table-scroll { overflow-y: auto; max-height: 420px; flex: 1; }
 .slc-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
 .slc-th {
-  position: sticky; top: 0; text-align: left;
+  position: sticky; top: 0; text-align: start;
   font-size: 0.5rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--text-3); padding: 8px 14px 6px; border-bottom: 1px solid var(--border);
   background: var(--surface-sunk); white-space: nowrap; z-index: 1;
 }
 [data-theme="dark"] .slc-th { background: var(--surface); }
 .slc-th--num { width: 36px; }
-.slc-th--dur { text-align: right; }
+.slc-th--dur { text-align: end; }
 .slc-row { border-bottom: 1px solid var(--border-light); transition: background 0.1s; }
 .slc-row:last-child { border-bottom: none; }
 .slc-row:hover { background: var(--surface-sunk); }
@@ -5716,7 +5732,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .slc-td--num { color: var(--text-3); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .slc-td--song { display: flex; align-items: center; gap: 8px; }
 .slc-td--artist { color: var(--text-2); font-size: 0.8125rem; }
-.slc-td--dur { text-align: right; }
+.slc-td--dur { text-align: end; }
 .slc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .slc-dot--ok         { background: var(--accent); }
 .slc-dot--miss       { background: var(--border-strong); }
@@ -5724,10 +5740,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .slc-link { color: var(--text); text-decoration: none; transition: color 0.15s; }
 .slc-link:hover { color: var(--accent); }
 .slc-dur { font-family: 'Courier New', monospace; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-.slc-dur--manual { color: var(--text-3); margin-left: 6px; }
+.slc-dur--manual { color: var(--text-3); margin-inline-start: 6px; }
 .slc-manual-wrap { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .slc-manual-input {
-  width: 58px; padding: 4px 7px; text-align: right;
+  width: 58px; padding: 4px 7px; text-align: end;
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   font-family: 'Courier New', monospace; font-size: 0.8125rem;
   background: var(--surface-sunk); color: var(--text);
@@ -5851,7 +5867,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .bkp-show-accordion-header {
   width: 100%; background: var(--surface-sunk); border: none; cursor: pointer;
   display: flex; align-items: center; gap: 10px; padding: 11px 14px;
-  text-align: left; transition: background 0.15s;
+  text-align: start; transition: background 0.15s;
 }
 .bkp-show-accordion-header:hover { background: var(--border); }
 .bkp-show-accordion-name { font-size: 0.88rem; font-weight: 600; color: var(--text); flex: 1; }
@@ -5884,7 +5900,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;
 }
 .user-settings-role-card {
-  display: flex; flex-direction: column; gap: 4px; text-align: left;
+  display: flex; flex-direction: column; gap: 4px; text-align: start;
   padding: 12px 14px; border: 1.5px solid var(--border);
   background: var(--surface); cursor: pointer;
   border-radius: 0; transition: border-color 0.15s, background 0.15s;
@@ -5935,7 +5951,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .tg-check-row:hover { background: var(--surface-sunk); }
 .tg-check-row input[type="checkbox"] { flex-shrink: 0; accent-color: var(--accent); }
 .tg-check-name { font-size: 0.85rem; font-weight: 500; color: var(--text); }
-.tg-check-email { font-size: 0.75rem; color: var(--text-2); margin-left: 4px; }
+.tg-check-email { font-size: 0.75rem; color: var(--text-2); margin-inline-start: 4px; }
 
 .tg-artist-list { display: flex; flex-direction: column; gap: 8px; }
 .tg-artist-block { border: 1px solid var(--border); padding: 10px 12px; }
@@ -5944,7 +5960,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 .tg-rubric-row {
   display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
-  padding-top: 10px; border-top: 1px solid var(--border); padding-left: 24px;
+  padding-top: 10px; border-top: 1px solid var(--border); padding-inline-start: 24px;
 }
 .tg-rubric-check {
   display: flex; align-items: center; gap: 5px; cursor: pointer;
@@ -6038,7 +6054,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .btn-perm-toggle {
   font-size: 0.75rem;
   padding: 3px 9px;
-  margin-right: 6px;
+  margin-inline-end: 6px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: transparent;
@@ -6123,7 +6139,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 @media (max-width: 640px) {
   .user-settings-role-grid { grid-template-columns: 1fr; }
   .tsp-team-card { padding: 20px 16px; }
-  .tg-rubric-row { padding-left: 0; }
+  .tg-rubric-row { padding-inline-start: 0; }
   .user-perm-grid { max-width: 100%; }
   .btn-perm-toggle { display: none; }
 }
@@ -6353,7 +6369,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .notif-badge {
   position: absolute;
   top: 2px;
-  right: 2px;
+  inset-inline-end: 2px;
   background: #E53935;
   color: #fff;
   border-radius: 50%;
@@ -6371,7 +6387,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .notif-panel {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  inset-inline-end: 0;
   width: 300px;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
@@ -6439,7 +6455,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: none;
   border: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-size: 0.83rem;
   line-height: 1.45;
   color: var(--text);
@@ -6907,7 +6923,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .tm-dots-btn:hover { background: var(--surface-sunk); color: var(--text); }
 .tm-dots-dropdown {
   position: absolute;
-  right: 0;
+  inset-inline-end: 0;
   top: calc(100% + 4px);
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
@@ -6923,7 +6939,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: none;
   border: none;
   padding: 9px 14px;
-  text-align: left;
+  text-align: start;
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--text);
@@ -7187,7 +7203,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-3);
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
 }
 .tm-perm-matrix-save {
   margin: 4px 8px;
@@ -7223,7 +7239,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   align-items: center;
   justify-content: center;
   border: none;
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   background: transparent;
   cursor: pointer;
   min-height: 38px;
@@ -7261,7 +7277,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   min-width: 0;
 }
 .tm-settings-col + .tm-settings-col {
-  border-left: 1px solid var(--border-light);
+  border-inline-start: 1px solid var(--border-light);
 }
 .tm-settings-col-label {
   font-size: 0.72rem;
@@ -7389,10 +7405,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   align-items: baseline;
   justify-content: center;
   padding: 7px 18px;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   gap: 8px;
 }
-.dash-stat:last-child { border-right: none; }
+.dash-stat:last-child { border-inline-end: none; }
 .dash-stat:first-child { background: var(--accent-soft); }
 .dash-stat-value {
   font-family: 'Bricolage Grotesque', sans-serif;
@@ -7614,7 +7630,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .mcal-cell {
   min-height: 50px;
   padding: 4px 5px;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -7622,7 +7638,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   position: relative;
   overflow: hidden;
 }
-.mcal-cell:nth-child(7n) { border-right: none; }
+.mcal-cell:nth-child(7n) { border-inline-end: none; }
 .mcal-cell--out   { background: transparent; }
 .mcal-cell--today { background: var(--accent-soft); }
 .mcal-day-num {
@@ -7643,7 +7659,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-size: 0.5rem;
   color: var(--text-3);
   font-weight: 600;
-  padding-left: 2px;
+  padding-inline-start: 2px;
   margin-top: 1px;
 }
 
@@ -7651,11 +7667,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .mcal-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   border-top: 1px solid var(--border);
 }
 .mcal-week-col {
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   min-height: 220px;
   display: flex;
@@ -7715,13 +7731,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 1px 4px;
   background: var(--pill-soft, var(--accent-soft));
   border: none;
-  border-right: 2px solid var(--pill-color, var(--accent));
+  border-inline-end: 2px solid var(--pill-color, var(--accent));
   border-radius: 0;
   font-family: 'Assistant', sans-serif;
   font-size: 0.54rem;
   font-weight: 600;
   cursor: pointer;
-  text-align: right;
+  text-align: end;
   overflow: hidden;
   transition: box-shadow 0.1s, transform 0.1s;
 }
@@ -7737,7 +7753,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   white-space: nowrap;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  padding-left: 3px;
+  padding-inline-start: 3px;
 }
 .ev-pill-name {
   flex: 1;
@@ -7791,7 +7807,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .qv-close {
   position: absolute;
   top: 12px;
-  right: 14px;
+  inset-inline-end: 14px;
   width: 26px;
   height: 26px;
   display: flex;
@@ -8137,10 +8153,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   gap: 10px;
   padding: 11px 14px;
   border-bottom: 1px solid var(--border);
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   transition: background 0.1s;
 }
-.mytask-row:nth-child(2n) { border-right: none; }
+.mytask-row:nth-child(2n) { border-inline-end: none; }
 .mytask-row:nth-last-child(-n+2) { border-bottom: none; }
 .mytask-row:hover { background: var(--surface-sunk); }
 .mytask-row--overdue { background: #FFF9F8; }
@@ -8202,7 +8218,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .mytask-sep    { color: var(--border-strong); }
 .mytask-show   { color: var(--text-2); }
 .mytask-due {
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 0.66rem;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
@@ -8289,13 +8305,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: var(--surface-sunk);
   color: var(--text-2);
   font-size: 0.6rem;
-  margin-left: auto;
+  margin-inline-start: auto;
   flex-shrink: 0;
 }
 .ws-dropdown {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  inset-inline-end: 0;
   width: 300px;
   background: var(--surface);
   border: 1.5px solid var(--text);
@@ -8323,7 +8339,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border: none;
   background: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   transition: background 0.1s;
 }
 .ws-dropdown-item:hover { background: var(--surface-sunk); }
@@ -8381,7 +8397,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex-shrink: 0;
   transition: transform 0.12s;
 }
-.ws-dropdown-item:hover .ws-dropdown-arrow { transform: translateX(3px); }
+.ws-dropdown-item:hover .ws-dropdown-arrow { transform: translateX(calc(3px * var(--dir-x))); }
 .ws-dropdown-divider {
   padding: 8px 14px 5px;
   font-family: 'Assistant', sans-serif;
@@ -8474,7 +8490,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 @keyframes dash-marquee {
   from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  to   { transform: translateX(calc(-50% * var(--dir-x))); }
 }
 @media (prefers-reduced-motion: reduce) {
   .dash-marquee-track { animation: none; }
@@ -8511,7 +8527,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
-  margin-right: 2px;
+  margin-inline-end: 2px;
   flex-shrink: 0;
 }
 .dash-filter-chips {
@@ -8521,7 +8537,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   align-items: center;
 }
 .dash-timelog-link {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -8544,7 +8560,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .dash-timelog-arrow { font-size: 0.9rem; line-height: 0; color: var(--accent); }
 .dash-timelog-link:hover .dash-timelog-arrow { color: var(--accent-hover); }
 @media (max-width: 720px) {
-  .dash-timelog-link { margin-left: 0; }
+  .dash-timelog-link { margin-inline-start: 0; }
 }
 .dash-chip {
   display: inline-flex;
@@ -8819,7 +8835,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   letter-spacing: 0.02em;
 }
 .gl-copy-btn {
-  margin-left: auto;
+  margin-inline-start: auto;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -8868,18 +8884,18 @@ html, body { max-width: 100%; overflow-x: hidden; }
   color: var(--text-3);
 }
 /* Keep both buttons tight inside the group (override .gl-copy-btn auto margin) */
-.gl-card-header .guest-btn-group { margin-left: auto; }
-.gl-card-header .guest-btn-group .gl-copy-btn { margin-left: 0; }
+.gl-card-header .guest-btn-group { margin-inline-start: auto; }
+.gl-card-header .guest-btn-group .gl-copy-btn { margin-inline-start: 0; }
 
 /* Copy + Sort button group in the show-detail guest list */
 .guest-btn-group {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 .guest-btn-group .guest-sort-btn {
-  margin-left: 0;
+  margin-inline-start: 0;
 }
 .guest-sort-btn--ok {
   color: #3D7A51;
@@ -8893,7 +8909,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 @media (max-width: 900px) {
   .mytasks-grid { grid-template-columns: 1fr; }
-  .mytask-row { border-right: none; }
+  .mytask-row { border-inline-end: none; }
   .mytask-row:nth-last-child(-n+2) { border-bottom: 1px solid var(--border-light); }
   .mytask-row:last-child { border-bottom: none; }
   .showday-body { grid-template-columns: 1fr; }
@@ -8973,7 +8989,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .sf-rail {
   width: 194px;
   flex-shrink: 0;
-  border-right: 1.5px solid var(--border);
+  border-inline-end: 1.5px solid var(--border);
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
@@ -8990,7 +9006,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-2);
-  text-align: left;
+  text-align: start;
   border: none;
   cursor: pointer;
   background: none;
@@ -9006,7 +9022,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   transition: background 0.12s;
 }
 .sf-rail-count {
-  margin-left: auto;
+  margin-inline-start: auto;
   font-size: 0.64rem;
   font-weight: 700;
   color: var(--text-3);
@@ -9221,7 +9237,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  margin-left: 7px;
+  margin-inline-start: 7px;
   background: var(--accent);
   color: #fff;
   font-size: 0.625rem;
@@ -9304,7 +9320,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   letter-spacing: 0.03em;
 }
 .guest-sort-btn {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -9349,7 +9365,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 /* Responsive */
 @media (max-width: 640px) {
   .sf-body { flex-direction: column; }
-  .sf-rail { width: 100%; flex-direction: row; padding: 10px 12px; gap: 0; border-right: none; border-bottom: 1.5px solid var(--border); overflow-x: auto; }
+  .sf-rail { width: 100%; flex-direction: row; padding: 10px 12px; gap: 0; border-inline-end: none; border-bottom: 1.5px solid var(--border); overflow-x: auto; }
   .sf-rail-spacer, .sf-rail-meta { display: none; }
   .sf-rail-link { padding: 8px 10px; border-radius: 6px; white-space: nowrap; }
   .sf-grid2 { grid-template-columns: 1fr; }
@@ -9407,7 +9423,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   align-items: center;
   gap: 20px;
 }
-.tlog-stat { text-align: right; }
+.tlog-stat { text-align: end; }
 .tlog-stat-eyebrow {
   font-family: 'Assistant', sans-serif;
   font-size: 0.6rem;
@@ -9467,7 +9483,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-3);
-  margin-right: 2px;
+  margin-inline-end: 2px;
 }
 
 /* ── Action bar ── */
@@ -9565,7 +9581,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   text-transform: uppercase;
   color: var(--text-3);
 }
-.tlog-right { text-align: right; }
+.tlog-right { text-align: end; }
 .tlog-center { text-align: center; }
 
 .tlog-row {
@@ -9705,7 +9721,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.tlog-footer-unit { font-size: 0.7rem; color: var(--text-3); margin-left: 2px; }
+.tlog-footer-unit { font-size: 0.7rem; color: var(--text-3); margin-inline-start: 2px; }
 
 /* ── Add Time modal ── */
 .tlog-modal-backdrop {
@@ -9766,11 +9782,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 @media (max-width: 720px) {
   .tlog-title-row { flex-wrap: wrap; }
-  .tlog-grid-head, .tlog-row { grid-template-columns: 50px 110px 1fr 70px 26px 30px; gap: 10px; padding-left: 14px; padding-right: 14px; }
+  .tlog-grid-head, .tlog-row { grid-template-columns: 50px 110px 1fr 70px 26px 30px; gap: 10px; padding-inline-start: 14px; padding-inline-end: 14px; }
   .tlog-tag { font-size: 0.68rem; padding: 3px 7px; }
   /* Description column: alignment follows the entry's own direction, so an
      English description reads left-aligned and a Hebrew one right-aligned. */
-  .tlog-grid-head-label:nth-child(3) { text-align: right; }
+  .tlog-grid-head-label:nth-child(3) { text-align: end; }
   .tlog-row-desc { text-align: start; }
   /* Prevent timelog grid from causing horizontal scroll */
   .tlog-grid { overflow-x: hidden; }
@@ -9904,7 +9920,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .ql-artist-dot {
   position: absolute;
-  left: 12px;
+  inset-inline-start: 12px;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -10020,7 +10036,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 @media (max-width: 600px) {
   .ql-body { padding: 14px 16px 12px; }
-  .ql-header, .ql-actions { padding-left: 16px; padding-right: 16px; }
+  .ql-header, .ql-actions { padding-inline-start: 16px; padding-inline-end: 16px; }
   .ql-row { flex-direction: column; }
   .ql-field--hours { width: 100%; }
   .header-log-btn { width: 40px; height: 40px; }
@@ -10100,7 +10116,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
-    text-align: right;
+    text-align: end;
     margin-bottom: 4px;
   }
   .template-header-actions {
@@ -10244,7 +10260,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     box-shadow: 2px 2px 0 var(--text);
   }
   .seg-btn { flex: 1; justify-content: center; padding: 13px 8px; min-height: 44px; }
-  .filter-drop { margin-left: auto; }
+  .filter-drop { margin-inline-start: auto; }
   .filter-drop-btn { box-shadow: 2px 2px 0 var(--text); min-height: 44px; }
 
   /* ── #3 · Technical coordination: Rental/Supplier inputs tiny & clipped ──────
@@ -10402,10 +10418,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .nset-toggle.on { background: #3852B4; }
 .nset-toggle-knob {
-  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+  position: absolute; top: 3px; inset-inline-start: 3px; width: 20px; height: 20px;
   background: #fff; border-radius: 999px; transition: transform 0.15s;
 }
-.nset-toggle.on .nset-toggle-knob { transform: translateX(20px); }
+.nset-toggle.on .nset-toggle-knob { transform: translateX(calc(20px * var(--dir-x))); }
 
 /* Channels */
 .nset-section-label {
@@ -10453,7 +10469,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .ws-type-picker { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .ws-type-option {
   display: flex; flex-direction: column; gap: 2px; width: 100%;
-  padding: 10px 12px; text-align: left; cursor: pointer;
+  padding: 10px 12px; text-align: start; cursor: pointer;
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
   font-family: inherit;
 }
@@ -10474,10 +10490,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
    `.n` keeps numbers, dates and currency LTR when they sit inside RTL text.  */
 .he { text-align: start; }
-table .he { text-align: left; }            /* column alignment wins in a table */
+table .he { text-align: start; }            /* column alignment wins in a table */
 .n {
   font-variant-numeric: tabular-nums;
-  direction: ltr; unicode-bidi: embed; display: inline-block;
+  /* isolate, not embed. `embed` opens a direction level but still lets the run
+     take part in resolving the surrounding paragraph's order, so a number could
+     still drag neighbouring neutrals around it. `isolate` seals it off. Same
+     contract as .ltr below — .n is the older name, kept for existing callers. */
+  direction: ltr; unicode-bidi: isolate; display: inline-block;
 }
 
 .adm-page { padding-bottom: 40px; }
@@ -10499,7 +10519,7 @@ table .he { text-align: left; }            /* column alignment wins in a table *
   color: var(--text-2); font-family: inherit;
 }
 .adm-tab--active { background: var(--text); color: var(--surface); border-color: var(--text); }
-.adm-tab-count { margin-left: 6px; opacity: .7; }
+.adm-tab-count { margin-inline-start: 6px; opacity: .7; }
 
 .adm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .adm-grid--tight { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
@@ -10539,7 +10559,7 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 .adm-ball--muted  { background: var(--text-3); }
 .adm-ball-label   { font-size: 0.8125rem; color: var(--text); }
 .adm-ball--muted ~ .adm-ball-label { color: var(--text-3); }
-.adm-ball-caption { margin-left: auto; font-size: 0.625rem; letter-spacing: .07em;
+.adm-ball-caption { margin-inline-start: auto; font-size: 0.625rem; letter-spacing: .07em;
   text-transform: uppercase; color: var(--text-3); }
 
 /* Alarm vocabulary — colour touches ONE element, and the fact is in words */
@@ -10587,14 +10607,14 @@ table .he { text-align: left; }            /* column alignment wins in a table *
    direction belongs to the content, alignment belongs to the layout. */
 .adm-detail-name {
   margin: 18px 0 6px; font-size: 1.5rem; font-weight: 700;
-  color: var(--text); text-align: left;
+  color: var(--text); text-align: start;
 }
 
 .adm-detail-head {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
   font-size: 0.8125rem; color: var(--text-2);
 }
-.adm-detail-fact::after { content: '·'; margin-left: 10px; color: var(--text-3); }
+.adm-detail-fact::after { content: '·'; margin-inline-start: 10px; color: var(--text-3); }
 .adm-detail-fact:last-of-type::after { content: none; }
 
 .adm-detail-status {
@@ -10602,7 +10622,7 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 }
 /* The caption is pushed right inside a card foot; here the row is page-wide, so
    it would end up on the far edge, detached from the status it describes. */
-.adm-detail-status .adm-ball-caption { margin-left: 0; }
+.adm-detail-status .adm-ball-caption { margin-inline-start: 0; }
 
 .adm-detail-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -10656,7 +10676,7 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 .adm-booking-name   { color: var(--text); }
 .adm-booking-amount { color: var(--text-2); }
 .adm-booking-state {
-  margin-left: auto; font-family: inherit; font-size: 0.6875rem;
+  margin-inline-start: auto; font-family: inherit; font-size: 0.6875rem;
   letter-spacing: .06em; text-transform: uppercase;
   border: 1px solid var(--border); border-radius: 999px;
   padding: 2px 9px; background: transparent; color: var(--orange-deep);
@@ -10669,7 +10689,7 @@ table .he { text-align: left; }            /* column alignment wins in a table *
 .adm-booking--paid .adm-booking-name,
 .adm-booking--paid .adm-booking-amount { color: var(--text-3); }
 
-.adm-danger-action { color: var(--danger); margin-right: auto; }
+.adm-danger-action { color: var(--danger); margin-inline-end: auto; }
 
 /* Inline "add new client" row, under the client select. */
 .adm-inline-add {
@@ -10702,3 +10722,127 @@ table .he { text-align: left; }            /* column alignment wins in a table *
   font-size: 0.8125rem; line-height: 1; flex: 0 0 auto;
 }
 .ws-dropdown-item--add:hover .ws-dropdown-item-add-icon { border-color: var(--text); color: var(--text); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RTL SUPPORT — stage 1
+   Layout is direction-agnostic via logical properties throughout the sheet.
+   The only [dir="rtl"] rules that belong here are the direction multiplier,
+   icon mirroring, and per-language typography. There is deliberately NO RTL
+   layout-override stylesheet: if a box lands on the wrong side under RTL, the
+   fix is a logical property at the original rule, not an override here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Flip the movement multiplier consumed by translateX(calc(n * var(--dir-x))) */
+[dir="rtl"] { --dir-x: -1; }
+
+/* ─── Icon mirroring ──────────────────────────────────────────────────────
+   .mirror marks a glyph whose meaning is DIRECTIONAL — it points the way
+   reading travels (next/prev chevrons, back arrows, flow arrows, open-in
+   arrows). Object glyphs (clock, trash, pencil, phone, envelope, plus, close,
+   logo, brand icons) must NOT carry it: a mirrored trash can is just a wrong
+   trash can. Expand/collapse carets rotate instead — vertical motion reads
+   the same in both directions. */
+.mirror { display: inline-flex; }
+[dir="rtl"] .mirror { transform: scaleX(-1); }
+
+/* ─── Bidi isolation ──────────────────────────────────────────────────────
+   For numeric/Latin atoms inside prose of the other direction: phones, time
+   ranges, dates, emails, URLs, counts, percentages, hour totals.
+
+   `isolate`, not `embed`: isolation also stops the atom from influencing how
+   the SURROUNDING text resolves. Without it "18:15 – 22:20" in an RTL block
+   renders as "22:20 – 18:15" — the en dash is bidi-neutral, so the operands
+   swap and the schedule claims the show ends before it starts. Same failure
+   turns a phone number inside out. */
+.ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Multi-line free text that mixes languages line by line (schedule, notes,
+   contacts, guest list). `plaintext` resolves direction PER LINE from that
+   line's first strong character, which is what "18:15 הגעת צוות טכני" needs:
+   the line reads RTL even though it opens with digits. Wrapping is preserved,
+   so this must not carry white-space: nowrap. */
+.bidi-lines {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+/* ─── Per-language typography ─────────────────────────────────────────────
+   Hebrew is caseless and its letterforms lose legibility when tracked out, so
+   every uppercase micro-label steps up one size, drops its tracking, and
+   loses the case transform. LTR values are untouched. */
+
+[dir="rtl"] body { letter-spacing: 0; }
+
+/* Nav items */
+[dir="rtl"] .nav-btn,
+[dir="rtl"] .artist-switcher-btn,
+[dir="rtl"] .tools-nav-item {
+  font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.01em; text-transform: none;
+}
+
+/* Stat labels */
+[dir="rtl"] .dash-stat-label,
+[dir="rtl"] .pg-bar-stat-lbl,
+[dir="rtl"] .tlog-stat-eyebrow,
+[dir="rtl"] .slc-total-label,
+[dir="rtl"] .pg-bar-count {
+  font-size: 0.6875rem; letter-spacing: 0.05em; text-transform: none;
+}
+
+/* Table headers */
+[dir="rtl"] .team-table th,
+[dir="rtl"] .settings-table th,
+[dir="rtl"] .slc-th,
+[dir="rtl"] .tlog-grid-head-label,
+[dir="rtl"] .tm-perm-matrix-area-col,
+[dir="rtl"] .tm-perm-matrix-cell-col {
+  font-size: 0.6875rem; letter-spacing: 0.03em; text-transform: none;
+}
+
+/* Buttons */
+[dir="rtl"] .btn-primary,
+[dir="rtl"] .btn-secondary,
+[dir="rtl"] .btn-brief,
+[dir="rtl"] .btn-pdf,
+[dir="rtl"] .btn-tasks,
+[dir="rtl"] .btn-technical,
+[dir="rtl"] .btn-sync,
+[dir="rtl"] .slc-btn,
+[dir="rtl"] .slc-save-btn,
+[dir="rtl"] .tlog-add-btn,
+[dir="rtl"] .tlog-ghost-btn,
+[dir="rtl"] .ql-save,
+[dir="rtl"] .ql-cancel {
+  font-size: 0.8125rem; letter-spacing: 0.02em; text-transform: none;
+}
+
+/* Filter tabs */
+[dir="rtl"] .filter-btn,
+[dir="rtl"] .filter-drop-btn,
+[dir="rtl"] .seg-btn {
+  font-size: 0.875rem; letter-spacing: 0; text-transform: none;
+}
+
+/* Field labels */
+[dir="rtl"] .field-label,
+[dir="rtl"] .form-group label,
+[dir="rtl"] .sf-field > label,
+[dir="rtl"] .fixed-input-group label,
+[dir="rtl"] .tlog-field-label,
+[dir="rtl"] .ust-field-label,
+[dir="rtl"] .tg-field-label,
+[dir="rtl"] .custom-field-form-label,
+[dir="rtl"] .crew-section-label {
+  font-size: 0.75rem; letter-spacing: 0.02em; text-transform: none;
+}
+
+/* Day-of-week headers */
+[dir="rtl"] .mcal-day-hdr,
+[dir="rtl"] .mcal-week-wday {
+  font-size: 0.6875rem; letter-spacing: 0.02em; text-transform: none;
+}

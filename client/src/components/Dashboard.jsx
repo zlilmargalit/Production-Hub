@@ -493,7 +493,7 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
               <div className="qv-sched">
                 {scheduleLines.map((line, i) => (
                   <div key={i} className="qv-sched-row">
-                    {line.time && <span className="qv-sched-time" style={{ color: artistColor }}>{line.time}</span>}
+                    {line.time && <span className="qv-sched-time ltr" style={{ color: artistColor }}>{line.time}</span>}
                     <span className="qv-sched-label" dir="auto">{line.label}</span>
                   </div>
                 ))}
@@ -502,7 +502,7 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
           )}
           <div className="qv-footer">
             <button className="qv-open-link" onClick={() => { onOpenShow(show); onClose(); }}>
-              Open show →
+              Open show <span className="mirror" aria-hidden="true">→</span>
             </button>
           </div>
         </div>
@@ -571,9 +571,9 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
           <span className="mcal-year">{displayedYear}</span>
         </div>
         <div className="mcal-nav">
-          <button className="mcal-nav-btn" onClick={handlePrev} aria-label="Previous">‹</button>
+          <button className="mcal-nav-btn" onClick={handlePrev} aria-label="Previous"><span className="mirror" aria-hidden="true">‹</span></button>
           <button className="mcal-today-btn" onClick={goToday}>Today</button>
-          <button className="mcal-nav-btn" onClick={handleNext} aria-label="Next">›</button>
+          <button className="mcal-nav-btn" onClick={handleNext} aria-label="Next"><span className="mirror" aria-hidden="true">›</span></button>
         </div>
         <SegmentedControl items={[{ id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }]} activeId={view} onChange={setView} />
       </div>

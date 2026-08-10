@@ -77,7 +77,7 @@ function EmailToShowConfig({ params, onChange }) {
         <div className="rc-cfg-example">
           When Gmail arrives from <strong>{exSender}</strong> with{' '}
           <strong>{exKeywords}</strong> in the subject
-          {'→'} create show named from <strong>{exName}</strong>
+          <span className="mirror" aria-hidden="true">→</span> create show named from <strong>{exName}</strong>
         </div>
       </div>
 

@@ -173,7 +173,11 @@ function DatePill({ dueDate, dueTime, completed }) {
   return (
     <span className={className}>
       {isOverdue && <span aria-hidden="true">⚠ </span>}
-      {fmtDate(dueDate)}{time ? ` · ${time}` : ''}
+      {/* Date and time are both neutral-led and joined by a neutral separator,
+          so in an RTL line they swap and the pill reads "14:00 · 12.8.2026"
+          reversed. One isolate around the pair fixes the order; the warning
+          glyph stays outside so it keeps following the line's direction. */}
+      <span className="ltr">{fmtDate(dueDate)}{time ? ` · ${time}` : ''}</span>
     </span>
   );
 }

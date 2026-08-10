@@ -73,7 +73,7 @@
   border: 1px solid transparent;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
-  text-align: left;
+  text-align: start;
   background: none;
   width: 100%;
 }
@@ -391,7 +391,7 @@
   font-size: 0.6875rem;
   font-weight: 700;
   color: var(--text-3);
-  text-align: right;
+  text-align: end;
   font-variant-numeric: tabular-nums;
 }
 .bk-setlist-song {

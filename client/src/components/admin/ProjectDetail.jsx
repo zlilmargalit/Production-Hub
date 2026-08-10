@@ -182,7 +182,7 @@ export default function ProjectDetail({
         countLabel={days.length === 1 ? 'WORK DAY' : 'WORK DAYS'}
         actions={
           <>
-            <button className="btn-ghost" onClick={onBack}>← Projects</button>
+            <button className="btn-ghost" onClick={onBack}><span className="mirror" aria-hidden="true">←</span> Projects</button>
             <button className="btn-primary" onClick={() => onEdit?.(project)}>Edit</button>
           </>
         }

@@ -104,7 +104,7 @@ export default function NotificationSettingsScreen({ onClose }) {
   return (
     <div className="nset-screen">
       <div className="nset-head">
-        <button className="nset-back" onClick={onClose}>← Tasks</button>
+        <button className="nset-back" onClick={onClose}><span className="mirror" aria-hidden="true">←</span> Tasks</button>
         <h1 className="nset-title">Notifications</h1>
       </div>
 
