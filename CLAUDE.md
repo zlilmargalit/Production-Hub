@@ -10,6 +10,15 @@ buttons, headings, tabs, statuses, empty states. Only content the user types
 (project, client, shop and people names, notes) is Hebrew, and that renders RTL.
 Do not translate UI strings to Hebrew and do not add an i18n layer.
 
+## Found issues log
+
+While working, append anything noticed in passing to `docs/found-issues.md` —
+what it is, how it was confirmed, what it costs to leave. **Log it, do not fix
+it**, unless it is critical (data loss, a security hole, or something actively
+broken for users), in which case fix it and say so.
+
+The point is that noticing something is not a reason to widen the current task.
+
 ## Common commands
 
 Three separate `package.json` files (root / `server/` / `client/`). Root scripts
