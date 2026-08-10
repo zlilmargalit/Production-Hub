@@ -130,8 +130,46 @@ function validateWorkDay(body, existing = null) {
     location: str(body.location ?? base.location, 'location', { max: 300 }),
     callTime: str(body.callTime ?? base.callTime, 'callTime', { max: 20 }),
     notes:    str(body.notes ?? base.notes, 'notes', { max: 5000 }),
-    // Assistants arrive in phase 2; preserve whatever is already there.
+    // Assistants are edited through their own nested endpoints, never by
+    // rewriting the work day — a day edit must not silently drop who was booked
+    // on it, or what they are still owed.
     assistants: Array.isArray(base.assistants) ? base.assistants : [],
+  };
+}
+
+// ── Assistants ──────────────────────────────────────────────────────────────
+// The roster: who exists, and what they normally cost per day.
+function validateAssistant(body, existing = null) {
+  if (!isPlainObject(body)) fail('Body must be an object');
+  const base = existing || {};
+  return {
+    name:    str(body.name ?? base.name, 'name', { required: true, max: 200 }),
+    phone:   str(body.phone ?? base.phone, 'phone', { max: 50 }),
+    dayRate: money(body.dayRate ?? base.dayRate, 'dayRate'),
+    notes:   str(body.notes ?? base.notes, 'notes', { max: 5000 }),
+  };
+}
+
+// One assistant booked on one work day.
+//
+// nameSnapshot exists for the same reason clientNameSnapshot does: deleting
+// someone from the roster must not blank the record of a day they worked, or of
+// money still owed to them. The amount is per booking, not read from the
+// roster's dayRate — a rate that changes next year must not silently restate
+// what was owed for a day last year.
+function validateWorkDayAssistant(body, existing = null) {
+  if (!isPlainObject(body)) fail('Body must be an object');
+  const base = existing || {};
+  const paidAt = body.paidAt === undefined ? (base.paidAt ?? null) : body.paidAt;
+  if (paidAt !== null && !(typeof paidAt === 'string' && !Number.isNaN(Date.parse(paidAt)))) {
+    fail('paidAt must be a timestamp or null');
+  }
+  return {
+    assistantId:  body.assistantId ?? base.assistantId ?? null,
+    nameSnapshot: str(body.nameSnapshot ?? base.nameSnapshot, 'nameSnapshot', { max: 200 }),
+    amount:       money(body.amount ?? base.amount, 'amount'),
+    notes:        str(body.notes ?? base.notes, 'notes', { max: 1000 }),
+    paidAt,
   };
 }
 
@@ -249,6 +287,7 @@ module.exports = {
   ValidationError,
   PROJECT_STATUS, PROJECT_TYPE, DAY_TYPE, EXPENSE_TYPE, PAYMENT_TERMS,
   validateClient, validateProject, validateWorkDay,
+  validateAssistant, validateWorkDayAssistant,
   validatePurchase, validateReturn, validateExpense,
   derivePurchase, deriveProject, todayStr,
 };

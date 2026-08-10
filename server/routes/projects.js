@@ -19,7 +19,7 @@ const { dataPath, cacheKey } = require('../utils/userData');
 const { requireAdministrationWorkspace } = require('../utils/adminGuard');
 const {
   validateProject, validateWorkDay, validatePurchase, validateReturn, validateExpense,
-  deriveProject, ValidationError,
+  validateWorkDayAssistant, deriveProject, ValidationError,
 } = require('../utils/adminValidate');
 
 router.use(requireAdministrationWorkspace);
@@ -188,6 +188,63 @@ function mountCollection(name, key, validate) {
 mountCollection('work-days', 'workDays',  validateWorkDay);
 mountCollection('purchases', 'purchases', validatePurchase);
 mountCollection('expenses',  'expenses',  validateExpense);
+
+// ── Assistants booked on a work day ─────────────────────────────────────────
+// Two levels of nesting, so mountCollection doesn't fit. Everything still goes
+// through editProject, which holds the file lock across the read-modify-write —
+// marking one assistant paid must not clobber a booking added on another day at
+// the same moment.
+function editDay(req, res, next, mutateDay, respond) {
+  return (async () => {
+    try {
+      let payload = null;
+      const updated = await editProject(req, req.params.id, (p) => {
+        const days = p.workDays || [];
+        const di   = days.findIndex((d) => d.id === req.params.dayId);
+        if (di === -1) return null;
+        const draft = mutateDay({ ...days[di], assistants: [...(days[di].assistants || [])] });
+        if (!draft) return null;
+        payload = draft.payload;
+        const next = [...days];
+        next[di] = draft.day;
+        return { ...p, workDays: next };
+      });
+      if (!updated) return res.status(404).json({ error: 'Not found' });
+      respond(payload);
+    } catch (err) { bad(res, err, next); }
+  })();
+}
+
+router.post('/:id/work-days/:dayId/assistants', (req, res, next) =>
+  editDay(req, res, next,
+    (day) => {
+      const booking = { id: uuidv4(), ...validateWorkDayAssistant(req.body) };
+      return { day: { ...day, assistants: [...day.assistants, booking] }, payload: booking };
+    },
+    (booking) => res.status(201).json(booking)));
+
+router.put('/:id/work-days/:dayId/assistants/:bookingId', (req, res, next) =>
+  editDay(req, res, next,
+    (day) => {
+      const i = day.assistants.findIndex((a) => a.id === req.params.bookingId);
+      if (i === -1) return null;
+      const edited = { ...day.assistants[i], ...validateWorkDayAssistant(req.body, day.assistants[i]) };
+      const list = [...day.assistants];
+      list[i] = edited;
+      return { day: { ...day, assistants: list }, payload: edited };
+    },
+    (edited) => res.json(edited)));
+
+router.delete('/:id/work-days/:dayId/assistants/:bookingId', (req, res, next) =>
+  editDay(req, res, next,
+    (day) => {
+      if (!day.assistants.some((a) => a.id === req.params.bookingId)) return null;
+      return {
+        day: { ...day, assistants: day.assistants.filter((a) => a.id !== req.params.bookingId) },
+        payload: null,
+      };
+    },
+    () => res.status(204).send()));
 
 // A return is appended to its purchase; returnedAmount and outstanding are
 // derived from it on read and never stored.
