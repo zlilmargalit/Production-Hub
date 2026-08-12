@@ -75,6 +75,16 @@ has happened moves to PAST while a day is still ahead. Seen in the browser with
 days on 05/08 and 20/08. Grouping on the LAST day, or on "any day still ahead",
 would match how the project actually feels.
 
+**Receipt files are never cleaned up**
+Deleting a purchase or a project leaves its receipt images on the volume. They
+are small and scoped, so nothing breaks and nothing leaks — but the directory
+only ever grows. A sweep that drops files no record points at would close it.
+
+**Receipts are not in the backup exclusion list**
+`server/backup.js` excludes secrets and `_versions`/`_backups`. Receipts are
+real data and should be backed up, which is the current behaviour — recorded
+because it means archive size now grows with photos, not just JSON.
+
 ### Security / privacy
 
 **`docs/` tracks files containing real personal data**
