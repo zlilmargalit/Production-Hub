@@ -5,6 +5,9 @@
 //   3. Overdue nudge   — once/day per overdue open task
 //   4. Assigned to me  — immediate on assignment (fired from tasks route)
 //   5. Quiet hours     — suppress all EXCEPT the daily digest
+// Plus one event alert outside those five:
+//   • Shows imported   — immediate when the Gmail schedule poller adds shows
+//                        (fired from gmail-poll.js)
 //
 // Channels: push (web-push) and/or email (Gmail). Both are validated by the
 // POST /test endpoint so the user can confirm delivery end-to-end.
@@ -28,6 +31,7 @@ function defaultSettings() {
     digest:    { on: true,  time: '08:00', days: [0, 1, 2, 3, 4] },
     overdue:   { on: true,  time: '09:00' },
     assigned:  { on: true },
+    imported:  { on: true },
     quiet:     { on: false, from: '22:00', to: '07:00' },
     channels:  { push: true, email: false },
     email:     { address: '' },
@@ -289,6 +293,43 @@ async function notifyAssigned(actorUserId, task) {
   }
 }
 
+// Immediate "shows imported" notification — called from the Gmail schedule
+// poller once new shows have actually been written.
+// `actorUserId` may be artist-scoped; settings and push subscriptions live on
+// the real account, so resolve it first.
+//
+// How many names to spell out. A push body is truncated by the OS well before
+// this, but the email channel gets the whole list, and the count in the title
+// always tells the full story.
+const IMPORT_LIST_MAX = 12;
+
+async function notifyShowsImported(actorUserId, shows) {
+  try {
+    const list = (shows || []).filter(Boolean);
+    if (!list.length) return;
+    const { realUserId } = parseUserId(actorUserId);
+    const settings = await readSettings(realUserId);
+    if (!settings.imported?.on) return;
+    // Quiet hours are honored here as everywhere else. Nothing is lost by
+    // staying silent: every imported show stays flagged `importPending` and
+    // the Shows page keeps showing the review banner until it is confirmed.
+    if (inQuiet(settings, jerusalemNow().minutesOfDay)) return;
+
+    const lines = list.slice(0, IMPORT_LIST_MAX)
+      .map((s) => `• ${s.date || '—'} · ${s.name || s.venue || 'Untitled'}`);
+    if (list.length > IMPORT_LIST_MAX) {
+      lines.push(`…and ${list.length - IMPORT_LIST_MAX} more`);
+    }
+    const title = list.length === 1
+      ? 'New show imported from the schedule'
+      : `${list.length} new shows imported from the schedule`;
+    await deliver(realUserId, settings, title,
+      `${lines.join('\n')}\n\nOpen Shows to review and confirm them.`);
+  } catch (err) {
+    console.error('[notifications] notifyShowsImported error:', err.message);
+  }
+}
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 // Notifications are a per-account concern, not per-artist — always resolve the
@@ -361,4 +402,4 @@ function startNotificationCron() {
   console.log('[notifications] Engine registered (every 15 min, Asia/Jerusalem)');
 }
 
-module.exports = { router, startNotificationCron, notifyAssigned, runTick };
+module.exports = { router, startNotificationCron, notifyAssigned, notifyShowsImported, runTick };

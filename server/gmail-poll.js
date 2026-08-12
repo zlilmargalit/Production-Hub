@@ -61,15 +61,22 @@ function findXlsxPart(parts) {
   return null;
 }
 
-// Returns { added: N } — used both by the scheduler and the manual sync endpoint
-async function checkGmail({ force = false } = {}) {
-  if (!isConfigured()) return { added: 0 };
+// Returns { added: N, shows: [...] } — used both by the scheduler and the
+// manual sync endpoint.
+//
+// `notify` fires a push/email alert listing what was imported. It defaults to
+// the *automatic* path only: a manual Sync already reports its result in the
+// button the user just clicked, so alerting them about their own click would
+// be noise.
+async function checkGmail({ force = false, notify = !force } = {}) {
+  if (!isConfigured()) return { added: 0, shows: [] };
   if (!force && !isPollingTime()) {
     console.log('[gmail] Outside polling window — skipping');
-    return { added: 0 };
+    return { added: 0, shows: [] };
   }
 
   let totalAdded = 0;
+  const addedShows = [];
   try {
     const auth = getOAuthClient();
     const gmail = google.gmail({ version: 'v1', auth });
@@ -124,6 +131,7 @@ async function checkGmail({ force = false } = {}) {
           // any show saved in between, so dedup and append happen inside one
           // locked read-modify-write against the freshest data on disk.
           let added = 0;
+          let justAdded = [];
           await updateJsonAndCache(showsKey, showsPath, (existing) => {
             const newShows = findNewShows(XLSX_PATH, existing, { templates, crew });
             if (newShows.length > IMPORT_MAX) {
@@ -132,10 +140,15 @@ async function checkGmail({ force = false } = {}) {
             }
             if (newShows.length === 0) { console.log('[gmail] No new shows to add'); return undefined; }
             added = newShows.length;
+            // Captured for the alert below. Assigned inside the updater rather
+            // than returned from it, so it only reflects a run that actually
+            // wrote — the two abort branches above leave it empty.
+            justAdded = newShows;
             return [...existing, ...newShows];
           }, []);
           if (added) {
             totalAdded += added;
+            addedShows.push(...justAdded.map((s) => ({ date: s.date, name: s.name, venue: s.venue })));
             console.log(`[gmail] Imported ${added} new shows into workspace ${IMPORT_UID}`);
           }
           importedFromNewest = true;
@@ -160,7 +173,19 @@ async function checkGmail({ force = false } = {}) {
   } catch (err) {
     console.error('[gmail] Error during Gmail check:', err.message);
   }
-  return { added: totalAdded };
+
+  // Alerting is deliberately outside the try above: a labeling or Gmail error
+  // after a successful write must not swallow the notice that shows landed.
+  if (notify && addedShows.length) {
+    try {
+      const { IMPORT_UID } = require('./routes/import');
+      const { notifyShowsImported } = require('./routes/notifications');
+      await notifyShowsImported(IMPORT_UID, addedShows);
+    } catch (err) {
+      console.error('[gmail] Failed to send import notification:', err.message);
+    }
+  }
+  return { added: totalAdded, shows: addedShows };
 }
 
 function startPolling() {

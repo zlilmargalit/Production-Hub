@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { subscribeToPush } from '../utils/pushSubscribe';
+import { useT } from '../i18n';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']; // 0=Sun … 6=Sat
 
@@ -8,6 +9,7 @@ const DEFAULTS = {
   digest:    { on: true, time: '08:00', days: [0, 1, 2, 3, 4] },
   overdue:   { on: true, time: '09:00' },
   assigned:  { on: true },
+  imported:  { on: true },
   quiet:     { on: false, from: '22:00', to: '07:00' },
   channels:  { push: true, email: false },
   email:     { address: '' },
@@ -28,6 +30,7 @@ function Toggle({ on, onChange, disabled }) {
 }
 
 export default function NotificationSettingsScreen({ onClose }) {
+  const { t } = useT();
   const [s, setS]           = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
@@ -197,7 +200,18 @@ export default function NotificationSettingsScreen({ onClose }) {
           </div>
         </div>
 
-        {/* 5. Quiet hours */}
+        {/* 5. Shows imported */}
+        <div className="nset-rule">
+          <div className="nset-rule-head">
+            <div>
+              <div className="nset-rule-name">{t('import.notifRule')}</div>
+              <div className="nset-rule-desc">{t('import.notifRuleDesc')}</div>
+            </div>
+            <Toggle on={s.imported.on} onChange={(v) => set('imported', { on: v })} />
+          </div>
+        </div>
+
+        {/* 6. Quiet hours */}
         <div className="nset-rule">
           <div className="nset-rule-head">
             <div>

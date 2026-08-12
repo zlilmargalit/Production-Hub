@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import ShowCard from './ShowCard';
 import PageBar  from './ui/PageBar';
+import { useT } from '../i18n';
 
 // ── Filter dropdown (month + type) ── Change 3: chips + footer ───────────────
 function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, onChangeMonth, onChangeType }) {
@@ -140,10 +141,19 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
 }
 
 function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew, workspaceRole,
-                    onSync, syncStatus, onApplyCrew, applyStatus }) {
+                    onSync, syncStatus, onApplyCrew, applyStatus, onConfirmImport }) {
+  const { t, tx } = useT();
   const [filter,      setFilter]      = useState('upcoming');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterType,  setFilterType]  = useState('');
+  // "Show only new" — a review mode, not a saved filter. It resets itself the
+  // moment the last pending show is confirmed (see the effect below), so the
+  // list can never get stuck on an empty view.
+  const [onlyPending, setOnlyPending] = useState(false);
+  // The tab to return to when review mode is switched off. Review mode forces
+  // the All tab: an imported show that has aged past its date is still pending,
+  // and a toggle promising "only new" must not quietly drop it.
+  const tabBeforeReview = useRef('upcoming');
 
   const today = new Date();
   const now = today.toISOString().slice(0, 10);
@@ -195,10 +205,39 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
 
   // Apply month + type secondary filters on top of the tab filter
   const visible = sorted.filter((s) => {
+    if (onlyPending && !s.importPending) return false;
     if (filterMonth && !(s.date && s.date.startsWith(filterMonth))) return false;
     if (filterType  && s.eventType !== filterType) return false;
     return true;
   });
+
+  // Auto-imported shows the user has not vouched for yet. Counted across every
+  // tab, not just the visible one — a pending show that has already slipped
+  // into the past still needs a decision.
+  const pendingIds = useMemo(
+    () => shows.filter((s) => s.importPending).map((s) => s.id),
+    [shows],
+  );
+
+  const toggleReview = () => {
+    if (onlyPending) {
+      setOnlyPending(false);
+      setFilter(tabBeforeReview.current);
+    } else {
+      tabBeforeReview.current = filter;
+      setOnlyPending(true);
+      setFilter('all');
+      setFilterMonth('');
+      setFilterType('');
+    }
+  };
+
+  useEffect(() => {
+    if (onlyPending && pendingIds.length === 0) {
+      setOnlyPending(false);
+      setFilter(tabBeforeReview.current);
+    }
+  }, [onlyPending, pendingIds.length]);
 
   const counts = {
     upcoming: shows.filter((s) => !isArchived(s) && (!s.date || s.date >= now)).length,
@@ -248,6 +287,36 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
         }
       />
 
+      {pendingIds.length > 0 && (
+        <div className="import-banner" role="status">
+          <span className="import-banner-dot" aria-hidden="true" />
+          <div className="import-banner-text">
+            <strong>
+              {pendingIds.length === 1
+                ? tx('import.banner.one')
+                : tx('import.banner.many', { count: pendingIds.length })}
+            </strong>
+            <span className="import-banner-hint">{t('import.banner.hint')}</span>
+          </div>
+          <div className="import-banner-actions">
+            <button
+              className="import-banner-btn"
+              onClick={toggleReview}
+            >
+              {onlyPending ? t('import.showAll') : t('import.showOnly')}
+            </button>
+            {onConfirmImport && (
+              <button
+                className="import-banner-btn import-banner-btn--primary"
+                onClick={() => onConfirmImport()}
+              >
+                {t('import.confirmAll')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="filter-bar-row">
         <div className="filter-bar">
           {[
@@ -259,7 +328,7 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
             <button
               key={key}
               className={`filter-btn ${filter === key ? 'active' : ''}`}
-              onClick={() => { setFilter(key); setFilterMonth(''); setFilterType(''); }}
+              onClick={() => { setFilter(key); setFilterMonth(''); setFilterType(''); setOnlyPending(false); }}
             >
               {label}
               <span className="filter-count">{counts[key]}</span>
@@ -302,6 +371,7 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
               onUpdateShow={onUpdateShow}
               artistId={artistId}
               workspaceRole={workspaceRole}
+              onConfirmImport={onConfirmImport}
             />
           ))}
         </div>

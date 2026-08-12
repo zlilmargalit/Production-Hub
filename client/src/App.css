@@ -2047,13 +2047,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-style: dashed;
   border-color: var(--orange-deep);
   box-shadow: 2px 2px 0 var(--border-strong);
-  opacity: 0.66;
-  filter: saturate(0.7);
+}
+/* The fade lands on the card's content, never on .show-card-review. What is
+   provisional is the show; the button that resolves it has to stay legible. */
+.show-card--pending > :not(.show-card-review) {
+  opacity: 0.6;
+  filter: saturate(0.65);
+  transition: opacity 0.2s, filter 0.2s;
+}
+.show-card--pending:hover > :not(.show-card-review),
+.show-card--pending:focus-within > :not(.show-card-review) {
+  opacity: 1;
+  filter: none;
 }
 .show-card--pending:hover,
 .show-card--pending:focus-within {
-  opacity: 1;
-  filter: none;
   box-shadow: 6px 6px 0 var(--orange-deep);
 }
 [data-theme="dark"] .show-card--pending {

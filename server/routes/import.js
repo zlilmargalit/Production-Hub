@@ -294,6 +294,12 @@ function findNewShows(xlsxPath, existingShows, { templates, crew } = {}) {
         crewIds: [],
         tasks: [],
         createdAt: new Date().toISOString(),
+        // Imported shows arrive unreviewed: the card renders faded with a
+        // Confirm action until the user vouches for it. Nothing else in the app
+        // branches on this flag — a pending show is a normal show in every
+        // other respect (it counts, filters, exports, and can be edited).
+        importPending: true,
+        importedAt: new Date().toISOString(),
       };
       // Auto-assign the standard crew for this event type on import
       show = applyCrewTemplate(show, templates, crew);

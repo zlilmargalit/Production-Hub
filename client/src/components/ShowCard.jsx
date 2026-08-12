@@ -3,6 +3,7 @@ import TaskManager from './TaskManager';
 import TechnicalManager from './TechnicalManager';
 import { etColorIdx } from '../utils/etColor';
 import { scheduleToString } from '../utils/schedule';
+import { useT } from '../i18n';
 
 // ── Module-level constants — not recreated on every render ──────────────────
 const CREW_PALETTE = ['#3852B4', '#5E7AC4', '#F08D39', '#C26C1F', '#1F2D6E', '#B07729', '#8F4F1A', '#7A8FE0'];
@@ -53,7 +54,8 @@ function ProgressBar({ pct, missing = [] }) {
   );
 }
 
-function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId }) {
+function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onConfirmImport }) {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [showTech, setShowTech] = useState(false);
@@ -258,9 +260,31 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
     onUpdateShow(show.id, { ...show, receipt: next, archived: next });
   };
 
+  // Auto-imported and not vouched for yet. The flag only drives presentation
+  // plus the Confirm strip below — every other behaviour is unchanged.
+  const pending = !!show.importPending;
+
   return (
-    <div className={`show-card ${show.receipt || show.archived ? 'archived' : ''}`} data-event-type={show.eventType || ''} data-et-idx={etIdx}>
+    <div
+      className={`show-card ${show.receipt || show.archived ? 'archived' : ''}${pending ? ' show-card--pending' : ''}`}
+      data-event-type={show.eventType || ''}
+      data-et-idx={etIdx}
+    >
       <div className="show-card-band" />
+      {pending && (
+        <div className="show-card-review">
+          <span className="badge badge-import" title={t('import.badgeTitle')}>{t('import.badge')}</span>
+          {onConfirmImport && (
+            <button
+              className="btn-confirm-import"
+              onClick={() => onConfirmImport([show.id])}
+              title={t('import.confirmTitle')}
+            >
+              {t('import.confirm')}
+            </button>
+          )}
+        </div>
+      )}
       <div className={`show-card-header${expanded ? ' show-card-header--sticky' : ''}`}>
         <div className="show-card-top-row">
           {show.eventType && <div className="show-card-type" dir="auto">{show.eventType}</div>}

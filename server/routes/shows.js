@@ -627,6 +627,66 @@ router.post('/apply-crew-templates', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/shows/confirm-import
+// Clears the `importPending` flag set by the schedule importer, which is what
+// makes an auto-created card stop rendering as a draft. Body `{ ids: [...] }`
+// confirms those shows; an empty/absent body confirms every pending show in
+// the workspace ("Confirm all"). Bulk-confirming through one write keeps the
+// list from being rewritten once per card.
+router.post('/confirm-import', async (req, res, next) => {
+  if (req.teamMemberView) return res.status(403).json({ error: 'Read-only access' });
+  try {
+    const ids = Array.isArray(req.body?.ids) ? new Set(req.body.ids) : null;
+    const shows = await readShows(req.userId);
+    let confirmed = 0;
+    const next_ = shows.map((s) => {
+      if (!s.importPending) return s;
+      if (ids && !ids.has(s.id)) return s;
+      confirmed++;
+      const { importPending, ...rest } = s;
+      return rest;
+    });
+    if (confirmed) await writeShows(req.userId, next_);
+    res.json({ confirmed });
+  } catch (err) { next(err); }
+});
+
+// POST /api/shows/mark-imported  (admin only)
+// The inverse of confirm-import: puts shows *back* into the awaiting-review
+// state. Two uses — undoing a mis-clicked "Confirm all", and backfilling shows
+// that the importer created before the flag existed.
+//
+// Body: `{ ids: [...] }` or `{ since: '<ISO date>' }` (matches on `createdAt`,
+// which is how one import batch is told from another — a single run stamps them
+// all within the same second). One of the two is required: no selector must
+// never mean "the whole workspace". `dryRun: true` reports the match without
+// writing, so a `since` window can be checked before it is applied.
+router.post('/mark-imported', async (req, res, next) => {
+  if (req.userRole !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const ids   = Array.isArray(req.body?.ids) && req.body.ids.length ? new Set(req.body.ids) : null;
+    const since = typeof req.body?.since === 'string' ? req.body.since : null;
+    if (!ids && !since) {
+      return res.status(400).json({ error: 'Pass ids[] or since (ISO date) — refusing to mark every show.' });
+    }
+    if (since && Number.isNaN(Date.parse(since))) {
+      return res.status(400).json({ error: `Unparseable since: ${since}` });
+    }
+
+    const shows = await readShows(req.userId);
+    const hit = (s) => (ids ? ids.has(s.id) : s.createdAt >= since);
+    const matched = shows.filter((s) => hit(s) && !s.importPending);
+    if (!req.body?.dryRun && matched.length) {
+      await writeShows(req.userId, shows.map((s) => (hit(s) ? { ...s, importPending: true } : s)));
+    }
+    res.json({
+      marked: matched.length,
+      dryRun: !!req.body?.dryRun,
+      shows: matched.map((s) => ({ id: s.id, date: s.date, name: s.name, createdAt: s.createdAt })),
+    });
+  } catch (err) { next(err); }
+});
+
 // ─── Brief (Google Docs creator) ───────────────────────────────────────────
 // In-memory job store — keyed by jobId, auto-cleans after 10 min.
 const briefJobs = new Map();

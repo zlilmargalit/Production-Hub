@@ -143,6 +143,36 @@ This rose in importance when the artist-scope authorisation was added.
 Known debt. The agreed order is tests first, then extraction, and only when
 touching those areas anyway.
 
+**A stale PM2 process makes local testing silently lie**
+`pm2` has been running `production-server` on :3001 since 8 July — 35 days.
+`npm run dev` cannot bind that port, so its API half dies instantly with
+EADDRINUSE while Vite comes up fine on :3000 and proxies to the *old* process.
+The result: the browser looks healthy, serves the new client, and talks to a
+month-old server running month-old code, with `shows.json` held in a cache that
+`stdTTL: 0` means is never re-read. Cost this session: a change that was
+correct on disk appeared not to work at all. `npm run dev` should either fail
+loudly on EADDRINUSE (concurrently exits 0 for the surviving process) or the
+PM2 process should not be left running. Check `lsof -nP -iTCP:3001` before
+concluding a local change does nothing.
+
+**The mandated pre-deploy i18n gate cannot pass today**
+CLAUDE.md says to run `node scripts/i18n-check.js` before deploying any client
+change. It exits 1 right now: 688 untranslated literals across 35 files, all
+pre-existing (`client/src/i18n/` is still untracked in git and only the
+automations builder has been migrated). Confirmed by running it on a clean tree
+before touching anything. Cost of leaving it: the gate is unusable as a gate —
+it can't distinguish "you regressed" from "the migration isn't finished", so in
+practice it gets ignored. Either finish the migration or make the script
+baseline the known set and fail only on new literals.
+
+**Following the i18n rule on new work leaves screens half-translated**
+Every new string goes through `t()`, so in Hebrew mode the Shows page now
+renders a Hebrew import banner above English tabs ("Upcoming", "Past"), and the
+notification settings screen shows one Hebrew rule among five English ones. This
+is the rule working as intended mid-migration, not a bug in it, but the mixed
+state is worse-looking than either end state — worth knowing before the Hebrew
+mode is shown to anyone.
+
 ### Cosmetic
 
 **`useClones: true` costs a deep clone on every cache hit**
