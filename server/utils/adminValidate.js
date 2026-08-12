@@ -199,6 +199,10 @@ function validatePurchase(body, existing = null) {
     amount:         money(body.amount ?? base.amount, 'amount', { required: true }),
     receiptNumber:  str(body.receiptNumber ?? base.receiptNumber, 'receiptNumber', { max: 100 }),
     receiptFileUrl: body.receiptFileUrl ?? base.receiptFileUrl ?? null,
+    // The Drive mirror of the receipt. Set by the background sync, never by the
+    // client — the volume copy is the source of truth; this is only a link to
+    // the accountant's copy, and null means "not mirrored yet", not "no receipt".
+    receiptDriveUrl: body.receiptDriveUrl ?? base.receiptDriveUrl ?? null,
     returnDeadline: dateStr(body.returnDeadline ?? base.returnDeadline, 'returnDeadline'),
     workDayId:      body.workDayId ?? base.workDayId ?? null,
     keptOnPurpose:  bool(body.keptOnPurpose, base.keptOnPurpose ?? false),
@@ -216,6 +220,8 @@ function validateReturn(body) {
     date:           dateStr(body.date, 'date', { required: true }),
     amount:         money(body.amount, 'amount', { required: true }),
     receiptFileUrl: body.receiptFileUrl ?? null,
+    // See the purchase note above — set by the background Drive sync, not the client.
+    receiptDriveUrl: body.receiptDriveUrl ?? null,
   };
 }
 

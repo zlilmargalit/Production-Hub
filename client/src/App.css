@@ -11073,3 +11073,6 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 .adm-receipt-pick:hover { color: var(--text); border-color: var(--text-3); }
 .adm-receipt-pick.is-busy { opacity: .6; cursor: default; }
 .adm-receipt-error { font-size: 0.75rem; color: var(--danger); }
+/* The Drive-mirror link, next to the volume receipt link. */
+.adm-receipt-drive { font-size: 0.75rem; color: var(--text-3); }
+.adm-receipt-drive:hover { color: var(--accent); }

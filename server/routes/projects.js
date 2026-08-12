@@ -21,6 +21,7 @@ const {
   validateProject, validateWorkDay, validatePurchase, validateReturn, validateExpense,
   validateWorkDayAssistant, deriveProject, ValidationError,
 } = require('../utils/adminValidate');
+const { syncReceiptToDrive } = require('../utils/driveReceipts');
 
 router.use(requireAdministrationWorkspace);
 
@@ -137,10 +138,31 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Fire-and-forget: mirror a just-attached receipt to Drive, then write the Drive
+// link back onto the record it belongs to. Best-effort throughout — it never
+// blocks the response and never throws into the request, because the Google auth
+// it rides on is the same one that breaks the Brief intermittently. The volume
+// copy is already saved; this only adds the accountant's mirror.
+//
+// `applyDriveUrl(project, url)` re-locates the record and returns the updated
+// project, or null to abort — the in-memory copy is stale by the time Drive
+// answers, and the receipt may have been replaced or removed since.
+function mirrorReceipt(req, projectId, { receiptUrl, baseName, applyDriveUrl }) {
+  if (!receiptUrl) return;
+  syncReceiptToDrive({ userId: req.userId, receiptUrl, baseName })
+    .then((driveUrl) => {
+      if (!driveUrl) return;
+      return editProject(req, projectId, (p) => applyDriveUrl(p, driveUrl) || undefined);
+    })
+    .catch((e) => console.warn('[projects] receipt mirror failed:', e.message));
+}
+
 // ── Nested collections ──────────────────────────────────────────────────────
 // One generic pair of handlers per collection keeps the add/edit/remove
-// semantics identical across work days, purchases and expenses.
-function mountCollection(name, key, validate) {
+// semantics identical across work days, purchases and expenses. `hooks.afterPut`
+// fires after a successful edit with the before/after records, so a collection
+// can react to a specific field changing without every collection paying for it.
+function mountCollection(name, key, validate, hooks = {}) {
   router.post(`/:id/${name}`, async (req, res, next) => {
     try {
       let created = null;
@@ -155,11 +177,12 @@ function mountCollection(name, key, validate) {
 
   router.put(`/:id/${name}/:itemId`, async (req, res, next) => {
     try {
-      let edited = null;
+      let edited = null, before = null;
       const updated = await editProject(req, req.params.id, (p) => {
         const list = p[key] || [];
         const idx  = list.findIndex((x) => x.id === req.params.itemId);
         if (idx === -1) return null;
+        before = list[idx];
         edited = { ...list[idx], ...validate(req.body, list[idx]) };
         const next = [...list];
         next[idx] = edited;
@@ -167,6 +190,7 @@ function mountCollection(name, key, validate) {
       });
       if (!updated) return res.status(404).json({ error: 'Not found' });
       res.json(edited);
+      if (hooks.afterPut) hooks.afterPut(req, req.params.id, { before, after: edited, project: updated });
     } catch (err) { bad(res, err, next); }
   });
 
@@ -186,8 +210,28 @@ function mountCollection(name, key, validate) {
 }
 
 mountCollection('work-days', 'workDays',  validateWorkDay);
-mountCollection('purchases', 'purchases', validatePurchase);
 mountCollection('expenses',  'expenses',  validateExpense);
+
+mountCollection('purchases', 'purchases', validatePurchase, {
+  // Mirror to Drive only when a receipt is newly attached — not on every edit,
+  // or marking a purchase "kept" would re-upload it each time.
+  afterPut: (req, projectId, { before, after, project }) => {
+    if (!after.receiptFileUrl || after.receiptFileUrl === before?.receiptFileUrl) return;
+    mirrorReceipt(req, projectId, {
+      receiptUrl: after.receiptFileUrl,
+      baseName: `${project.name} — ${after.date} — ${after.storeName}`,
+      applyDriveUrl: (p, url) => {
+        const list = p.purchases || [];
+        const i = list.findIndex((x) => x.id === after.id);
+        // Skip if the receipt changed again while Drive was working.
+        if (i === -1 || list[i].receiptFileUrl !== after.receiptFileUrl) return null;
+        const next = [...list];
+        next[i] = { ...next[i], receiptDriveUrl: url };
+        return { ...p, purchases: next };
+      },
+    });
+  },
+});
 
 // ── Assistants booked on a work day ─────────────────────────────────────────
 // Two levels of nesting, so mountCollection doesn't fit. Everything still goes
@@ -250,11 +294,12 @@ router.delete('/:id/work-days/:dayId/assistants/:bookingId', (req, res, next) =>
 // derived from it on read and never stored.
 router.post('/:id/purchases/:purchaseId/returns', async (req, res, next) => {
   try {
-    let created = null;
+    let created = null, shop = null;
     const updated = await editProject(req, req.params.id, (p) => {
       const list = p.purchases || [];
       const idx  = list.findIndex((x) => x.id === req.params.purchaseId);
       if (idx === -1) return null;
+      shop = list[idx].storeName;
       created = { id: uuidv4(), ...validateReturn(req.body) };
       const purchase = { ...list[idx], returns: [...(list[idx].returns || []), created] };
       const next = [...list];
@@ -263,6 +308,25 @@ router.post('/:id/purchases/:purchaseId/returns', async (req, res, next) => {
     });
     if (!updated) return res.status(404).json({ error: 'Purchase not found' });
     res.status(201).json(created);
+
+    // A credit note is filed the same way as a receipt, marked as a return.
+    mirrorReceipt(req, req.params.id, {
+      receiptUrl: created.receiptFileUrl,
+      baseName: `${updated.name} — ${created.date} — ${shop} — זיכוי`,
+      applyDriveUrl: (p, url) => {
+        const list = p.purchases || [];
+        const pi = list.findIndex((x) => x.id === req.params.purchaseId);
+        if (pi === -1) return null;
+        const rets = list[pi].returns || [];
+        const ri = rets.findIndex((r) => r.id === created.id);
+        if (ri === -1) return null;
+        const nextRets = [...rets];
+        nextRets[ri] = { ...nextRets[ri], receiptDriveUrl: url };
+        const next = [...list];
+        next[pi] = { ...next[pi], returns: nextRets };
+        return { ...p, purchases: next };
+      },
+    });
   } catch (err) { bad(res, err, next); }
 });
 

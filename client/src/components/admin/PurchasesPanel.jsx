@@ -7,7 +7,7 @@ import { ils, fmtDate, todayStr } from './adminFormat';
 // job — store the file, then attach its URL to the record — and the caller owns
 // the second step because a purchase is patched while a return is created with
 // the URL already in hand.
-function ReceiptButton({ url, label = 'Receipt', busy, onPick, scope = '' }) {
+function ReceiptButton({ url, driveUrl, label = 'Receipt', busy, onPick, scope = '' }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -25,6 +25,11 @@ function ReceiptButton({ url, label = 'Receipt', busy, onPick, scope = '' }) {
     <span className="adm-receipt">
       {url && (
         <a className="adm-receipt-link" href={`${url}${scope}`} target="_blank" rel="noreferrer">{label}</a>
+      )}
+      {/* The accountant's copy. A full Drive URL, so no workspace scope is added.
+          Absent simply means "not mirrored yet", never "no receipt". */}
+      {driveUrl && (
+        <a className="adm-receipt-drive" href={driveUrl} target="_blank" rel="noreferrer" title="In the Drive invoices folder">Drive ↗</a>
       )}
       <label className={`adm-receipt-pick${uploading ? ' is-busy' : ''}`}>
         {uploading ? 'Uploading…' : url ? 'Replace' : `+ ${label}`}
@@ -62,6 +67,9 @@ function ReturnRow({ ret, scope = '' }) {
       {ret.receiptFileUrl
         ? <a className="adm-return-receipt" href={`${ret.receiptFileUrl}${scope}`} target="_blank" rel="noreferrer">Credit note</a>
         : <span className="adm-return-receipt adm-return-receipt--none">No credit note</span>}
+      {ret.receiptDriveUrl && (
+        <a className="adm-receipt-drive" href={ret.receiptDriveUrl} target="_blank" rel="noreferrer">Drive ↗</a>
+      )}
     </li>
   );
 }
@@ -156,7 +164,7 @@ function Purchase({ purchase: p, busy, handlers }) {
             </button>
           )}
           <ReceiptButton
-            url={p.receiptFileUrl} busy={busy} scope={handlers.scope}
+            url={p.receiptFileUrl} driveUrl={p.receiptDriveUrl} busy={busy} scope={handlers.scope}
             onPick={async (file) => {
               const url = await handlers.uploadReceipt(file);
               await handlers.setPurchaseFlag(p.id, { receiptFileUrl: url });
