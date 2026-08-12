@@ -3,6 +3,39 @@ import IconButton from '../ui/IconButton';
 import { decimalOnly } from '../../utils/fieldInput';
 import { ils, fmtDate, todayStr } from './adminFormat';
 
+// One control, used on a purchase and on every return. Uploading is a two-step
+// job — store the file, then attach its URL to the record — and the caller owns
+// the second step because a purchase is patched while a return is created with
+// the URL already in hand.
+function ReceiptButton({ url, label = 'Receipt', busy, onPick, scope = '' }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';                 // so re-picking the same file re-fires
+    if (!file) return;
+    setUploading(true); setError(null);
+    try { await onPick(file); }
+    catch (err) { setError(err.message || 'Upload failed'); }
+    finally { setUploading(false); }
+  };
+
+  return (
+    <span className="adm-receipt">
+      {url && (
+        <a className="adm-receipt-link" href={`${url}${scope}`} target="_blank" rel="noreferrer">{label}</a>
+      )}
+      <label className={`adm-receipt-pick${uploading ? ' is-busy' : ''}`}>
+        {uploading ? 'Uploading…' : url ? 'Replace' : `+ ${label}`}
+        <input type="file" accept="image/*,application/pdf" hidden
+               disabled={busy || uploading} onChange={pick} />
+      </label>
+      {error && <span className="adm-receipt-error">{error}</span>}
+    </span>
+  );
+}
+
 // Purchases and returns — the tracking surface.
 //
 // This is the part of the job the rest of the app exists to support: buying on
@@ -21,29 +54,33 @@ const RISK_LABEL = {
   kept:       { text: 'Kept on purpose', level: 'settled' },
 };
 
-function ReturnRow({ ret }) {
+function ReturnRow({ ret, scope = '' }) {
   return (
     <li className="adm-return">
       <span className="adm-return-date n">{fmtDate(ret.date)}</span>
       <span className="adm-return-amount n">−{ils(ret.amount)}</span>
       {ret.receiptFileUrl
-        ? <a className="adm-return-receipt" href={ret.receiptFileUrl} target="_blank" rel="noreferrer">Receipt</a>
-        : <span className="adm-return-receipt adm-return-receipt--none">No receipt</span>}
+        ? <a className="adm-return-receipt" href={`${ret.receiptFileUrl}${scope}`} target="_blank" rel="noreferrer">Credit note</a>
+        : <span className="adm-return-receipt adm-return-receipt--none">No credit note</span>}
     </li>
   );
 }
 
 function Purchase({ purchase: p, busy, handlers }) {
   const [addingReturn, setAddingReturn] = useState(false);
-  const [ret, setRet] = useState({ date: todayStr(), amount: '' });
+  const [ret, setRet] = useState({ date: todayStr(), amount: '', receiptFileUrl: null });
 
   const risk = RISK_LABEL[p.riskState] || RISK_LABEL.open;
   const returns = p.returns || [];
 
   const confirmReturn = async () => {
     if (!ret.amount) return;
-    await handlers.addReturn(p.id, { date: ret.date, amount: Number(ret.amount) || 0 });
-    setRet({ date: todayStr(), amount: '' });
+    await handlers.addReturn(p.id, {
+      date: ret.date,
+      amount: Number(ret.amount) || 0,
+      receiptFileUrl: ret.receiptFileUrl,
+    });
+    setRet({ date: todayStr(), amount: '', receiptFileUrl: null });
     setAddingReturn(false);
   };
 
@@ -68,7 +105,7 @@ function Purchase({ purchase: p, busy, handlers }) {
 
       {returns.length > 0 && (
         <ul className="adm-returns">
-          {returns.map((r) => <ReturnRow key={r.id} ret={r} />)}
+          {returns.map((r) => <ReturnRow key={r.id} ret={r} scope={handlers.scope} />)}
           <li className="adm-return adm-return--total">
             <span className="adm-return-date">Returned</span>
             <span className="adm-return-amount n">{ils(p.returnedAmount)}</span>
@@ -86,6 +123,13 @@ function Purchase({ purchase: p, busy, handlers }) {
                    if (e.key === 'Enter') { e.preventDefault(); confirmReturn(); }
                    if (e.key === 'Escape') { e.preventDefault(); setAddingReturn(false); }
                  }} />
+          <ReceiptButton
+            url={ret.receiptFileUrl} label="Credit note" busy={busy} scope={handlers.scope}
+            onPick={async (file) => {
+              const url = await handlers.uploadReceipt(file);
+              setRet((r) => ({ ...r, receiptFileUrl: url }));
+            }}
+          />
           <button type="button" className="btn-primary btn-sm"
                   disabled={busy || !ret.amount} onClick={confirmReturn}>Record</button>
           <button type="button" className="btn-secondary btn-sm"
@@ -111,9 +155,13 @@ function Purchase({ purchase: p, busy, handlers }) {
               {p.bankVerified ? '✓ Seen on the statement' : 'Mark seen on the statement'}
             </button>
           )}
-          {p.receiptFileUrl && (
-            <a className="btn-ghost btn-sm" href={p.receiptFileUrl} target="_blank" rel="noreferrer">Receipt</a>
-          )}
+          <ReceiptButton
+            url={p.receiptFileUrl} busy={busy} scope={handlers.scope}
+            onPick={async (file) => {
+              const url = await handlers.uploadReceipt(file);
+              await handlers.setPurchaseFlag(p.id, { receiptFileUrl: url });
+            }}
+          />
         </div>
       )}
 

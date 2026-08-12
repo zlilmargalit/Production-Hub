@@ -2040,6 +2040,68 @@ html, body { max-width: 100%; overflow-x: hidden; }
 [data-theme="dark"] .show-card:hover { box-shadow: 6px 6px 0 var(--border-strong); }
 .show-card.archived { opacity: 0.55; }
 
+/* Auto-imported, not confirmed yet — reads as a draft: dashed edge, the hard
+   shadow pulled back, colour drained. Hover/focus restores it fully so a faded
+   card is never actually harder to read, only visibly unfinished. */
+.show-card--pending {
+  border-style: dashed;
+  border-color: var(--orange-deep);
+  box-shadow: 2px 2px 0 var(--border-strong);
+  opacity: 0.66;
+  filter: saturate(0.7);
+}
+.show-card--pending:hover,
+.show-card--pending:focus-within {
+  opacity: 1;
+  filter: none;
+  box-shadow: 6px 6px 0 var(--orange-deep);
+}
+[data-theme="dark"] .show-card--pending {
+  border-color: var(--orange);
+  box-shadow: 2px 2px 0 var(--border-strong);
+}
+[data-theme="dark"] .show-card--pending:hover,
+[data-theme="dark"] .show-card--pending:focus-within {
+  box-shadow: 6px 6px 0 var(--orange);
+}
+
+/* Review strip — the per-card confirm affordance, directly under the band */
+.show-card-review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 28px;
+  background: var(--orange-bg);
+  border-bottom: 1px dashed var(--orange-deep);
+}
+[data-theme="dark"] .show-card-review {
+  background: rgba(194, 108, 31, 0.16);
+  border-bottom-color: var(--orange);
+}
+.btn-confirm-import {
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--orange-deep);
+  background: var(--orange-deep);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.btn-confirm-import:hover { background: transparent; color: var(--orange-deep); }
+[data-theme="dark"] .btn-confirm-import {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #1A1714;
+}
+[data-theme="dark"] .btn-confirm-import:hover { background: transparent; color: var(--orange); }
+
 /* Colored top band — event type identity */
 .show-card-band {
   background: var(--et-color);
@@ -2646,6 +2708,84 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .badge-archive { background: var(--slate-bg); color: var(--slate); border-color: rgba(94,122,196,0.25); }
 .badge-invoice { background: var(--accent-soft); color: var(--accent); border-color: rgba(56,82,180,0.25); }
 .badge-receipt { background: var(--amber-bg); color: var(--amber-deep); border-color: rgba(176,119,41,0.3); }
+.badge-import  { background: var(--surface); color: var(--orange-deep); border-color: rgba(194,108,31,0.4); }
+[data-theme="dark"] .badge-import { background: transparent; color: var(--orange); border-color: rgba(240,141,57,0.45); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IMPORT REVIEW BANNER (Shows page — auto-imported shows awaiting confirm)
+   ═══════════════════════════════════════════════════════════════════════ */
+.import-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background: var(--orange-bg);
+  border: 1px solid var(--orange-deep);
+  border-inline-start-width: 5px;
+  border-radius: var(--radius-sm);
+}
+[data-theme="dark"] .import-banner {
+  background: rgba(194, 108, 31, 0.14);
+  border-color: var(--orange);
+}
+.import-banner-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--orange-deep);
+  flex-shrink: 0;
+}
+[data-theme="dark"] .import-banner-dot { background: var(--orange); }
+.import-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.import-banner-text strong {
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.import-banner-hint {
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+.import-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.import-banner-btn {
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--orange-deep);
+  background: transparent;
+  color: var(--orange-deep);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.import-banner-btn:hover { background: rgba(194, 108, 31, 0.14); }
+.import-banner-btn--primary {
+  background: var(--orange-deep);
+  color: #fff;
+  font-weight: 700;
+}
+.import-banner-btn--primary:hover { background: var(--burnt); color: #fff; }
+[data-theme="dark"] .import-banner-btn { border-color: var(--orange); color: var(--orange); }
+[data-theme="dark"] .import-banner-btn:hover { background: rgba(240, 141, 57, 0.16); }
+[data-theme="dark"] .import-banner-btn--primary { background: var(--orange); color: #1A1714; }
+[data-theme="dark"] .import-banner-btn--primary:hover { background: var(--amber); color: #1A1714; }
 
 /* ═══════════════════════════════════════════════════════════════════════
    CREW CHIPS (inside detail panel)
@@ -10922,3 +11062,14 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 .adm-return--total { border-top: 1px solid var(--border-light); margin-top: 3px; padding-top: 5px; }
 .adm-return--total .adm-return-date,
 .adm-return--total .adm-return-amount { color: var(--text); font-weight: 600; }
+
+/* Receipt picker — a link to what is stored plus a control to add or replace. */
+.adm-receipt { display: inline-flex; align-items: center; gap: 6px; }
+.adm-receipt-link { font-size: 0.8125rem; color: var(--accent); }
+.adm-receipt-pick {
+  font-size: 0.75rem; color: var(--text-2); cursor: pointer;
+  border: 1px dashed var(--border-strong); border-radius: 999px; padding: 2px 9px;
+}
+.adm-receipt-pick:hover { color: var(--text); border-color: var(--text-3); }
+.adm-receipt-pick.is-busy { opacity: .6; cursor: default; }
+.adm-receipt-error { font-size: 0.75rem; color: var(--danger); }

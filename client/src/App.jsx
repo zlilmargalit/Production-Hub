@@ -19,6 +19,7 @@ import ProjectsPage from './components/admin/ProjectsPage';
 import ClientsPage from './components/admin/ClientsPage';
 import ClientForm from './components/admin/ClientForm';
 import ProjectForm from './components/admin/ProjectForm';
+import { uploadReceipt } from './utils/receiptUpload';
 import AssistantsPage from './components/admin/AssistantsPage';
 import AssistantForm from './components/admin/AssistantForm';
 import { isOverdue } from './components/admin/adminFormat';
@@ -301,6 +302,15 @@ function App({ demoMode = false }) {
 
     addReturn: (purchaseId, ret) => bookingAction(() =>
       adminApi(`/projects/${project.id}/purchases/${purchaseId}/returns`, 'POST', ret)),
+
+    // Deliberately outside bookingAction: storing the file changes nothing the
+    // card displays, so refetching every project afterwards would be wasted —
+    // and it would fire between the upload and the record that points at it.
+    uploadReceipt: (file) => uploadReceipt(file, artistQS()),
+
+    // The stored URL is deliberately scope-free — baking a workspace id into
+    // stored data is how records stop being movable. Links add it at render.
+    scope: artistQS(),
   }), [adminApi, bookingAction]);
 
   const fetchTasks = useCallback(async () => {
@@ -527,6 +537,34 @@ function App({ demoMode = false }) {
       setTimeout(() => setApplyStatus(null), 4000);
     }
   }, [fetchShows, demoMode]);
+
+  // Accept auto-imported shows. `ids` omitted = every pending show in the
+  // workspace. The server strips `importPending`; local state mirrors that so
+  // the card un-fades without a refetch.
+  const confirmImportedShows = useCallback(async (ids) => {
+    if (demoMode) {
+      setShows((prev) => prev.map((s) => (
+        s.importPending && (!ids || ids.includes(s.id))
+          ? (({ importPending, ...rest }) => rest)(s)
+          : s
+      )));
+      return;
+    }
+    const res = await fetch(`/api/shows/confirm-import${artistQS()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ids ? { ids } : {}),
+    });
+    if (!res.ok) {
+      console.error('[confirmImportedShows] POST failed', res.status);
+      return;
+    }
+    setShows((prev) => prev.map((s) => (
+      s.importPending && (!ids || ids.includes(s.id))
+        ? (({ importPending, ...rest }) => rest)(s)
+        : s
+    )));
+  }, [demoMode]);
 
   const syncShows = useCallback(async () => {
     if (demoMode) return;
@@ -953,6 +991,7 @@ function App({ demoMode = false }) {
             syncStatus={syncStatus}
             onApplyCrew={!demoMode ? applyCrewTemplates : null}
             applyStatus={applyStatus}
+            onConfirmImport={userRole === 'admin' ? confirmImportedShows : null}
           />
         ) : page === 'automations' ? (
           <AutomationsPage />
