@@ -10646,39 +10646,67 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 .adm-stats { display: flex; gap: 10px; margin: 16px 0 18px; }
 .adm-stat {
   flex: 0 0 auto; min-width: 104px; padding: 10px 14px;
-  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 0; background: var(--surface);
 }
 .adm-stat--tinted { background: var(--surface-sunk); border-color: var(--border-strong); }
 .adm-stat-num   { display: block; font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .adm-stat-label { font-size: 0.6875rem; letter-spacing: .06em; color: var(--text-3); }
 
-.adm-tabs { display: flex; gap: 4px; margin-bottom: 18px; flex-wrap: wrap; }
-.adm-tab {
-  padding: 8px 14px; border: 1px solid var(--border); background: var(--surface);
-  border-radius: 8px; cursor: pointer; font-size: 0.75rem; letter-spacing: .05em;
-  color: var(--text-2); font-family: inherit;
+/* One joined unit with a hard shadow — the same object as .filter-bar on the
+   artist screens, not a row of separate pills. */
+.adm-tabs {
+  display: flex; gap: 0; flex-wrap: nowrap; width: fit-content;
+  margin-bottom: 32px;
+  background: var(--surface);
+  border: 1px solid var(--text);
+  box-shadow: 3px 3px 0 var(--text);
 }
-.adm-tab--active { background: var(--text); color: var(--surface); border-color: var(--text); }
-.adm-tab-count { margin-inline-start: 6px; opacity: .7; }
+[data-theme="dark"] .adm-tabs { border-color: var(--border-strong); box-shadow: 3px 3px 0 var(--border-strong); }
+.adm-tab {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 11px 22px;
+  background: transparent;
+  border: none;
+  border-inline-end: 1px solid var(--text);
+  border-radius: 0;
+  cursor: pointer;
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-2);
+}
+[data-theme="dark"] .adm-tab { border-inline-end-color: var(--border-strong); }
+.adm-tab:last-child { border-inline-end: none; }
+.adm-tab--active { background: var(--accent); color: #fff; }
+.adm-tab-count {
+  font-size: 0.6875rem; font-weight: 700;
+  background: var(--surface-sunk); color: var(--text-2);
+  padding: 1px 7px; min-width: 20px; text-align: center;
+}
+.adm-tab--active .adm-tab-count { background: rgba(255,255,255,.22); color: #fff; }
 
-.adm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.adm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 24px; }
 .adm-grid--tight { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 @media (max-width: 780px) { .adm-grid { grid-template-columns: 1fr; } }
 
 /* Project card — top bar is the project TYPE, never the status */
 .adm-card {
-  position: relative; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; overflow: hidden; cursor: pointer;
-  box-shadow: 4px 4px 0 var(--surface-sunk);
+  position: relative; background: var(--surface); border: 1px solid var(--text);
+  border-radius: 0; overflow: hidden; cursor: pointer;
+  box-shadow: 4px 4px 0 var(--text);
+  transition: transform 0.25s, box-shadow 0.25s;
 }
-.adm-card:hover { border-color: var(--border-strong); }
-.adm-card-bar  { height: 5px; width: 100%; }
+[data-theme="dark"] .adm-card { border-color: var(--border-strong); box-shadow: 4px 4px 0 var(--border-strong); }
+.adm-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--text); }
+[data-theme="dark"] .adm-card:hover { box-shadow: 6px 6px 0 var(--border-strong); }
+.adm-card-bar  { height: 8px; width: 100%; }
 .adm-card-body { padding: 14px 16px 10px; }
 .adm-card-top  { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
 .adm-card-type { font-size: 0.6875rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
 .adm-card-date { font-size: 0.8125rem; color: var(--text-2); white-space: nowrap; }
 .adm-card-name {
-  margin: 6px 0 2px; font-size: 1.125rem; font-weight: 700; line-height: 1.3;
+  font-family: 'Rubik', 'Assistant', 'Heebo', sans-serif;
+  margin: 6px 0 2px; font-size: clamp(1.2rem, 4vw, 1.75rem); font-weight: 700;
+  letter-spacing: -0.03em; line-height: 1.02;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 /* Secondary line truncates before the name; brand goes first */
@@ -10769,7 +10797,7 @@ table .he { text-align: start; }            /* column alignment wins in a table 
   gap: 14px; margin-top: 18px;
 }
 .adm-section {
-  border: 1px solid var(--border); border-radius: 10px;
+  border: 1px solid var(--border); border-radius: 0;
   background: var(--surface); padding: 16px 18px;
 }
 .adm-section--wide { grid-column: 1 / -1; }
