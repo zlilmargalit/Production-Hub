@@ -28,7 +28,7 @@ import { applyDirection } from './utils/direction';
 import ProductionProjectsPage from './components/production-projects/ProductionProjectsPage';
 
 function App({ demoMode = false }) {
-  const { lang } = useT();
+  const { lang, t, tx } = useT();
   const [shows, setShows] = useState([]);
   const [crew, setCrew] = useState([]);
   const [templates, setTemplates] = useState({});

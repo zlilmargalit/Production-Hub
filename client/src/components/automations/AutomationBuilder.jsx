@@ -52,7 +52,9 @@ function buildLabel(t, trigger, action, conditions) {
   const trig = t(TRIGGERS.find((x) => x.value === trigger)?.labelKey) || trigger;
   const act  = t(ACTIONS.find((x)  => x.value === action)?.labelKey)  || action;
   const cond = conditions.length
-    ? ` · if ${conditions.map((c) => `${c.field} ${c.op} "${c.value}"`).join(` ${c?.logic || 'AND'} `)}`
+    ? ` · if ${conditions.map((condition, index) => (
+      `${index ? ` ${condition.logic || 'AND'} ` : ''}${condition.field} ${condition.op} "${condition.value}"`
+    )).join('')}`
     : '';
   return `${trig} → ${act}${cond}`;
 }

@@ -10,6 +10,7 @@ module.exports = defineConfig({
       'test/showDataSafety.test.js',
       'test/writeSafety.test.js',
       'test/productionProjectDirectory.test.js',
+      'test/clientBindings.test.js',
     ],
     fileParallelism: false,
     clearMocks: true,
