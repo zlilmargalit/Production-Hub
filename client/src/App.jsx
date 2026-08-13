@@ -370,25 +370,21 @@ function App({ demoMode = false }) {
     }
 
     // Normal mode — three-step init:
-    // 1. Fetch /api/me + /api/artists in parallel
+    // 1. Fetch /api/me, then choose the correct artists endpoint for that role
     // 2. Set currentArtist (ref first, then state)
     // 3. Fetch all scoped data with the correct artistId already in the ref
     const init = async () => {
       try {
-        const [meData] = await Promise.all([
-          fetch('/api/me').then((r) => r.ok ? r.json() : null)
-            .then((d) => {
-              if (d) {
-                setUserRole(d.role);
-                setUsername(d.username);
-                if (d.avatarUrl) setAvatarUrl(d.avatarUrl);
-                const wr = d.workspaceRole || 'producer';
-                setWorkspaceRole(wr);
-                if (wr === 'backliner') setPage('backliner');
-              }
-            }),
-          Promise.resolve(), // placeholder; artists fetched below after meData is set
-        ]);
+        const meResponse = await fetch('/api/me');
+        const meData = meResponse.ok ? await meResponse.json() : null;
+        if (meData) {
+          setUserRole(meData.role);
+          setUsername(meData.username);
+          if (meData.avatarUrl) setAvatarUrl(meData.avatarUrl);
+          const wr = meData.workspaceRole || 'producer';
+          setWorkspaceRole(wr);
+          if (wr === 'backliner') setPage('backliner');
+        }
 
         // The cached choice only protects first paint. Once authenticated, the
         // account preference wins so the interface and document direction are
