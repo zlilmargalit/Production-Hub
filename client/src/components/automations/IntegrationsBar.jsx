@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useT } from '../../i18n';
 
 const PROVIDERS = [
   {
     id:    'gmail',
-    name:  'Gmail',
+    nameKey: 'integration.gmail',
     color: '#EA4335',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -13,7 +14,7 @@ const PROVIDERS = [
   },
   {
     id:    'gcal',
-    name:  'Calendar',
+    nameKey: 'integration.calendar',
     color: '#4285F4',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,7 +24,7 @@ const PROVIDERS = [
   },
   {
     id:    'gdrive',
-    name:  'Drive',
+    nameKey: 'integration.drive',
     color: '#34A853',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -34,6 +35,7 @@ const PROVIDERS = [
 ];
 
 export default function IntegrationsBar({ statuses, onRefresh }) {
+  const { t, tx } = useT();
   const [open, setOpen]         = useState(false);
   const [busy, setBusy]         = useState(null); // provider id being disconnected
   const [toast, setToast]       = useState(null);
@@ -43,9 +45,9 @@ export default function IntegrationsBar({ statuses, onRefresh }) {
     const params = new URLSearchParams(window.location.search);
     const intg   = params.get('intg');
     if (!intg) return;
-    if (intg === 'ok')     { setToast('Connected!');                onRefresh(); }
-    if (intg === 'error')  { setToast('Connection failed — check console or try again.'); }
-    if (intg === 'cancelled') { setToast('Cancelled.'); }
+    if (intg === 'ok')     { setToast(t('integration.connectedToast')); onRefresh(); }
+    if (intg === 'error')  { setToast(t('integration.connectionFailed')); }
+    if (intg === 'cancelled') { setToast(t('integration.cancelled')); }
     // Remove the query param from the URL without navigation
     const url = new URL(window.location);
     url.searchParams.delete('intg');
@@ -64,10 +66,10 @@ export default function IntegrationsBar({ statuses, onRefresh }) {
     try {
       const res = await fetch(`/api/automations/integrations/${provider}`, { method: 'DELETE' });
       if (res.ok) {
-        setToast(`${provider} disconnected`);
+        setToast(tx('integration.disconnected', { provider }));
         onRefresh();
       }
-    } catch { setToast('Error disconnecting'); }
+    } catch { setToast(t('integration.disconnectError')); }
     finally { setBusy(null); }
   };
 
@@ -79,7 +81,7 @@ export default function IntegrationsBar({ statuses, onRefresh }) {
 
       <div className="intg-bar">
         <div className="intg-bar-left">
-          <span className="intg-bar-label">Connected</span>
+          <span className="intg-bar-label">{t('integration.connected')}</span>
           <div className="intg-bar-icons">
             {PROVIDERS.map((p) => {
               const on = !!statuses[p.id];
@@ -89,25 +91,25 @@ export default function IntegrationsBar({ statuses, onRefresh }) {
                   className={`intg-pip${on ? ' intg-pip--on' : ''}`}
                   style={on ? { color: p.color, borderColor: p.color + '44', background: p.color + '11' } : {}}
                   onClick={() => setOpen(true)}
-                  title={on ? `${p.name}: connected` : `${p.name}: not connected`}
+                  title={on ? t('integration.connected') : t('integration.notConnected')}
                 >
                   {on && <span className="intg-pip-dot" />}
                   <span style={{ width: 14, height: 14, display: 'flex' }}>{p.icon}</span>
-                  <span className="intg-pip-name">{p.name}</span>
+                  <span className="intg-pip-name">{t(p.nameKey)}</span>
                 </button>
               );
             })}
           </div>
         </div>
         <button className="intg-manage-btn" onClick={() => setOpen((o) => !o)}>
-          Manage integrations
+          {t('integration.manage')}
         </button>
       </div>
 
       {open && (
         <div className="intg-manage-panel">
           <div className="intg-manage-head">
-            <span>Integrations</span>
+            <span>{t('integration.title')}</span>
             <button className="intg-manage-close" onClick={() => setOpen(false)}>✕</button>
           </div>
           <div className="intg-manage-list">
@@ -121,18 +123,18 @@ export default function IntegrationsBar({ statuses, onRefresh }) {
                   >
                     {p.icon}
                   </div>
-                  <span className="intg-manage-name">{p.name}</span>
+                  <span className="intg-manage-name">{t(p.nameKey)}</span>
                   {on ? (
                     <button
                       className="intg-btn intg-btn--on"
                       onClick={() => handleDisconnect(p.id)}
                       disabled={busy === p.id}
                     >
-                      {busy === p.id ? 'Disconnecting…' : 'Connected ✓'}
+                      {busy === p.id ? t('integration.disconnecting') : t('integration.connectedAction')}
                     </button>
                   ) : (
                     <button className="intg-btn" onClick={() => handleConnect(p.id)}>
-                      Connect
+                      {t('integration.connect')}
                     </button>
                   )}
                 </div>

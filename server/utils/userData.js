@@ -10,6 +10,7 @@
 // files are unaffected by the multi-user changes.
 
 const path = require('path');
+const fs   = require('fs');
 const fsp  = require('fs').promises;
 
 // DATA_DIR: use the Railway/env-configured volume path if set,
@@ -18,6 +19,34 @@ const fsp  = require('fs').promises;
 // survives deployments. Without a volume every deploy wipes the container.
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
 const ARTIST_SEP  = '__art__';
+
+// Tests are allowed to mutate data, but only inside a deliberately-created
+// temporary directory. Refuse common live locations before this module creates
+// or touches anything. The marker prevents an accidental /tmp directory from
+// becoming a valid test target merely because it has a convenient name.
+function assertSafeTestDataDir(dir = DATA_DIR) {
+  if (process.env.NODE_ENV !== 'test') return;
+
+  const resolved = path.resolve(dir);
+  const protectedDirs = [
+    path.resolve('/data'),
+    path.resolve(__dirname, '../data'),
+  ];
+  const tempRoot = path.resolve(require('os').tmpdir());
+  const marker = path.join(resolved, '.production-hub-test-data');
+
+  if (protectedDirs.some((protectedDir) => resolved === protectedDir || resolved.startsWith(protectedDir + path.sep))) {
+    throw new Error(`Refusing to run tests against protected DATA_DIR: ${resolved}`);
+  }
+  if (!resolved.startsWith(tempRoot + path.sep)) {
+    throw new Error(`Test DATA_DIR must be below the system temp directory: ${resolved}`);
+  }
+  if (process.env.PRODUCTION_HUB_TEST_DATA !== resolved || !fs.existsSync(marker)) {
+    throw new Error(`Test DATA_DIR is missing its explicit isolation marker: ${resolved}`);
+  }
+}
+
+assertSafeTestDataDir();
 
 // Eagerly create DATA_DIR on startup so the volume is ready before any request.
 fsp.mkdir(DATA_DIR, { recursive: true }).catch(() => {});
@@ -30,6 +59,7 @@ const DEFAULTS = {
   'event-types.json':    '[]',
   'field-templates.json':'{}',
   'tasks.json':          '[]',
+  'production-projects.json': '[]',
   'event-type-checklists.json': '{}',
   'timelog.json':        '[]',
 };
@@ -116,4 +146,4 @@ async function ensureArtistDir(userId, artistId) {
   }
 }
 
-module.exports = { dataPath, cacheKey, ensureUserDir, ensureArtistDir, artistScopedId, parseUserId, DATA_DIR };
+module.exports = { dataPath, cacheKey, ensureUserDir, ensureArtistDir, artistScopedId, parseUserId, DATA_DIR, assertSafeTestDataDir };

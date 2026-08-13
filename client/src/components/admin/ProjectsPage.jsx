@@ -4,17 +4,20 @@ import ProjectCard from './ProjectCard';
 import {
   ils, fmtDate, dateRange, todayStr, ballInCourt, projectAlert, firstWorkDay,
 } from './adminFormat';
+import { useT } from '../../i18n';
 
 // Projects list — the structural sibling of Shows: same page header cluster,
 // same tab bar, same two-column card grid.
 //
-// UI chrome is English. Only user-entered content (project, client, brand) is
-// Hebrew and carries dir="auto" — direction follows the value, not the app.
+// UI chrome follows the selected interface language. User-entered content
+// (project, client, brand) is never translated and carries dir="auto" —
+// direction follows the value, not the app.
 
 export default function ProjectsPage({
   projects = [], assistants = [], busy = false, loading = false,
   onNew, onEdit, onAddClient, makeHandlers, hasClients = true,
 }) {
+  const { t } = useT();
   const [tab, setTab] = useState('upcoming');
   const today = todayStr();
 
@@ -39,50 +42,31 @@ export default function ProjectsPage({
     });
   }, [groups, tab]);
 
-  const stats = useMemo(() => ({
-    needsMe: projects.filter((p) => p.ballInCourt === 'me').length,
-    active:  projects.filter((p) => !p.archived && p.status !== 'paid').length,
-    overdue: projects.filter((p) => projectAlert(p)?.level === 'alarm').length,
-  }), [projects]);
-
-  const pad = (n) => String(n).padStart(2, '0');
   const isEmpty = !loading && projects.length === 0;
 
   return (
     <div className="adm-page">
+      {/* headerAction, not actions: this puts the button on the title row, which
+          is where the Shows screen puts Sync / Apply Crew / + New. `actions`
+          renders a second row below the divider, and that extra row — plus the
+          counters that used to sit under it — is what pushed the first card so
+          far down the page. */}
       <PageBar
-        title="Projects"
+        title={t('projects.title')}
         count={projects.length}
-        countLabel="PROJECTS"
-        actions={onNew ? <button className="btn-primary" onClick={onNew}>+ New Project</button> : null}
+        countLabel={t('projects.count')}
+        headerAction={onNew ? <button className="btn-primary" onClick={onNew}>{t('projects.new')}</button> : null}
       />
-
-      {/* Counters render as skeletons while loading — never as real-looking
-          figures that would be wrong for a moment. */}
-      <div className="adm-stats">
-        <div className="adm-stat adm-stat--tinted">
-          <span className="adm-stat-num n">{loading ? <i className="adm-skel adm-skel--num" /> : pad(stats.needsMe)}</span>
-          <span className="adm-stat-label">NEEDS ME</span>
-        </div>
-        <div className="adm-stat">
-          <span className="adm-stat-num n">{loading ? <i className="adm-skel adm-skel--num" /> : pad(stats.active)}</span>
-          <span className="adm-stat-label">ACTIVE</span>
-        </div>
-        <div className="adm-stat">
-          <span className="adm-stat-num n">{loading ? <i className="adm-skel adm-skel--num" /> : pad(stats.overdue)}</span>
-          <span className="adm-stat-label">OVERDUE</span>
-        </div>
-      </div>
 
       {!isEmpty && (
         <div className="adm-tabs">
-          {[['upcoming', 'UPCOMING'], ['past', 'PAST'], ['archived', 'ARCHIVED'], ['all', 'ALL']].map(([key, label]) => (
+          {['upcoming', 'past', 'archived', 'all'].map((key) => (
             <button
               key={key}
               className={`adm-tab${tab === key ? ' adm-tab--active' : ''}`}
               onClick={() => setTab(key)}
             >
-              {label}
+              {t(`projects.tab.${key}`)}
               {!loading && groups[key].length > 0 && (
                 <span className="adm-tab-count n">{groups[key].length}</span>
               )}
@@ -99,14 +83,14 @@ export default function ProjectsPage({
       ) : isEmpty ? (
         // Clients before projects: a project needs a client.
         <div className="adm-empty">
-          <p>Add a client first, then create a project for them.</p>
+          <p>{t('projects.empty.setup')}</p>
           <div className="adm-empty-actions">
-            <button className="btn-primary" onClick={onAddClient}>+ Add client</button>
-            <button className="btn-ghost" onClick={onNew} disabled={!hasClients}>+ New project</button>
+            <button className="btn-primary" onClick={onAddClient}>{t('projects.addClient')}</button>
+            <button className="btn-ghost" onClick={onNew} disabled={!hasClients}>{t('projects.new')}</button>
           </div>
         </div>
       ) : visible.length === 0 ? (
-        <p className="adm-none">No projects here.</p>
+        <p className="adm-none">{t('projects.empty.filter')}</p>
       ) : (
         <div className="adm-grid">
           {visible.map((p) => (

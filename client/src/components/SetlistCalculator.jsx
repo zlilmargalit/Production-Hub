@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useT } from '../i18n';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // A line of only dots/ellipsis is a section break, not a song.
@@ -36,6 +37,7 @@ export default function SetlistCalculator({
   artistId = null,
   shows = [],
 }) {
+  const { t, tx, lang } = useT();
   const [artistInput, setArtistInput] = useState(defaultArtistName);
   const [setlistText, setSetlistText] = useState('');
   const [tracks, setTracks]           = useState(null);
@@ -67,7 +69,7 @@ export default function SetlistCalculator({
   // ── Spotify calculate ──────────────────────────────────────────────────────
   const calculate = async () => {
     const trimmed = setlistText.trim();
-    if (!trimmed) { setError('Paste at least one song.'); return; }
+    if (!trimmed) { setError(t('setlist.pasteSong')); return; }
     setLoading(true);
     setError(null);
     setTracks(null);
@@ -79,10 +81,10 @@ export default function SetlistCalculator({
         body:    JSON.stringify({ setlistText: trimmed, defaultArtist: artistInput.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
+      if (!res.ok) throw new Error(data.error || t('setlist.requestFailed'));
       setTracks(data.tracks);
     } catch (err) {
-      setError(err.message || 'Network error');
+      setError(err.message || t('common.networkError'));
     } finally {
       setLoading(false);
     }
@@ -103,11 +105,11 @@ export default function SetlistCalculator({
 
   // ── Save / Update ──────────────────────────────────────────────────────────
   const doSave = async () => {
-    if (!setlistText.trim()) { setSaveMsg({ err: 'Nothing to save.' }); return; }
+    if (!setlistText.trim()) { setSaveMsg({ err: t('setlist.nothingToSave') }); return; }
     const linkedShowName = shows.find(s => s.id === linkedShowId)?.name || '';
     const name = saveName.trim()
       || linkedShowName
-      || `Setlist ${new Date().toLocaleDateString('he-IL')}`;
+      || `${t('setlist.defaultName')} ${new Date().toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB')}`;
     setSaving(true);
     setSaveMsg(null);
     try {
@@ -126,7 +128,7 @@ export default function SetlistCalculator({
           body: JSON.stringify(payload),
         });
         data = await r.json();
-        if (!r.ok) throw new Error(data.error || 'Failed');
+        if (!r.ok) throw new Error(data.error || t('common.failed'));
         setSavedSetlists(prev => prev.map(s => s.id === activeId ? data : s));
       } else {
         r    = await fetch('/api/setlists', {
@@ -134,7 +136,7 @@ export default function SetlistCalculator({
           body: JSON.stringify({ ...payload, artistId }),
         });
         data = await r.json();
-        if (!r.ok) throw new Error(data.error || 'Failed');
+        if (!r.ok) throw new Error(data.error || t('common.failed'));
         setSavedSetlists(prev => [...prev, data]);
         setActiveId(data.id);
       }
@@ -172,7 +174,7 @@ export default function SetlistCalculator({
 
   // ── Delete saved ───────────────────────────────────────────────────────────
   const deleteSetlist = async (id) => {
-    if (!window.confirm('Delete this setlist?')) return;
+    if (!window.confirm(t('setlist.deleteConfirmation'))) return;
     await fetch(`/api/setlists/${id}`, { method: 'DELETE' });
     setSavedSetlists(prev => prev.filter(s => s.id !== id));
     if (activeId === id) newSetlist();
@@ -198,7 +200,7 @@ export default function SetlistCalculator({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Export failed');
+      if (!res.ok) throw new Error(data.error || t('setlist.exportFailed'));
       setExportResult({ url: data.url });
     } catch (err) {
       setExportResult({ error: err.message });
@@ -215,25 +217,25 @@ export default function SetlistCalculator({
 
       {/* ── Tools Sidebar ── */}
       <aside className="tools-sidebar">
-        <div className="tools-sidebar-eyebrow">Tools</div>
+        <div className="tools-sidebar-eyebrow">{t('setlist.tools')}</div>
         <nav>
           <button className="tools-nav-item tools-nav-item--active">
             <svg className="tools-nav-icon" viewBox="0 0 16 16" fill="none"
                  stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M2 4h12M2 8h12M2 12h7" />
             </svg>
-            Setlist Calculator
+            {t('setlist.title')}
           </button>
         </nav>
 
         {/* ── Saved setlists list ── */}
         <div className="slc-saved-section">
           <div className="slc-saved-header">
-            <span className="slc-saved-eyebrow">Saved Setlists</span>
-            <button className="slc-saved-new" onClick={newSetlist} title="New setlist">＋</button>
+            <span className="slc-saved-eyebrow">{t('setlist.savedSetlists')}</span>
+            <button className="slc-saved-new" onClick={newSetlist} title={t('setlist.newSetlist')}>＋</button>
           </div>
           {savedSetlists.length === 0 ? (
-            <p className="slc-saved-empty">None yet — save one below.</p>
+            <p className="slc-saved-empty">{t('setlist.emptySaved')}</p>
           ) : (
             <ul className="slc-saved-list">
               {savedSetlists.map(sl => {
@@ -255,7 +257,7 @@ export default function SetlistCalculator({
                     <button
                       className="slc-saved-del"
                       onClick={(e) => { e.stopPropagation(); deleteSetlist(sl.id); }}
-                      title="Delete"
+                      title={t('common.remove')}
                     >✕</button>
                   </li>
                 );
@@ -264,15 +266,15 @@ export default function SetlistCalculator({
           )}
         </div>
 
-        <div className="tools-sidebar-footer">More tools coming soon</div>
+        <div className="tools-sidebar-footer">{t('setlist.moreTools')}</div>
       </aside>
 
       {/* ── Main Content ── */}
       <main className="tools-main">
         <header className="tools-tool-header">
-          <h2 className="tools-tool-title">Setlist Calculator</h2>
+          <h2 className="tools-tool-title">{t('setlist.title')}</h2>
           <p className="tools-tool-desc">
-            Paste your setlist — Spotify fills in durations, you get the total show length.
+            {t('setlist.description')}
           </p>
         </header>
 
@@ -282,34 +284,34 @@ export default function SetlistCalculator({
           <div className="slc-input-panel">
 
             <div className="slc-field">
-              <label className="slc-label">Default Artist</label>
+              <label className="slc-label">{t('setlist.defaultArtist')}</label>
               <input
                 className="slc-input"
                 type="text"
                 value={artistInput}
                 onChange={(e) => setArtistInput(e.target.value)}
-                placeholder="e.g. Radiohead"
+                placeholder={t('setlist.artistPlaceholder')}
               />
             </div>
 
             <div className="slc-format-guide">
-              <div className="slc-format-eyebrow">Cover / Guest Override Format</div>
+              <div className="slc-format-eyebrow">{t('setlist.overrideFormat')}</div>
               <div className="slc-format-chip">
-                <span className="slc-format-seg slc-format-seg--song">Song Name</span>
+                <span className="slc-format-seg slc-format-seg--song">{t('setlist.songName')}</span>
                 <span className="slc-format-seg slc-format-seg--dash"> - </span>
-                <span className="slc-format-seg slc-format-seg--artist">Artist Name</span>
+                <span className="slc-format-seg slc-format-seg--artist">{t('setlist.artistName')}</span>
               </div>
               <p className="slc-format-hint">
-                Write a line in this format to override the default artist for that track only.
+                {t('setlist.overrideHint')}
               </p>
             </div>
 
             <div className="slc-field">
               <label className="slc-label">
-                Setlist
+                {t('setlist.label')}
                 {(() => {
                   const n = setlistText.split('\n').filter((l) => l.trim() && !isSeparatorLine(l.trim())).length;
-                  return n > 0 && <span className="slc-song-count">{n} songs</span>;
+                  return n > 0 && <span className="slc-song-count">{tx('setlist.songsCount', { count: n })}</span>;
                 })()}
               </label>
               <textarea
@@ -317,7 +319,7 @@ export default function SetlistCalculator({
                 className="slc-textarea"
                 value={setlistText}
                 onChange={(e) => setSetlistText(e.target.value)}
-                placeholder={`Creep\nFake Plastic Trees\nTeva - Hila Ruach\nKarma Police`}
+                placeholder={t('setlist.example')}
                 rows={13}
                 dir="auto"
                 spellCheck={false}
@@ -328,7 +330,7 @@ export default function SetlistCalculator({
 
             <div className="slc-btn-row">
               <button className="slc-btn" onClick={calculate} disabled={loading}>
-                {loading ? 'Searching Spotify…' : '▶  Calculate Duration'}
+                {loading ? t('setlist.searching') : t('setlist.calculate')}
               </button>
             </div>
 
@@ -339,7 +341,7 @@ export default function SetlistCalculator({
                 type="text"
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
-                placeholder="Setlist name…"
+                placeholder={t('setlist.namePlaceholder')}
                 onKeyDown={(e) => { if (e.key === 'Enter') doSave(); }}
               />
               {shows.length > 0 && (
@@ -348,7 +350,7 @@ export default function SetlistCalculator({
                   value={linkedShowId}
                   onChange={(e) => setLinkedShowId(e.target.value)}
                 >
-                  <option value="">— Link to show —</option>
+                  <option value="">{t('setlist.linkShow')}</option>
                   {[...shows.filter(s => !s.archived)].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1).map(s => (
                     <option key={s.id} value={s.id}>
                       {s.name}{s.date ? ` · ${s.date}` : ''}
@@ -361,15 +363,15 @@ export default function SetlistCalculator({
                 onClick={doSave}
                 disabled={saving}
               >
-                {saving ? 'Saving…' : activeId ? 'Update' : 'Save'}
+                {saving ? t('common.saving') : activeId ? t('setlist.update') : t('common.save')}
               </button>
-              {saveMsg?.ok  && <span className="slc-save-ok">Saved</span>}
+              {saveMsg?.ok  && <span className="slc-save-ok">{t('setlist.saved')}</span>}
               {saveMsg?.err && <span className="slc-save-err">{saveMsg.err}</span>}
             </div>
 
             {activeId && (
               <button className="slc-new-btn" onClick={newSetlist}>
-                ＋ New setlist
+                {t('setlist.newSetlist')}
               </button>
             )}
 
@@ -385,31 +387,31 @@ export default function SetlistCalculator({
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" strokeLinecap="round" strokeWidth="1.5" />
                 </svg>
-                <p>Results will appear here</p>
-                <span>after you calculate</span>
+                <p>{t('setlist.resultsHere')}</p>
+                <span>{t('setlist.afterCalculate')}</span>
               </div>
             )}
 
             {loading && (
               <div className="slc-panel-empty">
                 <div className="slc-page-spinner"></div>
-                <p>Searching Spotify…</p>
+                <p>{t('setlist.searching')}</p>
               </div>
             )}
 
             {tracks && (
               <>
                 <div className="slc-summary">
-                  <span className="slc-total-label">Total Setlist Duration</span>
+                  <span className="slc-total-label">{t('setlist.totalDuration')}</span>
                   <span className="slc-total-time">{fmtMsTotal(totalMs)}</span>
                   <span className="slc-summary-meta">
-                    {songTracks.length} songs · {foundCount} found on Spotify
-                    {missedCount > 0 && ` · ${missedCount - manualCount} missing`}
-                    {manualCount > 0 && ` · ${manualCount} manual`}
+                    {tx('setlist.summary', { songs: songTracks.length, found: foundCount })}
+                    {missedCount > 0 && tx('setlist.missing', { count: missedCount - manualCount })}
+                    {manualCount > 0 && tx('setlist.manual', { count: manualCount })}
                   </span>
                   {linkedShow && (
                     <span className="slc-summary-show">
-                      Linked: {linkedShow.name}
+                      {tx('setlist.linked', { show: linkedShow.name })}
                     </span>
                   )}
                 </div>
@@ -419,9 +421,9 @@ export default function SetlistCalculator({
                     <thead>
                       <tr>
                         <th className="slc-th slc-th--num">#</th>
-                        <th className="slc-th">Song</th>
-                        <th className="slc-th">Artist</th>
-                        <th className="slc-th slc-th--dur">Duration</th>
+                        <th className="slc-th">{t('setlist.song')}</th>
+                        <th className="slc-th">{t('setlist.artist')}</th>
+                        <th className="slc-th slc-th--dur">{t('setlist.duration')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -437,13 +439,13 @@ export default function SetlistCalculator({
                           <td className="slc-td slc-td--num">{num}</td>
                           <td className="slc-td slc-td--song">
                             {t.isAnnotated ? (
-                              <span className="slc-dot slc-dot--annotated" title="Duration from annotation" />
+                              <span className="slc-dot slc-dot--annotated" title={t('setlist.annotationDuration')} />
                             ) : (
                               <span className={`slc-dot ${t.isFound ? 'slc-dot--ok' : 'slc-dot--miss'}`} />
                             )}
                             {t.isFound && t.spotifyUrl ? (
                               <a href={t.spotifyUrl} target="_blank" rel="noreferrer"
-                                 className="slc-link" title="Open on Spotify">
+                                 className="slc-link" title={t('setlist.openSpotify')}>
                                 {t.songName}
                               </a>
                             ) : (
@@ -459,12 +461,12 @@ export default function SetlistCalculator({
                                 <input
                                   className="slc-manual-input"
                                   type="text"
-                                  placeholder="M:SS"
+                                  placeholder={t('setlist.durationFormat')}
                                   value={manualTimes[i] || ''}
                                   onChange={(e) =>
                                     setManualTimes((prev) => ({ ...prev, [i]: e.target.value }))
                                   }
-                                  title="Enter duration manually (M:SS)"
+                                  title={t('setlist.manualDuration')}
                                 />
                                 {manualTimes[i] && parseManualTime(manualTimes[i]) > 0 && (
                                   <span className="slc-dur slc-dur--manual">
@@ -483,7 +485,7 @@ export default function SetlistCalculator({
 
                 {missedCount > 0 && (
                   <p className="slc-footer-note">
-                    Not found on Spotify? Enter M:SS manually — the total updates live.
+                    {t('setlist.manualHint')}
                   </p>
                 )}
 
@@ -493,21 +495,21 @@ export default function SetlistCalculator({
                     onClick={exportToDrive}
                     disabled={exporting}
                   >
-                    {exporting ? 'Uploading…' : (
+                    {exporting ? t('setlist.uploading') : (
                       <>
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor"
                              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
                              width="13" height="13">
                           <path d="M3 13h10M8 2v8M5 7l3 3 3-3" />
                         </svg>
-                        Export to Drive
+                        {t('setlist.exportDrive')}
                       </>
                     )}
                   </button>
                   {exportResult?.url && (
                     <a className="slc-export-link" href={exportResult.url}
                        target="_blank" rel="noreferrer">
-                      Open in Drive ↗
+                      {t('setlist.openDrive')}
                     </a>
                   )}
                   {exportResult?.error && (

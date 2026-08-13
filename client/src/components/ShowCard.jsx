@@ -25,25 +25,26 @@ const getTimeRange = (schedule) => {
 const calcProgress = (show) => {
   const sched = typeof show.schedule === 'string' ? show.schedule : scheduleToString(show.schedule || '');
   const items = [
-    { ok: !!sched,                                label: 'Schedule' },
-    { ok: (show.crewIds || []).length > 0,        label: 'Crew' },
-    { ok: !!show.venue,                           label: 'Venue' },
-    { ok: !!show.contacts,                        label: 'Contacts' },
-    { ok: !!show.address,                         label: 'Address' },
-    { ok: !!show.soundCoordinated,                label: 'Sound coordinated' },
-    { ok: !!show.lightingCoordinated,             label: 'Lighting coordinated' },
-    { ok: !!show.transportation,                  label: 'Transportation' },
-    { ok: !!show.food,                            label: 'Food' },
+    { ok: !!sched,                                labelKey: 'card.schedule' },
+    { ok: (show.crewIds || []).length > 0,        labelKey: 'card.crew' },
+    { ok: !!show.venue,                           labelKey: 'card.venue' },
+    { ok: !!show.contacts,                        labelKey: 'card.contacts' },
+    { ok: !!show.address,                         labelKey: 'card.address' },
+    { ok: !!show.soundCoordinated,                labelKey: 'card.soundCoordinated' },
+    { ok: !!show.lightingCoordinated,             labelKey: 'card.lightingCoordinated' },
+    { ok: !!show.transportation,                  labelKey: 'card.transportation' },
+    { ok: !!show.food,                            labelKey: 'card.food' },
   ];
   const pct     = Math.round(items.filter(i => i.ok).length / items.length * 100);
-  const missing = items.filter(i => !i.ok).map(i => i.label);
+  const missing = items.filter(i => !i.ok).map(i => i.labelKey);
   return { pct, missing };
 };
 
 function ProgressBar({ pct, missing = [] }) {
+  const { t } = useT();
   if (!pct && pct !== 0) return null;
   const col     = pct === 100 ? '#4E7265' : pct >= 60 ? '#3852B4' : '#F08D39';
-  const tooltip = missing.length ? `Missing: ${missing.join(', ')}` : 'All done';
+  const tooltip = missing.length ? `${t('card.missing')}: ${missing.map((key) => t(key)).join(', ')}` : t('card.allDone');
   return (
     <div className="show-progress" title={tooltip}>
       <div className="show-progress-track">
@@ -289,11 +290,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         <div className="show-card-top-row">
           {show.eventType && <div className="show-card-type" dir="auto">{show.eventType}</div>}
           <div className="show-actions">
-            <button className="btn-action" onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
+            <button className="btn-action" onClick={() => setExpanded(!expanded)} title={expanded ? t('card.collapse') : t('card.expand')}>
               {expanded ? '−' : '+'}
             </button>
-            <button className="btn-action" onClick={() => onEdit(show)}>Edit</button>
-            <button className="btn-action btn-action--danger" onClick={() => onDelete(show.id)}>Delete</button>
+            <button className="btn-action" onClick={() => onEdit(show)}>{t('card.edit')}</button>
+            <button className="btn-action btn-action--danger" onClick={() => onDelete(show.id)}>{t('card.delete')}</button>
           </div>
         </div>
         {/* lang still drives the font; direction is left to dir="auto", which
@@ -320,13 +321,13 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                     </span>
                   ))}
                 </span>
-                {assignedCrew.length} crew
+                {assignedCrew.length} {t('card.crew')}
               </span>
             </>
           )}
-          {show.invoice && <span className="badge badge-invoice">Invoice</span>}
-          {show.receipt && <span className="badge badge-receipt">Receipt</span>}
-          {(show.archived && !show.invoice) && <span className="badge badge-archive">Archive</span>}
+          {show.invoice && <span className="badge badge-invoice">{t('card.invoice')}</span>}
+          {show.receipt && <span className="badge badge-receipt">{t('card.receipt')}</span>}
+          {(show.archived && !show.invoice) && <span className="badge badge-archive">{t('card.archive')}</span>}
         </div>
         <ProgressBar pct={progressPct} missing={progressMissing} />
       </div>
@@ -334,19 +335,19 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       {expanded && (
         <div className="show-details">
           <div className="details-grid">
-            <Field label="Address" value={show.address} inPdf={isPdfOn('address')} onTogglePdf={() => togglePdf('address')} />
-            <Field label="Parking" value={show.parking} inPdf={isPdfOn('parking')} onTogglePdf={() => togglePdf('parking')} />
-            <Field label="Technical Crew" value={techCrewDisplay} inPdf={isPdfOn('technicalCrew')} onTogglePdf={() => togglePdf('technicalCrew')} />
-            {musicians && <Field label="Musicians" value={musicians} inPdf={isPdfOn('musicians')} onTogglePdf={() => togglePdf('musicians')} />}
-            <Field label="Transportation" value={show.transportation} inPdf={isPdfOn('transportation')} onTogglePdf={() => togglePdf('transportation')} />
-            <Field label="Contacts" value={show.contacts} multiline inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
+            <Field label={t('card.address')} value={show.address} inPdf={isPdfOn('address')} onTogglePdf={() => togglePdf('address')} />
+            <Field label={t('card.parking')} value={show.parking} inPdf={isPdfOn('parking')} onTogglePdf={() => togglePdf('parking')} />
+            <Field label={t('card.technicalCrew')} value={techCrewDisplay} inPdf={isPdfOn('technicalCrew')} onTogglePdf={() => togglePdf('technicalCrew')} />
+            {musicians && <Field label={t('card.musicians')} value={musicians} inPdf={isPdfOn('musicians')} onTogglePdf={() => togglePdf('musicians')} />}
+            <Field label={t('card.transportation')} value={show.transportation} inPdf={isPdfOn('transportation')} onTogglePdf={() => togglePdf('transportation')} />
+            <Field label={t('card.contacts')} value={show.contacts} multiline inPdf={isPdfOn('contacts')} onTogglePdf={() => togglePdf('contacts')} />
 
 
           </div>
 
           {assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).length > 0 && (
             <div className="detail-full">
-              <strong>Crew</strong>
+              <strong>{t('card.crew')}</strong>
               <div className="crew-chips">
                 {assignedCrew.filter((m) => !MUSICIAN_ROLES.has(m.role)).map((m) => (
                   <div key={m.id} className="crew-chip">
@@ -362,19 +363,19 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           {show.schedule && (
             <div className="detail-full">
               <div className="field-label-row">
-                <strong>Schedule</strong>
+                <strong>{t('card.schedule')}</strong>
                 <div className="field-label-row-actions">
-                  <label className="pdf-toggle" title="Show in coordination sheet">
+                  <label className="pdf-toggle" title={t('card.showInSheet')}>
                     <input type="checkbox" checked={isPdfOn('schedule')} onChange={() => togglePdf('schedule')} />
-                    <span className="pdf-toggle-text">PDF</span>
+                    <span className="pdf-toggle-text">{t('card.pdf')}</span>
                   </label>
                   <button
                     className={`btn-cal-export ${calStatus === 'done' ? 'done' : calStatus === 'error' ? 'error' : ''}`}
                     onClick={exportToCalendar}
                     disabled={calStatus === 'loading'}
-                    title="Create / update Google Calendar event with this schedule and crew invites"
+                    title={t('card.calendarExportHint')}
                   >
-                    {calStatus === 'loading' ? 'Syncing…' : calStatus === 'done' ? '✓ Cal' : calStatus === 'error' ? '✕ Cal' : 'Export to Cal'}
+                    {calStatus === 'loading' ? t('card.syncing') : calStatus === 'done' ? '✓ Cal' : calStatus === 'error' ? '✕ Cal' : t('card.exportCalendar')}
                   </button>
                 </div>
               </div>
@@ -388,11 +389,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
           <div className="detail-full">
             <div className="field-label-row">
-              <strong>Additional Details</strong>
+              <strong>{t('card.additionalDetails')}</strong>
               {show.additionalDetails && (
-                <label className="pdf-toggle" title="Show in coordination sheet">
+                <label className="pdf-toggle" title={t('card.showInSheet')}>
                   <input type="checkbox" checked={isPdfOn('additionalDetails')} onChange={() => togglePdf('additionalDetails')} />
-                  <span className="pdf-toggle-text">PDF</span>
+                  <span className="pdf-toggle-text">{t('card.pdf')}</span>
                 </label>
               )}
             </div>
@@ -404,9 +405,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                     <input type="checkbox" checked={show.piano || false} onChange={() => toggleField('piano')} />
                     פסנתר
                   </label>
-                  <label className="pdf-toggle" title="Show in coordination sheet">
+                  <label className="pdf-toggle" title={t('card.showInSheet')}>
                     <input type="checkbox" checked={show.pdfFields?.check_piano === true} onChange={() => togglePdf('check_piano')} />
-                    <span className="pdf-toggle-text">PDF</span>
+                    <span className="pdf-toggle-text">{t('card.pdf')}</span>
                   </label>
                 </div>
               )}
@@ -415,9 +416,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                   <input type="checkbox" checked={show.mirror || false} onChange={() => toggleField('mirror')} />
                   מראת גוף
                 </label>
-                <label className="pdf-toggle" title="Show in coordination sheet">
+                <label className="pdf-toggle" title={t('card.showInSheet')}>
                   <input type="checkbox" checked={show.pdfFields?.check_mirror === true} onChange={() => togglePdf('check_mirror')} />
-                  <span className="pdf-toggle-text">PDF</span>
+                  <span className="pdf-toggle-text">{t('card.pdf')}</span>
                 </label>
               </div>
               <div className="check-pdf-pair">
@@ -425,9 +426,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                   <input type="checkbox" checked={show.coffeeCorner || false} onChange={() => toggleField('coffeeCorner')} />
                   פינת קפה
                 </label>
-                <label className="pdf-toggle" title="Show in coordination sheet">
+                <label className="pdf-toggle" title={t('card.showInSheet')}>
                   <input type="checkbox" checked={show.pdfFields?.check_coffeeCorner === true} onChange={() => togglePdf('check_coffeeCorner')} />
-                  <span className="pdf-toggle-text">PDF</span>
+                  <span className="pdf-toggle-text">{t('card.pdf')}</span>
                 </label>
               </div>
               <div className="check-pdf-pair">
@@ -435,9 +436,9 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                   <input type="checkbox" checked={show.waterBottles || false} onChange={() => toggleField('waterBottles')} />
                   בקבוקי מים
                 </label>
-                <label className="pdf-toggle" title="Show in coordination sheet">
+                <label className="pdf-toggle" title={t('card.showInSheet')}>
                   <input type="checkbox" checked={show.pdfFields?.check_waterBottles === true} onChange={() => togglePdf('check_waterBottles')} />
-                  <span className="pdf-toggle-text">PDF</span>
+                  <span className="pdf-toggle-text">{t('card.pdf')}</span>
                 </label>
               </div>
             </div>
@@ -445,7 +446,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
           {customDefs.length > 0 && (
             <div className="detail-full">
-              <strong>Custom Fields</strong>
+              <strong>{t('card.customFields')}</strong>
               <div className="custom-fields-grid">
                 {customDefs.map((def) => {
                   const val = show.customFields?.[def.id];
@@ -454,13 +455,13 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                     <div key={def.id} className="custom-field-display">
                       <div className="field-label-row">
                         <span className="field-label">{def.label}</span>
-                        <label className="pdf-toggle" title="Show in coordination sheet">
+                        <label className="pdf-toggle" title={t('card.showInSheet')}>
                           <input
                             type="checkbox"
                             checked={isPdfOn(cfKey)}
                             onChange={() => togglePdf(cfKey)}
                           />
-                          <span className="pdf-toggle-text">PDF</span>
+                          <span className="pdf-toggle-text">{t('card.pdf')}</span>
                         </label>
                       </div>
                       {def.type === 'image' && val ? (
@@ -469,7 +470,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                             📎 {val.name}
                           </a>
                         ) : val?._hasData && !val?.data ? (
-                          <span className="file-download-link">📎 Image attached</span>
+                          <span className="file-download-link">📎 {t('card.imageAttached')}</span>
                         ) : (
                           <img
                             src={typeof val === 'string' ? val : val.data}
@@ -487,7 +488,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                           📎 {val.name}
                         </a>
                       ) : def.type === 'checkbox' ? (
-                        <span className="field-value">{val ? '✓ כן' : '✕ לא'}</span>
+                        <span className="field-value">{val ? t('card.yes') : t('card.no')}</span>
                       ) : (
                         <span className="field-value" dir="auto">{val || '—'}</span>
                       )}
@@ -501,7 +502,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           {show.notes && (
             <div className="detail-full">
               <div className="field-label-row">
-                <strong>Notes</strong>
+                <strong>{t('card.notes')}</strong>
               </div>
               <p dir="auto">{show.notes}</p>
             </div>
@@ -509,24 +510,24 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 
           {/* ── Technical + Logistics inside accordion ── */}
           <div className="show-expand-section">
-            <div className="show-expand-eyebrow">Expand section</div>
+            <div className="show-expand-eyebrow">{t('card.expandSection')}</div>
             <div className="show-expand-toggle">
               <button
                 className={`show-expand-btn${showTech ? ' active' : ''}`}
                 onClick={() => { setShowTech((p) => !p); if (showTasks) setShowTasks(false); }}
-              >Technical</button>
+              >{t('card.technical')}</button>
               <button
                 className={`show-expand-btn${showTasks ? ' active' : ''}`}
                 onClick={() => { setShowTasks((p) => !p); if (showTech) setShowTech(false); }}
-              >Logistics</button>
+              >{t('card.logistics')}</button>
             </div>
             {showTech && <div className="show-expand-panel"><TechnicalManager show={show} onUpdate={onUpdateShow} /></div>}
             {showTasks && (
-              <div className="show-expand-panel hub-panel" aria-label="Production Hub — internal">
+              <div className="show-expand-panel hub-panel" aria-label={t('card.internalHub')}>
                 <div className="hub-header">
                   <div className="hub-header-text">
-                    <div className="hub-eyebrow">Internal</div>
-                    <div className="hub-heading">Production Hub</div>
+                    <div className="hub-eyebrow">{t('card.internal')}</div>
+                    <div className="hub-heading">{t('app.productName')}</div>
                   </div>
                 </div>
 
@@ -551,7 +552,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
                'Brief'}
             </button>
             {briefError && <span className="btn-error-msg" title={briefError}>{briefError}</span>}
-            {briefDocUrl && <a className="btn-doc-link" href={briefDocUrl} target="_blank" rel="noreferrer">Open doc <span className="mirror" aria-hidden="true">→</span></a>}
+            {briefDocUrl && <a className="btn-doc-link" href={briefDocUrl} target="_blank" rel="noreferrer">{t('card.openDoc')} <span className="mirror" aria-hidden="true">→</span></a>}
           </div>
           <div className="btn-action-wrap">
             <button
@@ -571,11 +572,11 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
         <div className="footer-center">
           <label className="quick-check footer-check">
             <input type="checkbox" checked={show.invoice || false} onChange={() => toggleField('invoice')} />
-            Invoice
+            {t('card.invoice')}
           </label>
           <label className="quick-check footer-check">
             <input type="checkbox" checked={show.receipt || false} onChange={toggleReceipt} />
-            Receipt
+            {t('card.receipt')}
           </label>
         </div>
       </div>
@@ -585,14 +586,15 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
 }
 
 function Field({ label, value, inPdf, onTogglePdf, multiline }) {
+  const { t } = useT();
   return (
     <div className="detail-field">
       <div className="field-label-row">
         <span className="field-label">{label}</span>
         {onTogglePdf !== undefined && (
-          <label className="pdf-toggle" title="Show in coordination sheet">
+          <label className="pdf-toggle" title={t('card.showInSheet')}>
             <input type="checkbox" checked={inPdf} onChange={onTogglePdf} />
-            <span className="pdf-toggle-text">PDF</span>
+            <span className="pdf-toggle-text">{t('card.pdf')}</span>
           </label>
         )}
       </div>

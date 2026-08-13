@@ -1,9 +1,12 @@
+import { useT } from '../i18n';
+
 function DemoBanner() {
+  const { t } = useT();
   return (
     <div className="demo-banner">
       <span className="demo-banner-icon">🎭</span>
       <span>
-        <strong>Demo Mode</strong> — changes are not saved and will reset on refresh
+        <strong>{t('demo.title')}</strong> — {t('demo.description')}
       </span>
     </div>
   );

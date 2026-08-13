@@ -55,6 +55,7 @@ the code.
   "assignedTo": null,
   "assigneeId": null,
   "assigneeName": null,
+  "productionProjectId": null,
   "reminder": null,
   "createdAt": "<ISO_8601>",
   "pushNotifiedAt": null
@@ -67,9 +68,68 @@ the code.
 - `assignedTo` — legacy free-text assignee, superseded by `assigneeId` +
   `assigneeName`.
 - `assigneeId` — drives `notifyAssigned` on create and on reassignment.
+- `productionProjectId` — optional link to one Production Project in the same
+  artist-scoped directory. It is changed only through Production Project task
+  endpoints; generic task CRUD cannot set it. `null` means unassociated.
 - `dueTime` and `reminder` — written on every create, but **absent from every
   task currently on disk**; all stored tasks predate the fields.
 - `pushNotifiedAt` — push dedupe marker.
+
+## `production-projects.json`
+
+Artist-scoped Production Projects are deliberately separate from the
+Administration-only `projects.json` model. Every record lives in the selected
+artist's data directory; it does not carry an `artistId` of its own.
+
+```json
+{
+  "id": "<UUID>",
+  "name": "<PROJECT_NAME>",
+  "deadline": "2026-12-31",
+  "status": "in_progress",
+  "teamMemberIds": ["<USER_ID>"],
+  "milestones": [
+    {
+      "id": "<UUID>",
+      "title": "<MILESTONE_TITLE>",
+      "completed": false,
+      "completedAt": null,
+      "createdAt": "<ISO_8601>"
+    }
+  ],
+  "communicationLog": [
+    {
+      "id": "<UUID>",
+      "occurredAt": "<ISO_8601>",
+      "note": "<FREE_TEXT_NOTE>",
+      "authorId": "<USER_ID>",
+      "authorNameSnapshot": "<USER_NAME>",
+      "createdAt": "<ISO_8601>"
+    }
+  ],
+  "createdAt": "<ISO_8601>",
+  "updatedAt": "<ISO_8601>"
+}
+```
+
+- `status` is one of `planned`, `in_progress`, `on_hold`, `completed`, or
+  `cancelled`.
+- Progress is not stored. Reads derive `milestoneTotal`,
+  `completedMilestoneCount`, and `progressPercent`; `progressPercent` is
+  `null` when there are no milestones.
+- `isOverdue` is derived when a non-terminal project has a deadline before
+  today.
+- `teamMemberIds` references authenticated users who currently have access to
+  this same artist workspace. It never references `crew.json` records. Missing
+  on older records is read as `[]`.
+- The communication log is returned newest-first by `occurredAt`; author
+  snapshots are retained when an entry is edited or a team member is removed.
+- Associated tasks remain canonical records in the artist's `tasks.json`; the
+  project does not duplicate task ids. Deleting the project clears matching
+  `tasks[].productionProjectId` values and preserves the task records.
+- Project team members may read the project and append communication entries.
+  Only the workspace owner/admin may change project structure, milestones,
+  team membership, communication history, or task associations.
 
 ## `shows.json` — the crew-related fields
 

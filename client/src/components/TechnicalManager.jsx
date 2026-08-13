@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useT } from '../i18n';
 
 function TechnicalManager({ show, onUpdate }) {
+  const { t, tx } = useT();
   const [setlist,  setSetlist]  = useState(show.setlistNotes || '');
   const [newItem,  setNewItem]  = useState('');
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -129,8 +131,8 @@ function TechnicalManager({ show, onUpdate }) {
       {/* Header */}
       <div className="hub-header">
         <div className="hub-header-text">
-          <div className="hub-eyebrow">Stage &amp; Tech</div>
-          <div className="hub-heading">Technical</div>
+          <div className="hub-eyebrow">{t('technical.stageTech')}</div>
+          <div className="hub-heading">{t('technical.title')}</div>
         </div>
       </div>
 
@@ -138,7 +140,7 @@ function TechnicalManager({ show, onUpdate }) {
         {/* Technical Spec — file attachment (compact wide row) */}
         <div className="tech-block tech-block--wide tech-block--file-row">
           <div className="tech-block-header">
-            <h4 className="tech-block-title">Technical Spec</h4>
+            <h4 className="tech-block-title">{t('technical.spec')}</h4>
           </div>
           {specFile ? (
             <div className="tech-spec-attached">
@@ -149,7 +151,7 @@ function TechnicalManager({ show, onUpdate }) {
                 type="button"
                 className="tech-spec-remove"
                 onClick={() => save({ technicalSpec: null })}
-                title="Remove"
+                title={t('common.remove')}
               >
                 ✕
               </button>
@@ -162,8 +164,8 @@ function TechnicalManager({ show, onUpdate }) {
                 style={{ display: 'none' }}
                 onChange={handleSpecFile}
               />
-              <span className="tech-spec-upload-btn">Attach file</span>
-              <span className="tech-spec-upload-hint">PDF or image</span>
+              <span className="tech-spec-upload-btn">{t('technical.attachFile')}</span>
+              <span className="tech-spec-upload-hint">{t('technical.pdfOrImage')}</span>
             </label>
           )}
         </div>
@@ -171,7 +173,7 @@ function TechnicalManager({ show, onUpdate }) {
         {/* Setlist */}
         <div className="tech-block">
           <div className="tech-block-header">
-            <h4 className="tech-block-title">Setlist</h4>
+            <h4 className="tech-block-title">{t('technical.setlist')}</h4>
           </div>
           <textarea
             className="tech-textarea"
@@ -179,7 +181,7 @@ function TechnicalManager({ show, onUpdate }) {
             value={setlist}
             onChange={(e) => setSetlist(e.target.value)}
             onBlur={() => save({ setlistNotes: setlist })}
-            placeholder="Song list, show order..."
+            placeholder={t('technical.setlistPlaceholder')}
             rows={5}
           />
         </div>
@@ -187,11 +189,11 @@ function TechnicalManager({ show, onUpdate }) {
         {/* Equipment Checklist */}
         <div className="tech-block tech-block--checklist">
           <div className="tech-block-header">
-            <h4 className="tech-block-title">Equipment Checklist</h4>
+            <h4 className="tech-block-title">{t('technical.equipmentChecklist')}</h4>
           </div>
           <div className="tech-checklist">
             {checklist.length === 0 && (
-              <p className="tech-checklist-empty">No items yet</p>
+              <p className="tech-checklist-empty">{t('technical.noItems')}</p>
             )}
             {checklist.map((item) => (
               <div key={item.id} className={`tech-checklist-row${item.checked ? ' checked' : ''}`}>
@@ -206,7 +208,7 @@ function TechnicalManager({ show, onUpdate }) {
                 <button
                   className="tech-checklist-del"
                   onClick={() => removeChecklist(item.id)}
-                  title="Remove"
+                  title={t('common.remove')}
                 >✕</button>
               </div>
             ))}
@@ -219,7 +221,7 @@ function TechnicalManager({ show, onUpdate }) {
               onChange={(e) => setNewItem(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addChecklistItem()}
               onPaste={handleInputPaste}
-              placeholder="Add item..."
+              placeholder={t('technical.addItem')}
             />
             <button
               className="btn-primary btn-sm"
@@ -232,7 +234,7 @@ function TechnicalManager({ show, onUpdate }) {
             className="tech-checklist-paste-toggle"
             onClick={() => setPasteOpen((v) => !v)}
           >
-            {pasteOpen ? 'Cancel' : 'Paste list'}
+            {pasteOpen ? t('common.cancel') : t('technical.pasteList')}
           </button>
           {pasteOpen && (
             <div className="tech-checklist-paste">
@@ -241,7 +243,7 @@ function TechnicalManager({ show, onUpdate }) {
                 dir="auto"
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
-                placeholder="Paste a list — one item per line"
+                placeholder={t('technical.pasteListHint')}
                 rows={5}
               />
               <button
@@ -249,7 +251,7 @@ function TechnicalManager({ show, onUpdate }) {
                 onClick={addPasteList}
                 disabled={!textToItems(pasteText).length}
               >
-                Add {textToItems(pasteText).length || ''} items
+                {tx('technical.addItems', { count: textToItems(pasteText).length || '' })}
               </button>
             </div>
           )}
@@ -258,7 +260,7 @@ function TechnicalManager({ show, onUpdate }) {
 
       {/* Technical Coordination */}
       <div className="fixed-task-section" style={{ marginTop: 0 }}>
-        <h4 className="fixed-task-title">Technical Coordination</h4>
+        <h4 className="fixed-task-title">{t('technical.coordination')}</h4>
         <div className="hub-tech-rows">
 
           {/* Sound */}
@@ -270,28 +272,28 @@ function TechnicalManager({ show, onUpdate }) {
                 onChange={() => toggleCoord('sound')}
               />
               <span className="hub-coord-dot" />
-              <span>Sound</span>
+              <span>{t('technical.sound')}</span>
             </label>
             <div className="fixed-input-group" style={{ flex: 2 }}>
-              <label>Rental Needs</label>
+              <label>{t('technical.rentalNeeds')}</label>
               <input
                 className="fixed-input"
                 dir="auto"
                 value={coord.soundRentalNeeds}
                 onChange={(e) => setCoord((p) => ({ ...p, soundRentalNeeds: e.target.value }))}
                 onBlur={() => saveCoord(coord)}
-                placeholder="Equipment to rent..."
+                placeholder={t('technical.equipmentToRent')}
               />
             </div>
             <div className="fixed-input-group">
-              <label>Supplier</label>
+              <label>{t('technical.supplier')}</label>
               <input
                 className="fixed-input"
                 dir="auto"
                 value={coord.soundRentalSupplier}
                 onChange={(e) => setCoord((p) => ({ ...p, soundRentalSupplier: e.target.value }))}
                 onBlur={() => saveCoord(coord)}
-                placeholder="Rental company"
+                placeholder={t('technical.rentalCompany')}
               />
             </div>
           </div>
@@ -305,28 +307,28 @@ function TechnicalManager({ show, onUpdate }) {
                 onChange={() => toggleCoord('lighting')}
               />
               <span className="hub-coord-dot" />
-              <span>Lighting</span>
+              <span>{t('technical.lighting')}</span>
             </label>
             <div className="fixed-input-group" style={{ flex: 2 }}>
-              <label>Rental Needs</label>
+              <label>{t('technical.rentalNeeds')}</label>
               <input
                 className="fixed-input"
                 dir="auto"
                 value={coord.lightingRentalNeeds}
                 onChange={(e) => setCoord((p) => ({ ...p, lightingRentalNeeds: e.target.value }))}
                 onBlur={() => saveCoord(coord)}
-                placeholder="Equipment to rent..."
+                placeholder={t('technical.equipmentToRent')}
               />
             </div>
             <div className="fixed-input-group">
-              <label>Supplier</label>
+              <label>{t('technical.supplier')}</label>
               <input
                 className="fixed-input"
                 dir="auto"
                 value={coord.lightingRentalSupplier}
                 onChange={(e) => setCoord((p) => ({ ...p, lightingRentalSupplier: e.target.value }))}
                 onBlur={() => saveCoord(coord)}
-                placeholder="Rental company"
+                placeholder={t('technical.rentalCompany')}
               />
             </div>
           </div>

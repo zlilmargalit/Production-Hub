@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useT } from '../i18n';
 
 function TechSpecParser({ shows, onUpdateShow, artistId }) {
+  const { t, tx } = useT();
   const [uploading,      setUploading]      = useState(false);
   const [editItems,      setEditItems]      = useState(null); // null = no file yet
   const [newItemText,    setNewItemText]    = useState('');
@@ -80,10 +82,9 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
   return (
     <div className="tsp-page">
       <div className="tsp-header">
-        <h2 className="tsp-title">Tech Spec Parser</h2>
+        <h2 className="tsp-title">{t('techSpec.title')}</h2>
         <p className="tsp-desc">
-          Upload a technical rider PDF. The tool extracts the equipment list so you can
-          review, edit, and add it directly to a show's checklist.
+          {t('techSpec.description')}
         </p>
       </div>
 
@@ -91,7 +92,7 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
       <div className="tsp-step">
         <span className="tsp-step-num">1</span>
         <div className="tsp-step-body">
-          <div className="tsp-step-label">Upload tech rider</div>
+          <div className="tsp-step-label">{t('techSpec.upload')}</div>
           <label className={`tsp-drop-zone${uploading ? ' tsp-drop-zone--busy' : ''}`}>
             <input
               type="file"
@@ -101,11 +102,11 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
               disabled={uploading}
             />
             {uploading ? (
-              <span className="tsp-drop-text">Parsing PDF…</span>
+              <span className="tsp-drop-text">{t('techSpec.parsing')}</span>
             ) : (
               <>
                 <span className="tsp-drop-plus">+</span>
-                <span className="tsp-drop-text">Click to upload PDF</span>
+                <span className="tsp-drop-text">{t('techSpec.clickUpload')}</span>
               </>
             )}
           </label>
@@ -119,12 +120,12 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
           <span className="tsp-step-num">2</span>
           <div className="tsp-step-body">
             <div className="tsp-step-label">
-              Review &amp; edit extracted items
+              {t('techSpec.review')}
               {editItems.length > 0 && <span className="tsp-count">{editItems.length}</span>}
             </div>
 
             {editItems.length === 0 ? (
-              <p className="tsp-empty">No equipment items detected. Add them manually below.</p>
+              <p className="tsp-empty">{t('techSpec.empty')}</p>
             ) : (
               <div className="tsp-items">
                 {editItems.map((item) => (
@@ -133,7 +134,7 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
                     <button
                       className="tsp-item-del"
                       onClick={() => removeItem(item.id)}
-                      title="Remove"
+                      title={t('common.remove')}
                     >✕</button>
                   </div>
                 ))}
@@ -147,14 +148,14 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
                 value={newItemText}
                 onChange={(e) => setNewItemText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addManualItem()}
-                placeholder="Add item manually..."
+                placeholder={t('techSpec.addManual')}
               />
               <button
                 className="btn-primary btn-sm"
                 onClick={addManualItem}
                 disabled={!newItemText.trim()}
               >
-                Add
+                {t('common.add')}
               </button>
             </div>
           </div>
@@ -166,7 +167,7 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
         <div className="tsp-step">
           <span className="tsp-step-num">3</span>
           <div className="tsp-step-body">
-            <div className="tsp-step-label">Add to show checklist</div>
+            <div className="tsp-step-label">{t('techSpec.addToShow')}</div>
             <div className="tsp-import-row">
               <select
                 className="tsp-show-select"
@@ -174,7 +175,7 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
                 onChange={(e) => { setSelectedShowId(e.target.value); setImportDone(false); }}
                 disabled={importDone}
               >
-                <option value="">Select a show…</option>
+                <option value="">{t('techSpec.selectShow')}</option>
                 {activeShows.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -189,13 +190,13 @@ function TechSpecParser({ shows, onUpdateShow, artistId }) {
                 onClick={handleImport}
                 disabled={!selectedShowId || importDone}
               >
-                {importDone ? 'Added' : `Add ${editItems.length} item${editItems.length !== 1 ? 's' : ''}`}
+                {importDone ? t('techSpec.added') : tx(editItems.length === 1 ? 'techSpec.addCount.one' : 'techSpec.addCount.many', { count: editItems.length })}
               </button>
             </div>
             {importDone && (
               <div className="tsp-success-row">
-                <span className="tsp-success">Items added to checklist.</span>
-                <button className="btn-ghost btn-sm" onClick={reset}>Parse another</button>
+                <span className="tsp-success">{t('techSpec.success')}</span>
+                <button className="btn-ghost btn-sm" onClick={reset}>{t('techSpec.parseAnother')}</button>
               </div>
             )}
           </div>

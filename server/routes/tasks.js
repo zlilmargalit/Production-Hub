@@ -4,6 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const { readJsonCached, writeJsonAndCache } = require('../cache');
 const { dataPath, cacheKey } = require('../utils/userData');
 const { notifyAssigned } = require('./notifications');
+const { canMutateScopedTasks, tasksVisibleToRequester } = require('../utils/taskAuthorization');
+const { TaskValidationError, createTaskRecord, attemptsProjectLink } = require('../utils/taskRecords');
 
 const readTasks  = (userId) =>
   readJsonCached(cacheKey(userId, 'tasks'), dataPath(userId, 'tasks.json'), []);
@@ -13,46 +15,45 @@ const writeTasks = (userId, tasks) =>
 // GET /api/tasks
 router.get('/', async (req, res, next) => {
   try {
-    res.json(await readTasks(req.userId));
+    res.json(tasksVisibleToRequester(await readTasks(req.userId), req));
   } catch (err) { next(err); }
+});
+
+// The artist-scope middleware permits shared members to enter an artist's
+// storage only for content explicitly authorised to them. Generic task writes
+// have no task-specific grant, so they stay owner/admin-only. A member may
+// still complete their own assigned task through /api/tasks/assigned/:artistId/:id.
+router.use((req, res, next) => {
+  if (!canMutateScopedTasks(req)) {
+    return res.status(403).json({ error: 'Shared members cannot create, edit, or delete workspace tasks' });
+  }
+  next();
 });
 
 // POST /api/tasks
 router.post('/', async (req, res, next) => {
   try {
-    const { text, notes, dueDate, dueTime, assignedTo, showId, showIds, assigneeId, assigneeName, reminder } = req.body || {};
-    if (!text?.trim()) return res.status(400).json({ error: 'text required' });
+    if (attemptsProjectLink(req.body)) {
+      return res.status(400).json({ error: 'Use a Production Project task endpoint to set productionProjectId' });
+    }
     const tasks = await readTasks(req.userId);
-    // normalise show references — prefer the new showIds array
-    const resolvedShowIds = Array.isArray(showIds) && showIds.length
-      ? showIds
-      : showId ? [showId] : [];
-    const task = {
-      id:              uuidv4(),
-      text:            text.trim(),
-      notes:           notes?.trim() || null,
-      completed:       false,
-      showId:          resolvedShowIds[0]  || null,   // legacy compat
-      showIds:         resolvedShowIds,
-      dueDate:         dueDate      || null,
-      dueTime:         dueTime      || null,
-      assignedTo:      assignedTo   || null,
-      assigneeId:      assigneeId   || null,
-      assigneeName:    assigneeName || null,
-      reminder:        reminder     || null,
-      createdAt:       new Date().toISOString(),
-      pushNotifiedAt:  null,
-    };
+    const task = createTaskRecord(req.body, { id: uuidv4() });
     await writeTasks(req.userId, [...tasks, task]);
     res.status(201).json(task);
     // Fire-and-forget: notify on assignment at creation time.
     if (task.assigneeId) notifyAssigned(req.userId, task).catch(() => {});
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err instanceof TaskValidationError) return res.status(400).json({ error: err.message });
+    next(err);
+  }
 });
 
 // PUT /api/tasks/:id  (full or partial update)
 router.put('/:id', async (req, res, next) => {
   try {
+    if (attemptsProjectLink(req.body)) {
+      return res.status(400).json({ error: 'Use a Production Project task endpoint to change productionProjectId' });
+    }
     const tasks = await readTasks(req.userId);
     const idx = tasks.findIndex((t) => t.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Task not found' });

@@ -2020,6 +2020,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
   gap: 24px;
+  /* align-items: start — a card is only as tall as its own content, so
+     expanding one show does not stretch its row-neighbour to match. Same rule
+     as .adm-grid; the two screens stay identical. */
+  align-items: start;
 }
 
 /* Show card — editorial: bold colored band up top, huge title, big date */
@@ -4228,6 +4232,26 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 
 /* ─── Crew task badge (next to name in Crew & Types) ─────────────────────── */
+.pp-page { max-width: 1180px; margin: 0 auto; }
+.pp-layout { display: grid; grid-template-columns: minmax(230px, .72fr) minmax(0, 1.5fr); gap: 18px; align-items: start; }
+.pp-list, .pp-detail, .pp-form { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.pp-list-head, .pp-detail-head, .pp-form-actions, .pp-inline, .pp-meta { display: flex; align-items: center; gap: 10px; }
+.pp-list-head, .pp-detail-head { justify-content: space-between; margin-bottom: 12px; }
+.pp-list h2, .pp-detail h2, .pp-section h3 { margin: 0; }
+.pp-project-card { display: grid; width: 100%; text-align: start; gap: 5px; padding: 12px; margin: 0 0 8px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+.pp-project-card:hover, .pp-project-card--active { border-color: var(--accent); background: var(--accent-bg); }
+.pp-project-card small, .pp-meta { color: var(--text-3); font-size: .78rem; }
+.pp-status { width: fit-content; font-size: .72rem; font-weight: 600; color: var(--text-2); }
+.pp-status--completed { color: var(--sage); }.pp-status--cancelled, .pp-overdue, .pp-danger { color: var(--clay); }
+.pp-overdue { font-size: .75rem; font-weight: 700; }.pp-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+.pp-section > p { color: var(--text-2); font-size: .85rem; }.pp-rows { list-style: none; margin: 10px 0; padding: 0; }
+.pp-rows li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }.pp-rows input { flex: none; }
+.pp-done { text-decoration: line-through; color: var(--text-3); }.pp-text-btn { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: .75rem; margin-inline-start: auto; }.pp-text-btn + .pp-text-btn { margin-inline-start: 0; }
+.pp-inline { margin-top: 9px; }.pp-inline input, .pp-inline select, .pp-form input, .pp-form select, .pp-log-add textarea, .pp-log-add input { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--text); background: var(--bg); font: inherit; }
+.pp-form { display: grid; gap: 13px; max-width: 600px; }.pp-form label { display: grid; gap: 5px; font-size: .83rem; color: var(--text-2); }.pp-form-actions { justify-content: flex-end; }
+.pp-members { display: flex; flex-wrap: wrap; gap: 6px; }.pp-members span { padding: 3px 7px; background: var(--bg); border-radius: 99px; }.pp-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 7px; }.pp-picker label { font-size: .85rem; }
+.pp-log article { border-bottom: 1px solid var(--border); padding: 10px 0; }.pp-log article div { display: flex; justify-content: space-between; gap: 12px; font-size: .8rem; }.pp-log time { color: var(--text-3); }.pp-log p { white-space: pre-wrap; margin: 6px 0 0; }.pp-log-add { display: grid; gap: 8px; margin-top: 12px; }.pp-log-add textarea { min-height: 80px; resize: vertical; }.pp-error { color: var(--clay); }.pp-empty { color: var(--text-3); font-style: italic; }
+@media (max-width: 760px) { .pp-layout { grid-template-columns: 1fr; }.pp-detail { min-width: 0; }.pp-inline { flex-wrap: wrap; }.pp-inline .btn-ghost { margin-inline-start: auto; } }
 .crew-task-badge {
   display: inline-flex;
   align-items: center;
@@ -10650,15 +10674,6 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 
 .adm-page { padding-bottom: 40px; }
 
-/* Stat cluster — leftmost tinted */
-.adm-stats { display: flex; gap: 10px; margin: 16px 0 18px; }
-.adm-stat {
-  flex: 0 0 auto; min-width: 104px; padding: 10px 14px;
-  border: 1px solid var(--border); border-radius: 0; background: var(--surface);
-}
-.adm-stat--tinted { background: var(--surface-sunk); border-color: var(--border-strong); }
-.adm-stat-num   { display: block; font-size: 1.5rem; font-weight: 700; color: var(--text); }
-.adm-stat-label { font-size: 0.6875rem; letter-spacing: .06em; color: var(--text-3); }
 
 /* One joined unit with a hard shadow — the same object as .filter-bar on the
    artist screens, not a row of separate pills. */
@@ -10692,7 +10707,10 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 }
 .adm-tab--active .adm-tab-count { background: rgba(255,255,255,.22); color: #fff; }
 
-.adm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 24px; }
+/* align-items: start — each card is only as tall as its own content. Without
+   it the grid stretches every card in a row to match the tallest, so opening
+   one card drags its row-neighbour up to the same height. */
+.adm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 24px; align-items: start; }
 .adm-grid--tight { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 @media (max-width: 780px) { .adm-grid { grid-template-columns: 1fr; } }
 
@@ -11026,25 +11044,31 @@ table .he { text-align: start; }            /* column alignment wins in a table 
 /* ── Expanded project card ────────────────────────────────────────────────
    The project expands in place, like a show card. An open card spans the grid
    so its content is not squeezed into one column. */
-.adm-card--open { grid-column: 1 / -1; }
+/* An open card grows DOWNWARD inside its own grid cell, exactly like a show
+   card. It used to span the whole row (grid-column: 1 / -1), which made the
+   card jump the width of the grid, push its offset shadow past the container
+   edge, and leave the neighbouring card stranded on the row below. */
 .adm-card-expand {
   margin-inline-start: auto; font-family: inherit; font-size: 1rem; line-height: 1;
   width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 6px;
   background: transparent; color: var(--text-2); cursor: pointer; flex: 0 0 auto;
 }
 .adm-card-expand:hover { border-color: var(--text-3); color: var(--text); }
-/* An open card spans the full grid, so a Hebrew title that dir="auto" resolved
-   to RTL would sit alone at the far edge, away from everything it heads. The
-   title keeps its direction; only the alignment follows the layout. */
-.adm-card--open .adm-card-name,
-.adm-card--open .adm-card-sub { text-align: left; }
+/* The title alignment override that used to live here is gone with the
+   full-row span: inside its own card the heading sits above its own content,
+   so it follows the reading direction like every other title. */
 
+/* Same object as .show-details on a show card: a sunk panel hung off the
+   bottom edge, not a bordered box floating inside the card. */
 .adm-card-open-body {
-  padding: 14px 16px 12px; margin-top: 10px;
+  padding: 26px 28px 28px;
+  background: var(--surface-sunk);
   border-top: 1px solid var(--border-light);
-  display: grid; gap: 18px 24px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: grid; gap: 22px 36px;
+  grid-template-columns: 1fr 1fr;
 }
+[data-theme="dark"] .adm-card-open-body { background: var(--bg); }
+@media (max-width: 720px) { .adm-card-open-body { grid-template-columns: 1fr; } }
 .adm-card-open-body .adm-section { border: none; background: transparent; padding: 0; }
 .adm-card-open-body .adm-panel-row,
 .adm-card-open-body .show-expand-panel { grid-column: 1 / -1; }

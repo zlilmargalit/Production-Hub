@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageBar from './ui/PageBar';
-
-const RUBRIC_LABELS = {
-  schedule:  'Schedule',
-  logistics: 'Logistics',
-  technical: 'Technical',
-  notes:     'Notes',
-  budget:    'Budget',
-};
+import { useT } from '../i18n';
 
 function fmtDate(d) {
   if (!d) return '';
@@ -45,6 +38,7 @@ function rubricText(show, rubric) {
 
 // ── Compact read-only show row ─────────────────────────────────────────────
 function TeamShowRow({ show, visibleRubrics }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
 
   const hasDetail = visibleRubrics.some((r) => rubricText(show, r).length > 0);
@@ -73,7 +67,7 @@ function TeamShowRow({ show, visibleRubrics }) {
             if (!text) return null;
             return (
               <div key={r} className="tsp-rubric-block">
-                <span className="tsp-rubric-label">{RUBRIC_LABELS[r] || r}</span>
+                <span className="tsp-rubric-label">{t(`teams.rubric.${r}`)}</span>
                 <p className="tsp-rubric-text" dir="auto">{text}</p>
               </div>
             );
@@ -86,6 +80,7 @@ function TeamShowRow({ show, visibleRubrics }) {
 
 // ── Artist section within a team ──────────────────────────────────────────
 function TeamArtistSection({ artistName, visibleRubrics, shows, role }) {
+  const { t } = useT();
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = [...shows]
     .filter((s) => !s.invoice && !s.archived && (!s.date || s.date >= today))
@@ -103,18 +98,18 @@ function TeamArtistSection({ artistName, visibleRubrics, shows, role }) {
       {visibleRubrics.length > 0 && (
         <div className="tsp-rubric-badges">
           {visibleRubrics.map((r) => (
-            <span key={r} className="tsp-rubric-badge">{RUBRIC_LABELS[r] || r}</span>
+            <span key={r} className="tsp-rubric-badge">{t(`teams.rubric.${r}`)}</span>
           ))}
         </div>
       )}
 
       {upcoming.length === 0 && past.length === 0 ? (
-        <p className="tsp-empty">No shows shared yet.</p>
+        <p className="tsp-empty">{t('teams.noShows')}</p>
       ) : (
         <>
           {upcoming.length > 0 && (
             <div className="tsp-show-group">
-              <span className="tsp-show-group-label">Upcoming</span>
+              <span className="tsp-show-group-label">{t('shows.tab.upcoming')}</span>
               {upcoming.map((s) => (
                 <TeamShowRow key={s.id} show={s} visibleRubrics={visibleRubrics} />
               ))}
@@ -122,7 +117,7 @@ function TeamArtistSection({ artistName, visibleRubrics, shows, role }) {
           )}
           {past.length > 0 && (
             <div className="tsp-show-group">
-              <span className="tsp-show-group-label">Past</span>
+              <span className="tsp-show-group-label">{t('shows.tab.past')}</span>
               {past.slice(0, 5).map((s) => (
                 <TeamShowRow key={s.id} show={s} visibleRubrics={visibleRubrics} />
               ))}
@@ -136,6 +131,7 @@ function TeamArtistSection({ artistName, visibleRubrics, shows, role }) {
 
 // ── Pending join requests banner ──────────────────────────────────────────
 function PendingInvitations({ onAccepted }) {
+  const { t, tx } = useT();
   const [requests, setRequests] = useState([]);
   const [busy,     setBusy]     = useState({});
 
@@ -165,26 +161,26 @@ function PendingInvitations({ onAccepted }) {
       marginBottom: 28,
     }}>
       <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>
-        Team invitation{requests.length > 1 ? 's' : ''} waiting
+        {t(requests.length === 1 ? 'teams.invites.one' : 'teams.invites.many')}
       </p>
       {requests.map((r) => (
         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
           <p style={{ fontSize: 13, flex: 1 }}>
-            <strong>{r.fromUsername || 'Admin'}</strong> invited you to join their team.
+            {tx('teams.invited', { user: r.fromUsername || t('teams.admin') })}
           </p>
           <button
             className="btn-primary btn-sm"
             disabled={!!busy[r.id]}
             onClick={() => respond(r.id, 'accept')}
           >
-            Accept
+            {t('teams.accept')}
           </button>
           <button
             className="btn-secondary btn-sm"
             disabled={!!busy[r.id]}
             onClick={() => respond(r.id, 'decline')}
           >
-            Decline
+            {t('teams.decline')}
           </button>
         </div>
       ))}
@@ -194,6 +190,7 @@ function PendingInvitations({ onAccepted }) {
 
 // ── Main Teams page ───────────────────────────────────────────────────────
 function TeamsPage() {
+  const { t } = useT();
   const [teams,   setTeams]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
@@ -202,7 +199,7 @@ function TeamsPage() {
     fetch('/api/teams')
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data) => { setTeams(data); setLoading(false); })
-      .catch(() => { setError('Could not load teams data.'); setLoading(false); });
+      .catch(() => { setError(t('teams.loadError')); setLoading(false); });
   };
 
   useEffect(() => { loadTeams(); }, []);
@@ -210,12 +207,12 @@ function TeamsPage() {
   return (
     <div>
       <PageBar
-        title="Teams"
+        title={t('app.teams')}
         accentColor="var(--orange)"
         count={teams.length}
-        countLabel="groups"
+        countLabel={t('teams.groups')}
         metrics={[
-          { value: teams.length, label: 'Total' },
+          { value: teams.length, label: t('crew.total') },
         ]}
       />
 
@@ -223,14 +220,14 @@ function TeamsPage() {
       <PendingInvitations onAccepted={loadTeams} />
 
       {loading ? (
-        <div className="team-loading">Loading…</div>
+        <div className="team-loading">{t('teams.loading')}</div>
       ) : error ? (
         <p className="tsp-empty">{error}</p>
       ) : teams.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon" aria-hidden="true" />
-          <p>You are not in any groups yet.</p>
-          <p className="empty-sub">Ask your admin to add you to a group and share content with you.</p>
+          <p>{t('teams.empty')}</p>
+          <p className="empty-sub">{t('teams.emptyHint')}</p>
         </div>
       ) : (
         <div className="tsp-teams-list">
@@ -248,7 +245,7 @@ function TeamsPage() {
                   />
                 ))
               ) : (
-                <p className="tsp-empty">No artists shared with this group yet.</p>
+                <p className="tsp-empty">{t('teams.noArtists')}</p>
               )}
             </div>
           ))}

@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useT } from '../i18n';
 
 /* ── Artist categories (matches design handoff data model) ──────────────── */
-const ARTISTS = {
-  assaf:   { id: 'assaf',   name: 'Assaf Amdursky', color: 'var(--accent)', bg: 'var(--accent-soft)' },
-  hila:    { id: 'hila',    name: 'Hila Ruach',     color: 'var(--orange)', bg: 'var(--orange-bg)' },
-  general: { id: 'general', name: 'General',        color: 'var(--text-2)', bg: 'var(--surface-sunk)' },
+// Artist names are data, not interface copy: they render identically in both
+// language modes. Only the catch-all 'general' bucket carries a translated label.
+const ARTISTS = {  // i18n-ignore
+    assaf:   { id: 'assaf',   name: 'Assaf Amdursky', color: 'var(--accent)', bg: 'var(--accent-soft)' },  // i18n-ignore
+    hila:    { id: 'hila',    name: 'Hila Ruach',     color: 'var(--orange)', bg: 'var(--orange-bg)' },  // i18n-ignore
+    general: { id: 'general', nameKey: 'tlog.artist.general', color: 'var(--text-2)', bg: 'var(--surface-sunk)' },
 };
 
 /* hours → tidy display string (decimal, trimmed) */
@@ -28,9 +31,10 @@ function ddmmToIso(ddmm) {
 
 /* ── Artist tag inside a grid row ───────────────────────────────────────── */
 function ArtistTag({ artist }) {
+  const { t } = useT();
   const a = ARTISTS[artist] || ARTISTS.general;
   if (artist === 'general') {
-    return <span className="tlog-tag tlog-tag--general">General</span>;
+    return <span className="tlog-tag tlog-tag--general">{t('tlog.artist.general')}</span>;
   }
   return (
     <span className="tlog-tag" style={{ background: a.bg, color: a.color }}>
@@ -42,12 +46,13 @@ function ArtistTag({ artist }) {
 
 /* ── Billed checkbox ────────────────────────────────────────────────────── */
 function BilledCheck({ on, onClick }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={on ? 'Billed' : 'Mark as billed'}
-      title={on ? 'Billed — click to unmark' : 'Unbilled — click to mark billed'}
+      aria-label={on ? t('tlog.billed.on') : t('tlog.billed.mark')}
+      title={on ? t('tlog.billed.onHint') : t('tlog.billed.offHint')}
       className={`tlog-check${on ? ' on' : ''}`}
     >
       {on && (
@@ -61,12 +66,13 @@ function BilledCheck({ on, onClick }) {
 
 /* ── Edit (pencil) button ───────────────────────────────────────────────── */
 function EditButton({ onClick }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Edit session"
-      title="Edit session"
+      aria-label={t('tlog.edit')}
+      title={t('tlog.edit')}
       className="tlog-edit-btn"
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -100,6 +106,7 @@ function TimeRow({ e, last, onToggle, onEdit }) {
 
 /* ── Add / Edit Time form (modal) ───────────────────────────────────────── */
 function TimeModal({ entry, onClose, onSave }) {
+  const { t } = useT();
   const editing = !!entry;
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate]     = useState(editing ? ddmmToIso(entry.date) : today);
@@ -112,15 +119,15 @@ function TimeModal({ entry, onClose, onSave }) {
   const submit = async (ev) => {
     ev.preventDefault();
     const h = parseFloat(hours);
-    if (!desc.trim())   { setErr('Description is required.'); return; }
-    if (!(h > 0))       { setErr('Hours must be greater than 0.'); return; }
+    if (!desc.trim())   { setErr(t('tlog.err.desc')); return; }
+    if (!(h > 0))       { setErr(t('tlog.err.hours')); return; }
     setSaving(true); setErr('');
     try {
       // Preserve the billed flag when editing; new entries start unbilled.
       await onSave({ date: isoToDDMM(date), artist, desc: desc.trim(), hours: h, billed: editing ? entry.billed : false });
       onClose();
     } catch (e) {
-      setErr(e.message || 'Could not save the session.');
+      setErr(e.message || t('tlog.err.save'));
       setSaving(false);
     }
   };
@@ -128,46 +135,46 @@ function TimeModal({ entry, onClose, onSave }) {
   return (
     <div className="tlog-modal-backdrop" onClick={onClose}>
       <div className="tlog-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="tlog-modal-title">{editing ? 'Edit Time' : 'Add Time'}<span className="tlog-period">.</span></h2>
+        <h2 className="tlog-modal-title">{editing ? t('tlog.modal.edit') : t('tlog.modal.add')}<span className="tlog-period">.</span></h2>
         <form onSubmit={submit} className="tlog-form">
           <label className="tlog-field">
-            <span className="tlog-field-label">Date</span>
+            <span className="tlog-field-label">{t('tlog.col.date')}</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </label>
           <label className="tlog-field">
-            <span className="tlog-field-label">Artist</span>
+            <span className="tlog-field-label">{t('tlog.col.artist')}</span>
             <select value={artist} onChange={(e) => setArtist(e.target.value)}>
-              <option value="assaf">Assaf Amdursky</option>
-              <option value="hila">Hila Ruach</option>
-              <option value="general">General</option>
+              <option value="assaf">Assaf Amdursky</option>  {/* i18n-ignore — artist name is data */}
+              <option value="hila">Hila Ruach</option>  {/* i18n-ignore — artist name is data */}
+              <option value="general">{t('tlog.artist.general')}</option>
             </select>
           </label>
           <label className="tlog-field">
-            <span className="tlog-field-label">Description</span>
+            <span className="tlog-field-label">{t('tlog.col.desc')}</span>
             <input
               type="text"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="What did you work on?"
+              placeholder={t('tlog.ph.desc')}
               autoFocus
             />
           </label>
           <label className="tlog-field">
-            <span className="tlog-field-label">Hours</span>
+            <span className="tlog-field-label">{t('tlog.col.hours')}</span>
             <input
               type="number"
               step="0.25"
               min="0"
               value={hours}
               onChange={(e) => setHours(e.target.value)}
-              placeholder="e.g. 2.5"
+              placeholder={t('tlog.ph.hours')}
             />
           </label>
           {err && <p className="tlog-form-err">{err}</p>}
           <div className="tlog-form-actions">
-            <button type="button" className="btn secondary sz-md" onClick={onClose} disabled={saving}>Cancel</button>
+            <button type="button" className="btn secondary sz-md" onClick={onClose} disabled={saving}>{t('tlog.cancel')}</button>
             <button type="submit" className="btn primary sz-md" disabled={saving}>
-              {saving ? 'Saving…' : (editing ? 'Save Changes' : 'Add Time')}
+              {saving ? t('tlog.saving') : (editing ? t('tlog.saveChanges') : t('tlog.modal.add'))}
             </button>
           </div>
         </form>
@@ -178,6 +185,7 @@ function TimeModal({ entry, onClose, onSave }) {
 
 /* ── Main page ──────────────────────────────────────────────────────────── */
 export default function TimeLog({ onBack }) {
+  const { t, tx, lang } = useT();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState('all');
@@ -226,7 +234,7 @@ export default function TimeLog({ onBack }) {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Could not save the session.');
+      throw new Error(body.error || t('tlog.err.save'));
     }
     const created = await res.json();
     setEntries((es) => [...es, created]);
@@ -241,7 +249,7 @@ export default function TimeLog({ onBack }) {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Could not save the changes.');
+      throw new Error(body.error || t('tlog.err.saveChanges'));
     }
     const updated = await res.json();
     setEntries((es) => es.map((e) => (e.id === id ? updated : e)));
@@ -260,18 +268,20 @@ export default function TimeLog({ onBack }) {
   const unbilledCount = entries.filter((e) => !e.billed).length;
   const totalShown    = visible.reduce((s, e) => s + e.hours, 0);
 
-  const monthName = new Date().toLocaleDateString('en-GB', { month: 'long' });
+  // Follows the interface language. This was hardcoded to 'en-GB', so the month
+  // stayed English even with the rest of the page in Hebrew.
+  const monthName = new Date().toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { month: 'long' });
 
   // Generate Billing Report → CSV of unbilled sessions
   const generateBillingReport = useCallback(() => {
     const rows = entries.filter((e) => !e.billed);
     if (!rows.length) return;
-    const head = ['Date', 'Artist', 'Description', 'Hours'];
+    const head = [t('tlog.col.date'), t('tlog.col.artist'), t('tlog.col.desc'), t('tlog.col.hours')];
     const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
     const lines = [
       head.join(','),
       ...rows.map((e) => [e.date, (ARTISTS[e.artist] || ARTISTS.general).name, e.desc, fmtHours(e.hours)].map(esc).join(',')),
-      esc('TOTAL') + ',,,' + esc(fmtHours(rows.reduce((s, e) => s + e.hours, 0))),
+      esc(t('tlog.csv.total')) + ',,,' + esc(fmtHours(rows.reduce((s, e) => s + e.hours, 0))),
     ];
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -286,28 +296,28 @@ export default function TimeLog({ onBack }) {
     <div className="tlog">
       {/* ── Back to home ── */}
       {onBack && (
-        <button className="tlog-back" onClick={onBack} aria-label="Back to Today">
-          <span className="mirror" aria-hidden="true">←</span> Today
+        <button className="tlog-back" onClick={onBack} aria-label={t('tlog.back')}>
+          <span className="mirror" aria-hidden="true">←</span> {t('tlog.back')}
         </button>
       )}
 
       {/* ── Page title + hero stats ── */}
       <div className="tlog-title-row">
-        <h1 className="tlog-title">Time Log<span className="tlog-period">.</span></h1>
+        <h1 className="tlog-title">{t('tlog.title')}<span className="tlog-period">.</span></h1>
         <div className="tlog-stats">
           <div className="tlog-stat">
-            <span className="tlog-stat-eyebrow tlog-stat-eyebrow--blue">Unbilled · {monthName}</span>
+            <span className="tlog-stat-eyebrow tlog-stat-eyebrow--blue">{tx('tlog.stat.unbilled', { month: monthName })}</span>
             <div className="tlog-stat-row">
               <span className="tlog-stat-num tlog-stat-num--blue">{fmtHours(unbilled)}</span>
-              <span className="tlog-stat-unit">hrs</span>
+              <span className="tlog-stat-unit">{t('tlog.stat.hrs')}</span>
             </div>
           </div>
           <span className="tlog-stat-divider" />
           <div className="tlog-stat">
-            <span className="tlog-stat-eyebrow">Logged</span>
+            <span className="tlog-stat-eyebrow">{t('tlog.stat.logged')}</span>
             <div className="tlog-stat-row">
               <span className="tlog-stat-num">{entries.length}</span>
-              <span className="tlog-stat-unit tlog-stat-unit--word">sessions</span>
+              <span className="tlog-stat-unit tlog-stat-unit--word">{t('tlog.stat.sessions')}</span>
             </div>
           </div>
         </div>
@@ -315,12 +325,12 @@ export default function TimeLog({ onBack }) {
 
       {/* ── Filter pills (carry per-artist hours) ── */}
       <div className="tlog-filter">
-        <span className="tlog-filter-eyebrow">Filter</span>
+        <span className="tlog-filter-eyebrow">{t('tlog.filter')}</span>
         {[
-          { id: 'all',     label: 'All artists',      dot: null,            hours: totalAll },
-          { id: 'assaf',   label: 'Assaf Amdursky',   dot: 'var(--accent)', hours: assafM },
-          { id: 'hila',    label: 'Hila Ruach',       dot: 'var(--orange)', hours: hilaM },
-          { id: 'general', label: 'General', dot: 'var(--text-2)', hours: generalM },
+          { id: 'all',     labelKey: 'tlog.filter.all',     dot: null,            hours: totalAll },
+          { id: 'assaf',   label: 'Assaf Amdursky',   dot: 'var(--accent)', hours: assafM },  // i18n-ignore
+          { id: 'hila',    label: 'Hila Ruach',       dot: 'var(--orange)', hours: hilaM },  // i18n-ignore
+          { id: 'general', labelKey: 'tlog.artist.general', dot: 'var(--text-2)', hours: generalM },
         ].map((p) => {
           const on = filter === p.id;
           return (
@@ -330,7 +340,7 @@ export default function TimeLog({ onBack }) {
               onClick={() => setFilter(p.id)}
             >
               {p.dot && <span className="tlog-pill-dot" style={{ background: p.dot }} />}
-              {p.label}
+              {p.labelKey ? t(p.labelKey) : p.label}
               <span className="tlog-pill-hours">
                 <span className="tlog-pill-hours-num ltr">{fmtHours(p.hours)}</span>
                 <span className="tlog-pill-hours-unit">h</span>
@@ -343,22 +353,22 @@ export default function TimeLog({ onBack }) {
       {/* ── Action bar ── */}
       <div className="tlog-actionbar">
         <div className="tlog-actionbar-left">
-          <span className="tlog-actionbar-title">Sessions</span>
+          <span className="tlog-actionbar-title">{t('tlog.sessions')}</span>
           <span className="tlog-actionbar-badge">{visible.length}</span>
-          <span className="tlog-actionbar-sub">· {unbilledCount} unbilled</span>
+          <span className="tlog-actionbar-sub">{tx('tlog.unbilledCount', { count: unbilledCount })}</span>
         </div>
         <div className="tlog-actionbar-right">
           <button
             className="tlog-ghost-btn"
             onClick={generateBillingReport}
             disabled={unbilledCount === 0}
-            title={unbilledCount === 0 ? 'No unbilled sessions' : 'Download a CSV of unbilled sessions'}
+            title={unbilledCount === 0 ? t('tlog.report.none') : t('tlog.report.hint')}
           >
-            Generate Billing Report
+            {t('tlog.report')}
             <span className="tlog-ghost-arrow" aria-hidden="true">↧</span>
           </button>
           <button className="tlog-add-btn" onClick={() => setAdding(true)}>
-            <span className="tlog-add-plus" aria-hidden="true">+</span> Add Time
+            <span className="tlog-add-plus" aria-hidden="true">+</span> {t('tlog.add')}
           </button>
         </div>
       </div>
@@ -366,17 +376,17 @@ export default function TimeLog({ onBack }) {
       {/* ── Time grid ── */}
       <div className="tlog-grid">
         <div className="tlog-grid-head">
-          <span className="tlog-grid-head-label">Date</span>
-          <span className="tlog-grid-head-label">Artist</span>
-          <span className="tlog-grid-head-label">Description</span>
-          <span className="tlog-grid-head-label tlog-right">Hours</span>
-          <span className="tlog-grid-head-label tlog-center">Bld</span>
+          <span className="tlog-grid-head-label">{t('tlog.col.date')}</span>
+          <span className="tlog-grid-head-label">{t('tlog.col.artist')}</span>
+          <span className="tlog-grid-head-label">{t('tlog.col.desc')}</span>
+          <span className="tlog-grid-head-label tlog-right">{t('tlog.col.hours')}</span>
+          <span className="tlog-grid-head-label tlog-center">{t('tlog.col.billed')}</span>
           <span className="tlog-grid-head-label" aria-hidden="true" />
         </div>
         {loading ? (
-          <div className="tlog-empty">Loading sessions…</div>
+          <div className="tlog-empty">{t('tlog.loading')}</div>
         ) : visible.length === 0 ? (
-          <div className="tlog-empty">No sessions for this filter.</div>
+          <div className="tlog-empty">{t('tlog.empty')}</div>
         ) : (
           visible.map((e, i) => (
             <TimeRow key={e.id} e={e} last={i === visible.length - 1} onToggle={toggle} onEdit={setEditing} />
@@ -386,7 +396,7 @@ export default function TimeLog({ onBack }) {
 
       {/* ── Footer total ── */}
       <div className="tlog-footer">
-        <span className="tlog-footer-label">Total shown</span>
+        <span className="tlog-footer-label">{t('tlog.totalShown')}</span>
         <span className="tlog-footer-num">
           {fmtHours(totalShown)}<span className="tlog-footer-unit">h</span>
         </span>

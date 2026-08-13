@@ -24,6 +24,7 @@ const {
   markTotpUsed,
 } = require('./auth');
 const loginPage  = require('./login-page');
+const { normalizeUserAccess, decideArtistAccess } = require('./utils/artistAccess');
 
 // Client IP for login throttling. Railway terminates TLS upstream, so the real
 // address is in x-forwarded-for; fall back to the socket for local runs.
@@ -37,6 +38,7 @@ const invitePage = require('./invite-page');
 const artistsRouter       = require('./routes/artists');
 const clientsRouter       = require('./routes/clients');
 const projectsRouter      = require('./routes/projects');
+const productionProjectsRouter = require('./routes/production-projects');
 const assistantsRouter    = require('./routes/assistants');
 const receiptsRouter      = require('./routes/receipts');
 const showsRouterModule   = require('./routes/shows');
@@ -153,50 +155,18 @@ function saveTeams(teams) {
   writeJsonAtomicSync(TEAMS_FILE, teams);
 }
 
-/**
- * Normalize userArtistAccess for one user.
- * Handles both old array format `[artistId, ...]` and new per-artist object format
- * `{ artistId: role | { role } }`.
- * Returns: { [artistId]: { role, visibleRubrics, editRubrics } }
- */
-function normalizeUserAccess(settings, userId) {
-  const raw = (settings.userArtistAccess || {})[userId];
-  if (!raw) return {};
-  const perms       = (settings.userPermissions || {})[userId] || {};
-  const visRubrics  = perms.viewRubrics  || settings.visibleRubrics || [];
-  const editRubrics = perms.editRubrics  || [];
-  if (Array.isArray(raw)) {
-    return Object.fromEntries(
-      raw.map((id) => [id, { role: 'viewer', visibleRubrics: visRubrics, editRubrics }])
-    );
-  }
-  return Object.fromEntries(
-    Object.entries(raw).map(([artistId, roleInfo]) => {
-      const role = typeof roleInfo === 'string' ? roleInfo : (roleInfo?.role || 'viewer');
-      return [artistId, { role, visibleRubrics: visRubrics, editRubrics }];
-    })
-  );
-}
-
 function getPermittedArtistIds(settings, userId) {
   return Object.keys(normalizeUserAccess(settings, userId));
 }
 
-const app  = express();
-const PORT = process.env.PORT || 3001;
+// Build the Express app without opening a port or starting background work.
+// Keeping construction separate makes the API safe to import in tests and lets
+// the production entrypoint remain the single place that starts side effects.
+function createApp() {
+  const app  = express();
 
 // ── Auth config ──────────────────────────────────────────────────────────────
-const AUTH_USER     = process.env.AUTH_USER || 'admin';
-const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
-
-if (!AUTH_PASSWORD) {
-  console.error('[auth] AUTH_PASSWORD is not set. Copy server/.env.example to server/.env and set a real password.');
-  process.exit(1);
-}
-if (AUTH_PASSWORD === 'change-me-please' && process.env.NODE_ENV === 'production') {
-  console.error('[auth] AUTH_PASSWORD is still the example default — refuse to boot in production.');
-  process.exit(1);
-}
+  const AUTH_USER     = process.env.AUTH_USER || 'admin';
 
 app.set('trust proxy', 1);
 app.use(cors({
@@ -582,20 +552,20 @@ function isSafeArtistId(id) {
 //   granted → the admin shared it via team settings; they read the ADMIN's data
 //             as a limited team member (read-only unless given edit rubrics).
 async function resolveArtistAccess(req, artistId) {
+  let own = [];
   try {
-    const own = await readJsonCached(
+    own = await readJsonCached(
       udCacheKey(req.userId, 'artists'), udDataPath(req.userId, 'artists.json'), []
     );
-    if (own.some((a) => a?.id === artistId)) return { allowed: true, owned: true };
   } catch { /* no own artists file */ }
 
+  let sharedAccess = {};
   if (req.userRole !== 'admin') {
     try {
-      const access = normalizeUserAccess(loadTeamSettings(), req.userId)[artistId];
-      if (access) return { allowed: true, owned: false, access };
+      sharedAccess = normalizeUserAccess(loadTeamSettings(), req.userId);
     } catch { /* no team grants */ }
   }
-  return { allowed: false };
+  return decideArtistAccess({ artistId, ownedArtists: own, sharedAccess });
 }
 
 app.use(async (req, res, next) => {
@@ -619,6 +589,11 @@ app.use(async (req, res, next) => {
     console.warn(`[security] user ${req.userId} denied access to artist ${artistId}`);
     return res.status(403).json({ error: 'No access to this artist' });
   }
+
+  // Keep the authenticated identity available after req.userId becomes the
+  // scoped storage identity. Domain audit records must name the actor, not the
+  // admin-owned file path used for a shared workspace.
+  req.authUserId = req.userId;
 
   if (verdict.owned) {
     req.userId = artistScopedId(req.userId, artistId);   // their own artist, own data
@@ -649,11 +624,17 @@ app.get('/api/me', (req, res) => {
   let displayName   = null;
   let timezone      = null;
   let avatarUrl     = null;
+  // null means "never chosen" — the client keeps its local fallback in that
+  // case instead of being forced to a default the user did not pick.
+  let lang          = null;
+  let theme         = null;
 
   if (req.userRole === 'admin') {
     const p = loadAdminProfile();
     displayName = p.displayName || null;
     timezone    = p.timezone    || null;
+    lang        = p.lang        || null;
+    theme       = p.theme       || null;
     if (p.avatarExt) avatarUrl = `/api/me/avatar`;
   } else {
     const users = loadUsers();
@@ -661,24 +642,42 @@ app.get('/api/me', (req, res) => {
     workspaceRole = user?.workspaceRole || 'producer';
     displayName   = user?.displayName   || null;
     timezone      = user?.timezone      || null;
+    lang          = user?.lang          || null;
+    theme         = user?.theme         || null;
     if (user?.avatarExt) avatarUrl = `/api/me/avatar`;
   }
 
   res.json({ userId: req.userId, username: req.username, role: req.userRole,
-             workspaceRole, displayName, timezone, avatarUrl });
+             workspaceRole, displayName, timezone, avatarUrl, lang, theme });
 });
 
-// ── User: update own profile (workspaceRole, displayName, timezone) ───────────
+// ── User: update own profile (workspaceRole, displayName, timezone, lang, theme)
+// `lang` and `theme` are rejected outright when invalid rather than coerced —
+// an unrecognised language silently persisted would leave the account in a
+// state no client can render.
+const LANGS  = ['en', 'he'];
+const THEMES = ['light', 'dark'];
+
 app.patch('/api/me', (req, res) => {
-  const { workspaceRole, displayName, timezone } = req.body || {};
+  const { workspaceRole, displayName, timezone, lang, theme } = req.body || {};
+
+  if (lang  !== undefined && !LANGS.includes(lang)) {
+    return res.status(400).json({ error: `lang must be one of: ${LANGS.join(', ')}` });
+  }
+  if (theme !== undefined && !THEMES.includes(theme)) {
+    return res.status(400).json({ error: `theme must be one of: ${THEMES.join(', ')}` });
+  }
 
   if (req.userRole === 'admin') {
     const p = loadAdminProfile();
     if (displayName !== undefined) p.displayName = String(displayName).trim().slice(0, 100);
     if (timezone    !== undefined) p.timezone    = String(timezone).slice(0, 60);
+    if (lang        !== undefined) p.lang        = lang;
+    if (theme       !== undefined) p.theme       = theme;
     saveAdminProfile(p);
     return res.json({ ok: true, workspaceRole: 'producer',
-                      displayName: p.displayName || null, timezone: p.timezone || null });
+                      displayName: p.displayName || null, timezone: p.timezone || null,
+                      lang: p.lang || null, theme: p.theme || null });
   }
 
   const users = loadUsers();
@@ -690,10 +689,13 @@ app.patch('/api/me', (req, res) => {
   }
   if (displayName !== undefined) user.displayName = String(displayName).trim().slice(0, 100);
   if (timezone    !== undefined) user.timezone    = String(timezone).slice(0, 60);
+  if (lang        !== undefined) user.lang        = lang;
+  if (theme       !== undefined) user.theme       = theme;
 
   saveUsers(users);
   res.json({ ok: true, workspaceRole: user.workspaceRole || 'producer',
-             displayName: user.displayName || null, timezone: user.timezone || null });
+             displayName: user.displayName || null, timezone: user.timezone || null,
+             lang: user.lang || null, theme: user.theme || null });
 });
 
 // ── User: avatar upload / serve ───────────────────────────────────────────────
@@ -1736,12 +1738,16 @@ app.patch('/api/tasks/assigned/:artistId/:id', async (req, res) => {
   const accessMap = normalizeUserAccess(settings, req.userId);
   if (!accessMap[artistId]) return res.status(403).json({ error: 'No access to this artist' });
 
+  const { validateAssignedTaskCompletion } = require('./utils/taskAuthorization');
+  const completion = validateAssignedTaskCompletion(req.body);
+  if (!completion.ok) return res.status(400).json({ error: completion.error });
+
   const uid   = artistScopedId('admin', artistId);
   const tasks = await readJsonCached(udCacheKey(uid, 'tasks'), udDataPath(uid, 'tasks.json'), []);
   const idx   = tasks.findIndex((t) => t.id === id && t.assigneeId === req.userId);
   if (idx === -1) return res.status(404).json({ error: 'Task not found or not assigned to you' });
 
-  const updated = { ...tasks[idx], ...req.body, id: tasks[idx].id };
+  const updated = { ...tasks[idx], completed: completion.completed };
   tasks[idx] = updated;
   await writeJsonAndCache(udCacheKey(uid, 'tasks'), udDataPath(uid, 'tasks.json'), tasks);
   res.json(updated);
@@ -1751,6 +1757,20 @@ app.patch('/api/tasks/assigned/:artistId/:id', async (req, res) => {
 app.get('/api/tasks', async (req, res, next) => {
   if (req.userRole === 'admin') return next(); // admin handled by tasksRouter
   try {
+    const requestedArtistId = req.query.artistId;
+    // A scoped request has already passed the artist-scope middleware. For a
+    // shared member, return only tasks assigned to that authenticated member;
+    // returning the whole owner file here was an information leak.
+    if (requestedArtistId) {
+      if (!req.teamMemberView) return next(); // an owner reading their own workspace
+      const { tasksVisibleToRequester } = require('./utils/taskAuthorization');
+      const scopedTasks = await readJsonCached(
+        udCacheKey(req.userId, 'tasks'), udDataPath(req.userId, 'tasks.json'), []
+      );
+      return res.json(tasksVisibleToRequester(scopedTasks, req)
+        .map((task) => ({ ...task, assignedToMe: true, fromArtistId: requestedArtistId })));
+    }
+
     const ownTasks  = await readJsonCached(
       udCacheKey(req.userId, 'tasks'),
       udDataPath(req.userId, 'tasks.json'),
@@ -1779,6 +1799,7 @@ app.get('/api/tasks', async (req, res, next) => {
 // ── API routers ──────────────────────────────────────────────────────────────
 app.use('/api/clients',        clientsRouter);
 app.use('/api/projects',       projectsRouter);
+app.use('/api/production-projects', productionProjectsRouter);
 app.use('/api/assistants',     assistantsRouter);
 app.use('/api/receipts',       receiptsRouter);
 app.use('/api/shows',          showsRouter);
@@ -1832,7 +1853,8 @@ async function autoImport(xlsxPath) {
   }
 }
 
-if (fs.existsSync(DEFAULT_XLSX)) {
+function startFileWatcher() {
+  if (!fs.existsSync(DEFAULT_XLSX)) return;
   chokidar
     .watch(DEFAULT_XLSX, { ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 1500 } })
     .on('change', (p) => {
@@ -1841,15 +1863,6 @@ if (fs.existsSync(DEFAULT_XLSX)) {
     });
   console.log(`[import] Watching for changes: ${path.basename(DEFAULT_XLSX)}`);
 }
-
-// ── Graceful shutdown ─────────────────────────────────────────────────────────
-async function gracefulExit(signal) {
-  console.log(`\n[server] ${signal} received — shutting down…`);
-  await shutdownPuppeteer().catch(() => {});
-  process.exit(0);
-}
-process.on('SIGTERM', () => gracefulExit('SIGTERM'));
-process.on('SIGINT',  () => gracefulExit('SIGINT'));
 
 // ── Startup migration: one-time single→multi-tenant backfill + leak cleanup ───
 // The legacy single-tenant data lives in the root DATA_DIR/*.json files. When
@@ -1945,7 +1958,47 @@ async function migrateRootDataToArtists() {
   }
 }
 
-app.listen(PORT, () => {
+  app.locals.startBackgroundServices = () => {
+    migrateRootDataToArtists(); // fire-and-forget — non-blocking
+    startFileWatcher();
+    startGmailPolling();
+    startAutomationsCron();    // daily 09:00 early-coordination alerts
+    startNotificationCron();   // every 15 min — task reminders, digest, overdue
+    require('./backup').startSchedule();
+  };
+
+  return app;
+}
+
+function validateStartupAuth() {
+  const password = process.env.AUTH_PASSWORD;
+  if (!password) {
+    throw new Error('AUTH_PASSWORD is not set. Copy server/.env.example to server/.env and set a real password.');
+  }
+  if (password === 'change-me-please' && process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_PASSWORD is still the example default — refusing to boot in production.');
+  }
+}
+
+function startServer() {
+  try {
+    validateStartupAuth();
+  } catch (err) {
+    console.error(`[auth] ${err.message}`);
+    process.exit(1);
+  }
+
+  const app = createApp();
+  const PORT = process.env.PORT || 3001;
+  const AUTH_USER = process.env.AUTH_USER || 'admin';
+  async function gracefulExit(signal) {
+    console.log(`\n[server] ${signal} received — shutting down…`);
+    await shutdownPuppeteer().catch(() => {});
+    process.exit(0);
+  }
+  process.on('SIGTERM', () => gracefulExit('SIGTERM'));
+  process.on('SIGINT',  () => gracefulExit('SIGINT'));
+  return app.listen(PORT, () => {
   const networkIp = Object.values(os.networkInterfaces())
     .flat()
     .find((i) => i.family === 'IPv4' && !i.internal)?.address || 'unknown';
@@ -1976,9 +2029,10 @@ app.listen(PORT, () => {
   } catch (e) {
     console.log('[storage] read error:', e.message);
   }
-  migrateRootDataToArtists(); // fire-and-forget — non-blocking
-  startGmailPolling();
-  startAutomationsCron();    // daily 09:00 early-coordination alerts
-  startNotificationCron();   // every 15 min — task reminders, digest, overdue
-  require('./backup').startSchedule();  // daily 03:30 — snapshot DATA_DIR
-});
+    app.locals.startBackgroundServices();
+  });
+}
+
+if (require.main === module) startServer();
+
+module.exports = { createApp, startServer };

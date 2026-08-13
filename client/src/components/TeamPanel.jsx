@@ -6,28 +6,29 @@ import SegmentedControl  from './ui/SegmentedControl';
 import PageBar           from './ui/PageBar';
 import SavedPill, { useSavedPill } from './ui/SavedPill';
 import ErrorBoundary from './ui/ErrorBoundary';
+import { useT } from '../i18n';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const RUBRIC_LABELS = {
-  schedule:  'Schedule',
-  logistics: 'Logistics',
-  technical: 'Technical',
+  schedule:  'team.rubric.schedule',
+  logistics: 'team.rubric.logistics',
+  technical: 'team.rubric.technical',
 };
 const RUBRIC_SUBTITLES = {
-  schedule:  'Arrival times · Soundcheck · Door opening',
-  logistics: 'Travel · Vehicles · Hotels · Catering · Contacts',
-  technical: 'Tech spec · Stages · Setlist · Equipment checklist',
+  schedule:  'team.rubric.scheduleHint',
+  logistics: 'team.rubric.logisticsHint',
+  technical: 'team.rubric.technicalHint',
 };
 const ALL_RUBRICS = ['schedule', 'logistics', 'technical'];
 
 const ARTIST_ROLES = ['viewer', 'producer', 'backliner', 'sound', 'light'];
 
 const ROLE_LABELS = {
-  backliner: 'Backliner',
-  sound:     'Soundman',
-  light:     'Lighting',
-  producer:  'Producer',
-  viewer:    'Viewer',
+  backliner: 'team.role.backliner',
+  sound:     'team.role.sound',
+  light:     'team.role.light',
+  producer:  'team.role.producer',
+  viewer:    'team.role.viewer',
 };
 
 const PALETTE = ['#3852B4','#5E7AC4','#F08D39','#C26C1F','#1F2D6E','#B07729','#8F4F1A','#7A8FE0'];
@@ -40,15 +41,15 @@ function fmtDate(iso) {
   const d = new Date(iso);
   return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
 }
-function fmtRelative(iso) {
-  if (!iso) return 'Never';
+function fmtRelative(iso, t, tx) {
+  if (!iso) return t('team.never');
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 2)  return 'Just now';
-  if (m < 60) return `${m}m ago`;
+  if (m < 2)  return t('team.justNow');
+  if (m < 60) return tx('team.minutesAgo', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return tx('team.hoursAgo', { count: h });
+  return tx('team.daysAgo', { count: Math.floor(h / 24) });
 }
 function fmtShowDate(d) {
   if (!d) return '';
@@ -77,6 +78,7 @@ function toObjectAccess(rawAccess) {
 
 // ── Three-dot dropdown menu ───────────────────────────────────────────────────
 function DotMenu({ onRemove, onBind }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -92,7 +94,7 @@ function DotMenu({ onRemove, onBind }) {
       <button
         className="tm-dots-btn"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-        aria-label="More options"
+        aria-label={t('team.moreOptions')}
       >
         ···
       </button>
@@ -100,11 +102,11 @@ function DotMenu({ onRemove, onBind }) {
         <div className="tm-dots-dropdown">
           {onBind && (
             <button className="tm-dots-item" onClick={() => { onBind(); setOpen(false); }}>
-              Bind to this workspace
+              {t('team.bindWorkspace')}
             </button>
           )}
           <button className="tm-dots-item tm-dots-item--danger" onClick={() => { onRemove(); setOpen(false); }}>
-            Remove from team
+            {t('team.removeMember')}
           </button>
         </div>
       )}
@@ -114,6 +116,7 @@ function DotMenu({ onRemove, onBind }) {
 
 // ── Inline permissions editor (shown directly in the expanded card) ───────────
 function InlinePermissions({ userId, perms, onSave }) {
+  const { t } = useT();
   const [local, setLocal] = useState(perms || { viewRubrics: [], editRubrics: [] });
   const [saving, setSaving] = useState(false);
   const { show: saved, flash } = useSavedPill();
@@ -155,9 +158,9 @@ function InlinePermissions({ userId, perms, onSave }) {
       <div className="tm-perm-matrix">
         {/* Header row — 3-column grid matches data rows */}
         <div className="tm-perm-matrix-head">
-          <span className="tm-perm-matrix-area-col">Area</span>
-          <span className="tm-perm-matrix-cell-col">View</span>
-          <span className="tm-perm-matrix-cell-col">Edit</span>
+          <span className="tm-perm-matrix-area-col">{t('team.area')}</span>
+          <span className="tm-perm-matrix-cell-col">{t('team.view')}</span>
+          <span className="tm-perm-matrix-cell-col">{t('team.edit')}</span>
         </div>
         {/* Data rows */}
         {ALL_RUBRICS.map(rubric => {
@@ -166,25 +169,25 @@ function InlinePermissions({ userId, perms, onSave }) {
           return (
             <div key={rubric} className="tm-perm-matrix-row">
               <div className="tm-perm-matrix-area">
-                <span className="tm-perm-rubric-name">{RUBRIC_LABELS[rubric]}</span>
-                <span className="tm-perm-rubric-sub">{RUBRIC_SUBTITLES[rubric]}</span>
+                <span className="tm-perm-rubric-name">{t(RUBRIC_LABELS[rubric])}</span>
+                <span className="tm-perm-rubric-sub">{t(RUBRIC_SUBTITLES[rubric])}</span>
               </div>
               <button
                 className={`tm-perm-cell${canView ? ' tm-perm-cell--on' : ''}`}
                 onClick={() => toggle('view', rubric, !canView)}
                 aria-pressed={canView}
-                aria-label={`${RUBRIC_LABELS[rubric]} View`}
+                aria-label={t('team.viewRubric')}
               >
-                <span className="tm-perm-cell-lbl">View</span>
+                <span className="tm-perm-cell-lbl">{t('team.view')}</span>
                 {canView && <span className="tm-perm-check">✓</span>}
               </button>
               <button
                 className={`tm-perm-cell${canEdit ? ' tm-perm-cell--on' : ''}`}
                 onClick={() => toggle('edit', rubric, !canEdit)}
                 aria-pressed={canEdit}
-                aria-label={`${RUBRIC_LABELS[rubric]} Edit`}
+                aria-label={t('team.editRubric')}
               >
-                <span className="tm-perm-cell-lbl">Edit</span>
+                <span className="tm-perm-cell-lbl">{t('team.edit')}</span>
                 {canEdit && <span className="tm-perm-check">✓</span>}
               </button>
             </div>
@@ -193,7 +196,7 @@ function InlinePermissions({ userId, perms, onSave }) {
       </div>
       <div className="tm-perm-footer">
         <button className="tm-perm-matrix-save" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       </div>
       <SavedPill show={saved} />
@@ -203,6 +206,7 @@ function InlinePermissions({ userId, perms, onSave }) {
 
 // ── Expandable user details ────────────────────────────────────────────────────
 function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateTask, onToggleTask }) {
+  const { t, tx } = useT();
   // Coerce to arrays: a failed fetch can leave an error object here, and .filter
   // on a non-array throws during render, which blanks the page.
   const showList     = Array.isArray(shows)       ? shows       : [];
@@ -268,13 +272,13 @@ function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateT
   return (
     <div className="tm-expanded" onClick={e => e.stopPropagation()}>
       <div className="tm-expanded-tabs">
-        {[['tasks','Assigned Tasks'],['shows','Upcoming Shows'],['activity','Recent Activity']].map(([key, label]) => (
+        {[['tasks','team.assignedTasks'],['shows','team.upcomingShows'],['activity','team.recentActivity']].map(([key, labelKey]) => (
           <button
             key={key}
             className={`tm-exp-tab${section === key ? ' active' : ''}`}
             onClick={() => setSection(key)}
           >
-            {label}
+            {t(labelKey)}
             {key === 'tasks' && assignedTasks.length > 0 && (
               <span className="tm-exp-badge">{assignedTasks.length}</span>
             )}
@@ -285,7 +289,7 @@ function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateT
       {section === 'tasks' && (
         <div className="tm-exp-section">
           {assignedTasks.length === 0 ? (
-            <p className="tm-exp-empty">No open tasks assigned to {user.username}.</p>
+            <p className="tm-exp-empty">{tx('team.noOpenTasks', { user: user.username })}</p>
           ) : (
             <ul className="tm-task-list">
               {assignedTasks.map(t => (
@@ -314,12 +318,12 @@ function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateT
               </select>
               <input
                 className="tm-task-input"
-                placeholder="New task…"
+                placeholder={t('team.newTask')}
                 value={newTask}
                 onChange={e => setNewTask(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addTask()}
               />
-              <button className="btn-action" onClick={addTask} disabled={!newTask.trim()}>Add</button>
+              <button className="btn-action" onClick={addTask} disabled={!newTask.trim()}>{t('common.add')}</button>
             </div>
           )}
         </div>
@@ -330,8 +334,8 @@ function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateT
           {upcomingShows.length === 0 ? (
             <p className="tm-exp-empty">
               {(user.assignedShowIds || []).length === 0
-                ? `${user.username} is not assigned to any shows yet.`
-                : 'No upcoming shows assigned.'}
+                ? tx('team.noAssignedShows', { user: user.username })
+                : t('team.noUpcomingAssignedShows')}
             </p>
           ) : (
             <ul className="tm-show-list">
@@ -351,13 +355,13 @@ function UserExpanded({ user, shows, tasks, activityLog, onUpdateShow, onCreateT
       {section === 'activity' && (
         <div className="tm-exp-section">
           {userActivity.length === 0 ? (
-            <p className="tm-exp-empty">No activity recorded yet.</p>
+            <p className="tm-exp-empty">{t('team.noActivity')}</p>
           ) : (
             <ul className="tm-activity-list">
               {userActivity.map((e, i) => (
                 <li key={i} className="tm-activity-row">
                   <span className="tm-activity-action">{e.detail || e.action}</span>
-                  <span className="tm-activity-time">{fmtRelative(e.timestamp)}</span>
+                  <span className="tm-activity-time">{fmtRelative(e.timestamp, t, tx)}</span>
                 </li>
               ))}
             </ul>
@@ -374,6 +378,7 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       onDeleteUser, onEditEmail,
                       onSaveAccess, onSavePerms, onUpdateShow,
                       artistId, onBindUser, onCreateTask, onToggleTask }) {
+  const { t, tx } = useT();
 
   const [localPerms,  setLocalPerms]  = useState(userPermissions || {});
   const [expandedId,  setExpandedId]  = useState(null);
@@ -404,13 +409,13 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
   return (
     <div className="team-section">
       <div className="team-members-header">
-        <h3 className="team-section-title">Active Members</h3>
-        <span className="team-member-count">{users.length} member{users.length !== 1 ? 's' : ''}</span>
+        <h3 className="team-section-title">{t('team.activeMembers')}</h3>
+        <span className="team-member-count">{tx('team.membersCount', { count: users.length })}</span>
       </div>
 
       <div className="tm-member-list">
           {users.length === 0 && unboundUsers.length === 0 && (
-            <p className="team-empty">No team members yet. Use the Invite tab to add someone.</p>
+            <p className="team-empty">{t('team.emptyMembers')}</p>
           )}
           {users.map(u => {
             const isExpanded = expandedId === u.id;
@@ -442,7 +447,7 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                         <button className="btn-action" onClick={async () => {
                           await onEditEmail(u.id, emailDraft);
                           setEmailEditing(null);
-                        }}>Save</button>
+                        }}>{t('common.save')}</button>
                         <button className="btn-ghost" onClick={() => setEmailEditing(null)}>✕</button>
                       </div>
                     ) : (
@@ -453,20 +458,20 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                            free to wrap. */
                         dir="ltr"
                         className={`tm-member-email${u.email ? ' ltr' : ' empty'}`}
-                        title="Click to edit email"
+                        title={t('team.editEmail')}
                         onClick={e => { e.stopPropagation(); setEmailEditing(u.id); setEmailDraft(u.email || ''); }}
                       >
-                        {u.email || 'No email — click to add'}
+                        {u.email || t('team.noEmail')}
                       </span>
                     )}
                   </div>
 
                   <span className={`tm-role-badge tm-role--${u.workspaceRole || 'producer'}`}>
-                    {ROLE_LABELS[u.workspaceRole] || u.workspaceRole || 'Producer'}
+                    {ROLE_LABELS[u.workspaceRole] ? t(ROLE_LABELS[u.workspaceRole]) : (u.workspaceRole || t('team.role.producer'))}
                   </span>
 
                   <span className="tm-last-seen" title={fmtDate(lastSeen[u.id])}>
-                    {fmtRelative(lastSeen[u.id])}
+                    {fmtRelative(lastSeen[u.id], t, tx)}
                   </span>
 
                   <DotMenu
@@ -483,8 +488,8 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                     <div className="tm-expanded-settings" onClick={e => e.stopPropagation()}>
                       {/* Content permissions */}
                       <div className="tm-settings-col">
-                        <span className="tm-settings-col-label">Content Permissions</span>
-                        <ErrorBoundary label="Content permissions">
+                        <span className="tm-settings-col-label">{t('team.contentPermissions')}</span>
+                        <ErrorBoundary label={t('team.contentPermissions')}>
                           <InlinePermissions
                             userId={u.id}
                             perms={localPerms[u.id] || { viewRubrics: [], editRubrics: [] }}
@@ -494,7 +499,7 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       </div>
                     </div>
 
-                    <ErrorBoundary label="Member details">
+                    <ErrorBoundary label={t('team.memberDetails')}>
                       <UserExpanded
                         user={u}
                         shows={shows}
@@ -515,8 +520,8 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
       {artistId && unboundUsers.length > 0 && (
         <div className="team-unbound-section">
           <div className="team-members-header" style={{ marginTop: 24 }}>
-            <h3 className="team-section-title">Unassigned Members</h3>
-            <span className="team-member-count">{unboundUsers.length} — not linked to any workspace</span>
+            <h3 className="team-section-title">{t('team.unassignedMembers')}</h3>
+            <span className="team-member-count">{tx('team.notLinkedCount', { count: unboundUsers.length })}</span>
           </div>
           <div className="tm-member-list">
             {unboundUsers.map(u => (
@@ -527,10 +532,10 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                   </div>
                   <div className="tm-member-info">
                     <span className="tm-member-name">{u.username}</span>
-                    <span className="tm-member-email empty">Not assigned to any workspace</span>
+                    <span className="tm-member-email empty">{t('team.notAssignedWorkspace')}</span>
                   </div>
                   <span className={`tm-role-badge tm-role--${u.workspaceRole || 'producer'}`}>
-                    {ROLE_LABELS[u.workspaceRole] || 'Producer'}
+                    {ROLE_LABELS[u.workspaceRole] ? t(ROLE_LABELS[u.workspaceRole]) : t('team.role.producer')}
                   </span>
                   {onBindUser && (
                     <button
@@ -538,7 +543,7 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
                       style={{ fontSize: '0.72rem', padding: '4px 10px' }}
                       onClick={() => onBindUser(u.id, artistId)}
                     >
-                      Bind to this workspace
+                      {t('team.bindWorkspace')}
                     </button>
                   )}
                 </div>
@@ -555,6 +560,7 @@ function TabMembers({ users, unboundUsers = [], artists, shows, tasks = [], acti
 //  Tab: Invite (unchanged)
 // ────────────────────────────────────────────────────────────────────────────
 function TabInvite({ artistId = null }) {
+  const { t, tx } = useT();
   const [link,        setLink]        = useState('');
   const [expires,     setExpires]     = useState('');
   const [generating,  setGenerating]  = useState(false);
@@ -588,10 +594,10 @@ function TabInvite({ artistId = null }) {
         body: JSON.stringify({ artistId }),
       });
       const d = await r.json();
-      if (!r.ok) { setGenError(d.error || 'Failed to generate invite link'); return; }
+      if (!r.ok) { setGenError(d.error || t('team.inviteGenerationFailed')); return; }
       setLink(d.link); setExpires(d.expiresAt); setCopied(false);
       await load();
-    } catch (e) { setGenError(e.message || 'Network error'); }
+    } catch (e) { setGenError(e.message || t('common.networkError')); }
     finally     { setGenerating(false); }
   };
 
@@ -604,9 +610,9 @@ function TabInvite({ artistId = null }) {
         body: JSON.stringify({ username: usernameInput.trim(), artistId }),
       });
       const d = await r.json();
-      if (!r.ok) { setReqMsg({ type: 'error', text: d.error || 'Failed' }); }
-      else { setReqMsg({ type: 'ok', text: `Request sent to "${usernameInput.trim()}"` }); setUsernameInput(''); await load(); }
-    } catch (e) { setReqMsg({ type: 'error', text: e.message || 'Network error' }); }
+      if (!r.ok) { setReqMsg({ type: 'error', text: d.error || t('common.failed') }); }
+      else { setReqMsg({ type: 'ok', text: tx('team.requestSent', { user: usernameInput.trim() }) }); setUsernameInput(''); await load(); }
+    } catch (e) { setReqMsg({ type: 'error', text: e.message || t('common.networkError') }); }
     finally { setSendingReq(false); setTimeout(() => setReqMsg(null), 4000); }
   };
 
@@ -627,15 +633,15 @@ function TabInvite({ artistId = null }) {
 
   return (
     <div className="team-section">
-      <h3 className="team-section-title">Add by Username</h3>
-      <p className="team-section-desc">Send a join request to an existing user.</p>
+      <h3 className="team-section-title">{t('team.addByUsername')}</h3>
+      <p className="team-section-desc">{t('team.addByUsernameHint')}</p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
         <input className="team-invite-input" value={usernameInput}
           onChange={e => setUsernameInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && sendJoinRequest()}
-          placeholder="Username…" style={{ maxWidth: 240 }} />
+          placeholder={t('team.username')} style={{ maxWidth: 240 }} />
         <button className="btn-primary" onClick={sendJoinRequest} disabled={sendingReq || !usernameInput.trim()}>
-          {sendingReq ? 'Sending…' : 'Send Request'}
+          {sendingReq ? t('team.sending') : t('team.sendRequest')}
         </button>
       </div>
       {reqMsg && (
@@ -645,12 +651,12 @@ function TabInvite({ artistId = null }) {
       )}
       {joinRequests.filter(r => r.status === 'pending').length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 20 }}>
-          <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>Pending requests:</p>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>{t('team.pendingRequests')}</p>
           {joinRequests.filter(r => r.status === 'pending').map(r => (
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{ fontSize: 13 }}>{r.toUsername}</span>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{fmtDate(r.createdAt)}</span>
-              <button className="btn-action btn-action--danger" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => cancelJoinRequest(r.id)}>Cancel</button>
+              <button className="btn-action btn-action--danger" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => cancelJoinRequest(r.id)}>{t('common.cancel')}</button>
             </div>
           ))}
         </div>
@@ -658,11 +664,11 @@ function TabInvite({ artistId = null }) {
 
       <div style={{ borderTop: '1px solid var(--border)', margin: '20px 0' }} />
 
-      <h3 className="team-section-title">Generate Invite Link</h3>
-      <p className="team-section-desc">One-time link, valid 48 h. They set their own username and password.</p>
+      <h3 className="team-section-title">{t('team.generateInvite')}</h3>
+      <p className="team-section-desc">{t('team.generateInviteHint')}</p>
 
       <button className="btn-primary team-gen-btn" onClick={generate} disabled={generating}>
-        {generating ? 'Generating…' : '+ New Invite Link'}
+        {generating ? t('team.generating') : t('team.newInviteLink')}
       </button>
       {genError && <p className="team-gen-error">{genError}</p>}
 
@@ -670,18 +676,18 @@ function TabInvite({ artistId = null }) {
         <div className="team-invite-card">
           <div className="team-invite-link-row">
             <input className="team-invite-input" value={link} readOnly />
-            <button className="btn-ghost" onClick={copy}>{copied ? '✓ Copied' : 'Copy'}</button>
+            <button className="btn-ghost" onClick={copy}>{copied ? t('common.copied') : t('common.copy')}</button>
           </div>
           <div className="team-qr-wrap">
             <img className="team-qr-img"
               src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(link)}`}
-              alt="QR code" loading="lazy" />
+              alt={t('team.qrCode')} loading="lazy" />
             <div className="team-qr-meta">
-              <p className="team-qr-label">Scan to join</p>
-              <p className="team-qr-exp">Expires: {fmtDate(expires)}</p>
+              <p className="team-qr-label">{t('team.scanToJoin')}</p>
+              <p className="team-qr-exp">{tx('team.expires', { date: fmtDate(expires) })}</p>
               <a className="btn-ghost"
                 href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=16&data=${encodeURIComponent(link)}`}
-                download="invite-qr.png" target="_blank" rel="noreferrer">Download QR</a>
+                download="invite-qr.png" target="_blank" rel="noreferrer">{t('team.downloadQr')}</a>
             </div>
           </div>
         </div>
@@ -689,22 +695,22 @@ function TabInvite({ artistId = null }) {
 
       {!loadingInv && invitations.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <h3 className="team-section-title">All Invitations</h3>
+          <h3 className="team-section-title">{t('team.allInvitations')}</h3>
           <div className="team-table-wrap">
             <table className="team-table">
-              <thead><tr><th>Status</th><th>Created</th><th>Expires</th><th>Used by</th><th></th></tr></thead>
+              <thead><tr><th>{t('team.status')}</th><th>{t('team.created')}</th><th>{t('team.expiresLabel')}</th><th>{t('team.usedBy')}</th><th></th></tr></thead>
               <tbody>
                 {invitations.map(inv => (
                   <tr key={inv.token} className={isExpired(inv.expiresAt) ? 'row-muted' : ''}>
                     <td>
-                      {inv.usedBy ? <span className="badge-used">Used</span>
-                        : isExpired(inv.expiresAt) ? <span className="badge-expired">Expired</span>
-                        : <span className="badge-active">Active</span>}
+                      {inv.usedBy ? <span className="badge-used">{t('team.used')}</span>
+                        : isExpired(inv.expiresAt) ? <span className="badge-expired">{t('team.expired')}</span>
+                        : <span className="badge-active">{t('team.active')}</span>}
                     </td>
                     <td>{fmtDate(inv.createdAt)}</td>
                     <td>{fmtDate(inv.expiresAt)}</td>
                     <td>{inv.usedByUsername || '—'}</td>
-                    <td>{!inv.usedBy && <button className="btn-action btn-action--danger" onClick={() => revoke(inv.token)}>Revoke</button>}</td>
+                    <td>{!inv.usedBy && <button className="btn-action btn-action--danger" onClick={() => revoke(inv.token)}>{t('team.revoke')}</button>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -720,15 +726,16 @@ function TabInvite({ artistId = null }) {
 //  Tab: Activity (unchanged)
 // ────────────────────────────────────────────────────────────────────────────
 function TabActivity({ activityLog, loading }) {
+  const { t, tx } = useT();
   const relevant = activityLog.filter(e => e.action !== 'login');
   return (
     <div className="team-section">
-      <h3 className="team-section-title">Team Activity</h3>
-      <p className="team-section-desc">Content interactions from team members — logins not shown.</p>
+      <h3 className="team-section-title">{t('team.activityTitle')}</h3>
+      <p className="team-section-desc">{t('team.activityHint')}</p>
       {loading ? (
-        <p className="team-empty">Loading…</p>
+        <p className="team-empty">{t('common.loading')}</p>
       ) : relevant.length === 0 ? (
-        <p className="team-empty">No content interactions recorded yet.</p>
+        <p className="team-empty">{t('team.noContentActivity')}</p>
       ) : (
         <div className="team-activity-list">
           {relevant.map((entry, i) => (
@@ -739,7 +746,7 @@ function TabActivity({ activityLog, loading }) {
                 <span className="team-activity-action">{entry.detail || entry.action}</span>
               </div>
               <span className="team-activity-time" title={fmtDate(entry.timestamp)}>
-                {fmtRelative(entry.timestamp)}
+                {fmtRelative(entry.timestamp, t, tx)}
               </span>
             </div>
           ))}
@@ -753,6 +760,7 @@ function TabActivity({ activityLog, loading }) {
 //  Backliner profile modal (unchanged)
 // ────────────────────────────────────────────────────────────────────────────
 function BacklinerShowAccordion({ show, onUpdateShow }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [tab,  setTab]  = useState('checklist');
   return (
@@ -766,9 +774,9 @@ function BacklinerShowAccordion({ show, onUpdateShow }) {
       {open && (
         <div className="bkp-show-accordion-body">
           <div className="bkp-show-tabs">
-            {['checklist','setlist','files'].map(t => (
-              <button key={t} className={`bk-inline-tab-btn${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+            {['checklist','setlist','files'].map(tabKey => (
+              <button key={tabKey} className={`bk-inline-tab-btn${tab === tabKey ? ' active' : ''}`} onClick={() => setTab(tabKey)}>
+                {t(`team.backlineTab.${tabKey}`)}
               </button>
             ))}
           </div>
@@ -784,6 +792,7 @@ function BacklinerShowAccordion({ show, onUpdateShow }) {
 }
 
 function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose }) {
+  const { t } = useT();
   const [assignedIds, setAssignedIds] = useState(user.assignedShowIds || []);
   const [saving, setSaving] = useState(false);
   const { show: saved, flash } = useSavedPill();
@@ -810,15 +819,15 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
         <div className="bkp-header">
           <div className="bkp-header-info">
             <h3 className="bkp-name">{user.username}</h3>
-            <span className="bkp-role-tag">Backliner</span>
+            <span className="bkp-role-tag">{t('team.role.backliner')}</span>
             {user.email && <span dir="ltr" className="bkp-email ltr">{user.email}</span>}
           </div>
-          <button className="bkp-close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="bkp-close" onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
         <div className="bkp-section">
-          <h4 className="bkp-section-title">Assign to Shows</h4>
+          <h4 className="bkp-section-title">{t('team.assignShows')}</h4>
           {upcoming.length === 0 ? (
-            <p className="bkp-empty">No upcoming shows to assign.</p>
+            <p className="bkp-empty">{t('team.noUpcomingShows')}</p>
           ) : (
             <div className="bkp-assign-list">
               {upcoming.map(s => (
@@ -832,13 +841,13 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
             </div>
           )}
           <div className="bkp-save-row">
-            <button className="btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Assignments'}</button>
+            <button className="btn-primary" onClick={save} disabled={saving}>{saving ? t('common.saving') : t('team.saveAssignments')}</button>
             <SavedPill show={saved} />
           </div>
         </div>
         {assignedShows.length > 0 && (
           <div className="bkp-section">
-            <h4 className="bkp-section-title">Backline Setup</h4>
+            <h4 className="bkp-section-title">{t('team.backlineSetup')}</h4>
             {assignedShows.map(show => <BacklinerShowAccordion key={show.id} show={show} onUpdateShow={onUpdateShow} />)}
           </div>
         )}
@@ -851,6 +860,7 @@ function BacklinerProfileModal({ user, shows, onUpdateShow, onSaveUser, onClose 
 //  Main TeamPanel
 // ────────────────────────────────────────────────────────────────────────────
 function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = null, onCreateTask, onToggleTask }) {
+  const { t } = useT();
   const [tab,              setTab]              = useState('members');
   const [users,            setUsers]            = useState([]);
   const [unboundUsers,     setUnboundUsers]     = useState([]);
@@ -884,7 +894,7 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
   useEffect(() => { reload(); }, [reload]);
 
   const deleteUser = async (user) => {
-    if (!window.confirm(`Remove ${user.username} from the team?`)) return;
+    if (!window.confirm(t('team.removeMemberConfirmation'))) return;
     const r = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
     if (r.ok) setUsers(prev => prev.filter(u => u.id !== user.id));
   };
@@ -942,22 +952,22 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
   const count = (role) => users.filter(u => u.workspaceRole === role).length;
 
   const TABS = [
-    { key: 'members',  label: 'Members',  badge: users.length },
-    { key: 'invite',   label: 'Invite',   badge: 0 },
-    { key: 'activity', label: 'Activity', badge: activityLog.filter(e => e.action !== 'login').length },
+    { key: 'members',  label: t('team.members'),  badge: users.length },
+    { key: 'invite',   label: t('team.invite'),   badge: 0 },
+    { key: 'activity', label: t('team.activity'), badge: activityLog.filter(e => e.action !== 'login').length },
   ];
 
   return (
     <div className="team-page">
       <PageBar
-        title="Teams"
+        title={t('team.title')}
         count={users.length}
-        countLabel="members"
+        countLabel={t('team.members')}
         metrics={[
-          { value: users.length,       label: 'Total' },
-          { value: count('backliner'), label: 'Backline' },
-          { value: count('sound'),     label: 'Sound' },
-          { value: count('light'),     label: 'Lighting' },
+          { value: users.length,       label: t('common.total') },
+          { value: count('backliner'), label: t('team.backline') },
+          { value: count('sound'),     label: t('team.sound') },
+          { value: count('light'),     label: t('team.lighting') },
         ]}
       >
         <SegmentedControl
@@ -969,7 +979,7 @@ function TeamPanel({ artists, shows = [], tasks = [], onUpdateShow, artistId = n
       </PageBar>
 
       {loading ? (
-        <div className="team-loading">Loading…</div>
+        <div className="team-loading">{t('common.loading')}</div>
       ) : (
         <>
           {tab === 'members' && (

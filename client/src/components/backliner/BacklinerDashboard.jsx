@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import BacklineChecklist from './BacklineChecklist';
 import TechnicalSetlist  from './TechnicalSetlist';
 import TechFiles         from './TechFiles';
+import { useT } from '../../i18n';
 import './backliner.css';
 
 const uuidv4  = () => crypto.randomUUID();
@@ -20,6 +21,7 @@ function checklistProgress(show) {
 
 // ── Sidebar show row ──────────────────────────────────────────────────────────
 function ShowRow({ show, selected, onClick, maintenanceCount }) {
+  const { t, tx } = useT();
   const pct = checklistProgress(show);
   return (
     <button className={`bk-show-row${selected ? ' active' : ''}`} onClick={onClick}>
@@ -29,11 +31,11 @@ function ShowRow({ show, selected, onClick, maintenanceCount }) {
       </span>
       <span className="bk-show-badges">
         {pct !== null && (
-          <span className="bk-show-badge bk-show-badge--checklist">Checklist {pct}%</span>
+          <span className="bk-show-badge bk-show-badge--checklist">{tx('backline.checklistPct', { percent: `${pct}%` })}</span>
         )}
         {maintenanceCount > 0 && (
           <span className="bk-show-badge bk-show-badge--maintenance">
-            {maintenanceCount} fix{maintenanceCount !== 1 ? 'es' : ''}
+            {tx(maintenanceCount === 1 ? 'backline.fix.one' : 'backline.fix.many', { count: maintenanceCount })}
           </span>
         )}
       </span>
@@ -43,6 +45,7 @@ function ShowRow({ show, selected, onClick, maintenanceCount }) {
 
 // ── Maintenance log (local to this view) ─────────────────────────────────────
 function MaintenanceLog({ tasks, shows, onAddTask, onToggleTask, onDeleteTask }) {
+  const { t } = useT();
   const [newText, setNewText] = useState('');
   const [showId,  setShowId]  = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -59,7 +62,7 @@ function MaintenanceLog({ tasks, shows, onAddTask, onToggleTask, onDeleteTask })
   return (
     <div>
       {items.length === 0 ? (
-        <p className="bk-maint-empty">No maintenance items — all gear is good.</p>
+        <p className="bk-maint-empty">{t('backline.maintenanceEmpty')}</p>
       ) : (
         items.map((t) => (
           <div key={t.id} className="bk-maint-item">
@@ -80,7 +83,7 @@ function MaintenanceLog({ tasks, shows, onAddTask, onToggleTask, onDeleteTask })
       <div className="bk-add-form" style={{ flexWrap: 'wrap' }}>
         <input
           className="bk-add-input"
-          placeholder="Gear issue (e.g. Fix bass amp)…"
+          placeholder={t('backline.maintenancePlaceholder')}
           dir="auto"
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
@@ -88,7 +91,7 @@ function MaintenanceLog({ tasks, shows, onAddTask, onToggleTask, onDeleteTask })
           style={{ minWidth: 200 }}
         />
         <select className="gtask-select" value={showId} onChange={(e) => setShowId(e.target.value)}>
-          <option value="">Link to show…</option>
+          <option value="">{t('backline.linkShow')}</option>
           {(shows || []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <input
@@ -97,7 +100,7 @@ function MaintenanceLog({ tasks, shows, onAddTask, onToggleTask, onDeleteTask })
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
-        <button className="btn-ghost" onClick={add} disabled={!newText.trim()}>Log</button>
+        <button className="btn-ghost" onClick={add} disabled={!newText.trim()}>{t('backline.log')}</button>
       </div>
     </div>
   );
@@ -105,13 +108,14 @@ function MaintenanceLog({ tasks, shows, onAddTask, onToggleTask, onDeleteTask })
 
 // ── Per-show detail panel ─────────────────────────────────────────────────────
 const TABS = [
-  { key: 'checklist',   label: 'Checklist' },
-  { key: 'setlist',     label: 'Setlist' },
-  { key: 'files',       label: 'Files' },
-  { key: 'maintenance', label: 'Maintenance' },
+  { key: 'checklist',   labelKey: 'backline.tab.checklist' },
+  { key: 'setlist',     labelKey: 'backline.tab.setlist' },
+  { key: 'files',       labelKey: 'backline.tab.files' },
+  { key: 'maintenance', labelKey: 'backline.tab.maintenance' },
 ];
 
 function ShowDetail({ show, tasks, shows, onUpdateShow, onAddTask, onToggleTask, onDeleteTask }) {
+  const { t } = useT();
   const [tab, setTab] = useState('checklist');
   return (
     <div className="bk-detail">
@@ -121,22 +125,22 @@ function ShowDetail({ show, tasks, shows, onUpdateShow, onAddTask, onToggleTask,
           {fmtDate(show.date)}{show.venue ? ` · ${show.venue}` : ''}{show.eventType ? ` · ${show.eventType}` : ''}
         </p>
         <div className="bk-tabs">
-          {TABS.map((t) => (
+          {TABS.map((tabItem) => (
             <button
-              key={t.key}
-              className={`bk-tab-btn${tab === t.key ? ' active' : ''}`}
-              onClick={() => setTab(t.key)}
+              key={tabItem.key}
+              className={`bk-tab-btn${tab === tabItem.key ? ' active' : ''}`}
+              onClick={() => setTab(tabItem.key)}
             >
-              {t.label}
+              {t(tabItem.labelKey)}
             </button>
           ))}
         </div>
       </div>
       <div className="bk-panel">
-        {tab === 'checklist'   && <><div className="bk-section-lbl">Load-in / Load-out Checklist</div><BacklineChecklist show={show} onUpdateShow={onUpdateShow} /></>}
-        {tab === 'setlist'     && <><div className="bk-section-lbl">Technical Setlist</div><TechnicalSetlist show={show} onUpdateShow={onUpdateShow} /></>}
-        {tab === 'files'       && <><div className="bk-section-lbl">Stage Plots & Input Lists</div><TechFiles show={show} onUpdateShow={onUpdateShow} /></>}
-        {tab === 'maintenance' && <><div className="bk-section-lbl">Maintenance Log</div><MaintenanceLog tasks={tasks} shows={shows} onAddTask={onAddTask} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} /></>}
+        {tab === 'checklist'   && <><div className="bk-section-lbl">{t('backline.checklistTitle')}</div><BacklineChecklist show={show} onUpdateShow={onUpdateShow} /></>}
+        {tab === 'setlist'     && <><div className="bk-section-lbl">{t('backline.setlistTitle')}</div><TechnicalSetlist show={show} onUpdateShow={onUpdateShow} /></>}
+        {tab === 'files'       && <><div className="bk-section-lbl">{t('backline.filesTitle')}</div><TechFiles show={show} onUpdateShow={onUpdateShow} /></>}
+        {tab === 'maintenance' && <><div className="bk-section-lbl">{t('backline.maintenanceTitle')}</div><MaintenanceLog tasks={tasks} shows={shows} onAddTask={onAddTask} onToggleTask={onToggleTask} onDeleteTask={onDeleteTask} /></>}
       </div>
     </div>
   );
@@ -144,6 +148,7 @@ function ShowDetail({ show, tasks, shows, onUpdateShow, onAddTask, onToggleTask,
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function BacklinerDashboard({ shows: propShows, tasks, crew, onUpdateShow, onAddTask, onToggleTask, onDeleteTask, userRole }) {
+  const { t, tx } = useT();
   const [selectedId,  setSelectedId]  = useState(null);
   const [teamShows,   setTeamShows]   = useState(null); // null = not fetched yet
 
@@ -197,13 +202,13 @@ export default function BacklinerDashboard({ shows: propShows, tasks, crew, onUp
   return (
     <div className="bk-page">
       <div className="bk-hero">
-        <h2 className="bk-title">Backliner<span className="bk-dot">.</span></h2>
+        <h2 className="bk-title">{t('backline.title')}<span className="bk-dot">.</span></h2>
         <p className="bk-sub">
           <span className="bk-sub-num">{userRole !== 'admin' && teamShows === null ? '…' : String(sorted.length).padStart(2, '0')}</span>
           <span className="bk-sub-sep" />
-          <span>show{sorted.length !== 1 ? 's' : ''}</span>
+          <span>{tx(sorted.length === 1 ? 'backline.shows.one' : 'backline.shows.many', { count: sorted.length })}</span>
           {maintenanceTasks.filter((t) => !t.completed).length > 0 && (
-            <><span className="bk-sub-sep" /><span>{maintenanceTasks.filter((t) => !t.completed).length} open maintenance</span></>
+            <><span className="bk-sub-sep" /><span>{tx('backline.openMaintenance', { count: maintenanceTasks.filter((task) => !task.completed).length })}</span></>
           )}
         </p>
       </div>
@@ -211,7 +216,7 @@ export default function BacklinerDashboard({ shows: propShows, tasks, crew, onUp
       {sorted.length === 0 ? (
         <div className="bk-empty">
           <div className="bk-empty-icon">○</div>
-          <span>No shows yet — add one in the Shows tab.</span>
+          <span>{t('backline.noShows')}</span>
         </div>
       ) : (
         <div className="bk-layout">

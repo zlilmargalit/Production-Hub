@@ -23,8 +23,12 @@ import { uploadReceipt } from './utils/receiptUpload';
 import AssistantsPage from './components/admin/AssistantsPage';
 import AssistantForm from './components/admin/AssistantForm';
 import { isOverdue } from './components/admin/adminFormat';
+import { DIR_FOR_LANG, LANGS, storeLang, switchLanguage, useT } from './i18n';
+import { applyDirection } from './utils/direction';
+import ProductionProjectsPage from './components/production-projects/ProductionProjectsPage';
 
 function App({ demoMode = false }) {
+  const { lang } = useT();
   const [shows, setShows] = useState([]);
   const [crew, setCrew] = useState([]);
   const [templates, setTemplates] = useState({});
@@ -49,6 +53,7 @@ function App({ demoMode = false }) {
   const [tasks,       setTasks]       = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [wsToast, setWsToast] = useState(null);
+  const [productionProjects, setProductionProjects] = useState([]);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
@@ -322,6 +327,28 @@ function App({ demoMode = false }) {
     if (stillCurrent(issuedFor)) setTasks(data);
   }, [demoMode]);
 
+  const fetchProductionProjects = useCallback(async () => {
+    if (demoMode || resolveWorkType(currentArtistRef.current?.workType) === 'administration') return;
+    const issuedFor = fetchedFor();
+    const res = await fetch(`/api/production-projects${artistQS()}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (stillCurrent(issuedFor)) setProductionProjects(Array.isArray(data) ? data : []);
+  }, [demoMode]);
+
+  const productionProjectsApi = useCallback(async (path = '', method = 'GET', body) => {
+    const res = await fetch(`/api/production-projects${path}${artistQS()}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || `Request failed (${res.status})`);
+    }
+    return res.status === 204 ? null : res.json();
+  }, []);
+
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     setError(null);
@@ -348,12 +375,10 @@ function App({ demoMode = false }) {
     // 3. Fetch all scoped data with the correct artistId already in the ref
     const init = async () => {
       try {
-        let meData = null;
-        const [, artistData] = await Promise.all([
+        const [meData] = await Promise.all([
           fetch('/api/me').then((r) => r.ok ? r.json() : null)
             .then((d) => {
               if (d) {
-                meData = d;
                 setUserRole(d.role);
                 setUsername(d.username);
                 if (d.avatarUrl) setAvatarUrl(d.avatarUrl);
@@ -364,6 +389,17 @@ function App({ demoMode = false }) {
             }),
           Promise.resolve(), // placeholder; artists fetched below after meData is set
         ]);
+
+        // The cached choice only protects first paint. Once authenticated, the
+        // account preference wins so the interface and document direction are
+        // the same on every device. A reload remounts the translated tree with
+        // the right locale rather than flipping direction mid-interaction.
+        if (LANGS.includes(meData?.lang) && meData.lang !== lang) {
+          storeLang(meData.lang);
+          applyDirection(DIR_FOR_LANG[meData.lang]);
+          window.location.reload();
+          return;
+        }
 
         // Admin → own artists list; guest → permitted artists from admin's workspace
         const artistsEndpoint = meData?.role === 'admin' ? '/api/artists' : '/api/team/artists';
@@ -386,6 +422,7 @@ function App({ demoMode = false }) {
         await Promise.all([
           fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
           fetchTasks(),
+          fetchProductionProjects(),
         ]);
       } catch (err) {
         setError(err.message || 'Could not connect to server');
@@ -394,7 +431,7 @@ function App({ demoMode = false }) {
       }
     };
     init();
-  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks, fetchProductionProjects, lang]);
 
   // ── Refresh on focus/visibility ───────────────────────────────────────────
   // iOS freezes a home-screen PWA and restores the old state without reloading,
@@ -411,6 +448,7 @@ function App({ demoMode = false }) {
       Promise.all([
         fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(),
         fetchEventTypes(), fetchTasks(),
+        fetchProductionProjects(),
       ]).catch(() => {});
     };
     document.addEventListener('visibilitychange', refresh);
@@ -419,7 +457,7 @@ function App({ demoMode = false }) {
       document.removeEventListener('visibilitychange', refresh);
       window.removeEventListener('focus', refresh);
     };
-  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks, fetchProductionProjects]);
 
   // ── Mutations — real (normal mode) ────────────────────────────────────────
   const saveFieldTemplate = useCallback(async (eventType, fields) => {
@@ -499,8 +537,8 @@ function App({ demoMode = false }) {
   const deleteShow = useCallback((id) => {
     const show = shows.find((s) => s.id === id);
     setConfirmModal({
-      title: 'Delete Show',
-      message: show ? `Delete "${show.name}"? This cannot be undone.` : 'Delete this show? This cannot be undone.',
+      title: t('app.deleteShow'),
+      message: show ? tx('app.deleteShowNamed', { name: show.name }) : t('app.deleteShowUnnamed'),
       danger: true,
       onConfirm: async () => {
         setConfirmModal(null);
@@ -508,7 +546,7 @@ function App({ demoMode = false }) {
         setShows((prev) => prev.filter((s) => s.id !== id));
       },
     });
-  }, [shows, demoMode]);
+  }, [shows, demoMode, t, tx]);
 
   const handleSubmit = useCallback(
     async (data) => {
@@ -601,7 +639,7 @@ function App({ demoMode = false }) {
     currentArtistRef.current = artist?.id || null;
     setCurrentArtist(artist);
     // Clear stale data so the UI doesn't briefly show the previous artist's content
-    setShows([]); setCrew([]); setTasks([]); setProjects([]); setClients([]); setAssistants([]);
+    setShows([]); setCrew([]); setTasks([]); setProjects([]); setClients([]); setAssistants([]); setProductionProjects([]);
     // Entering a workspace lands on the page its template defines, so an
     // administration workspace never opens on Shows.
     const cfg = workspaceConfig(artist);
@@ -610,12 +648,13 @@ function App({ demoMode = false }) {
       await Promise.all([
         fetchShows(), fetchCrew(), fetchTemplates(), fetchFieldTemplates(), fetchEventTypes(),
         fetchTasks(),
+        resolveWorkType(artist?.workType) === 'production' ? fetchProductionProjects() : Promise.resolve(),
         resolveWorkType(artist?.workType) === 'administration' ? fetchAdminData() : Promise.resolve(),
       ]);
     } catch (err) {
       if (err.name !== 'AbortError') console.error('[artist-switch]', err.message);
     }
-  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks, fetchAdminData]);
+  }, [demoMode, fetchShows, fetchCrew, fetchTemplates, fetchFieldTemplates, fetchEventTypes, fetchTasks, fetchAdminData, fetchProductionProjects]);
 
   const createArtist = useCallback(async (name, workType = 'production') => {
     const res = await fetch('/api/artists', {
@@ -632,8 +671,8 @@ function App({ demoMode = false }) {
 
   const deleteArtist = useCallback((artist) => {
     setConfirmModal({
-      title: 'Delete Artist',
-      message: `Remove "${artist.name}"? Their shows and data stay on the server but the artist will be removed from the list.`,
+      title: t('app.deleteWorkspace'),
+      message: tx('app.deleteWorkspaceMessage', { name: artist.name }),
       danger: true,
       onConfirm: async () => {
         setConfirmModal(null);
@@ -656,7 +695,7 @@ function App({ demoMode = false }) {
         });
       },
     });
-  }, [switchToArtist]);
+  }, [switchToArtist, t, tx]);
 
   // ── Task CRUD ─────────────────────────────────────────────────────────────
   const createTask = useCallback(async (data) => {
@@ -671,11 +710,11 @@ function App({ demoMode = false }) {
     }
   }, []);
 
-  const toggleTask = useCallback(async (id, completed) => {
+  const toggleTask = useCallback(async (id, completed, taskOverride = null) => {
     // Optimistically update so the UI feels instant
     setTasks((prev) => prev.map((t) => t.id === id ? { ...t, completed } : t));
     // Find task metadata to decide which endpoint to call
-    const task = tasks.find((t) => t.id === id);
+    const task = taskOverride || tasks.find((t) => t.id === id);
     let res;
     if (task?.assignedToMe && task?.fromArtistId) {
       res = await fetch(`/api/tasks/assigned/${task.fromArtistId}/${id}`, {
@@ -776,7 +815,7 @@ function App({ demoMode = false }) {
           role="link"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && setPage('home')}
-          aria-label="Go to home"
+          aria-label={t('app.goHome')}
         >
           <svg width="36" height="28" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg" className="header-logo-svg" aria-hidden="true">
             <path d="M 6 62 A 44 44 0 0 1 94 62" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4"/>
@@ -785,7 +824,7 @@ function App({ demoMode = false }) {
             <line x1="2" y1="62" x2="98" y2="62" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.35"/>
             <circle cx="50" cy="62" r="5" fill="#F08D39"/>
           </svg>
-          <h1>Production Hub</h1>
+          <h1>{t('app.productName')}</h1>
         </div>
 
         {/* Nav: home + timelog are global pages — no artist nav */}
@@ -817,20 +856,28 @@ function App({ demoMode = false }) {
             className={`nav-btn ${page === 'shows' ? 'active' : ''}`}
             onClick={() => setPage('shows')}
           >
-            Shows
+            {t('shows.title')}
           </button>
+          {!demoMode && (
+            <button
+              className={`nav-btn ${page === 'production-projects' ? 'active' : ''}`}
+              onClick={() => setPage('production-projects')}
+            >
+              {t('productionProjects.title')}
+            </button>
+          )}
           <button
             className={`nav-btn ${page === 'crew' ? 'active' : ''}`}
             onClick={() => setPage('crew')}
           >
-            Crew & Types
+            {t('app.crewTypes')}
           </button>
           {!demoMode && (
             <button
               className={`nav-btn ${page === 'tasks' ? 'active' : ''}`}
               onClick={() => setPage('tasks')}
             >
-              Tasks
+              {t('app.tasks')}
               {tasks.filter((t) => !t.completed).length > 0 && (
                 <span className="nav-tasks-badge">
                   {tasks.filter((t) => !t.completed).length}
@@ -843,7 +890,7 @@ function App({ demoMode = false }) {
               className={`nav-btn ${page === 'automations' ? 'active' : ''}`}
               onClick={() => setPage('automations')}
             >
-              Automations
+              {t('automations.title')}
             </button>
           )}
           {!demoMode && userRole !== 'admin' && workspaceRole === 'backliner' && (
@@ -851,7 +898,7 @@ function App({ demoMode = false }) {
               className={`nav-btn ${page === 'backliner' ? 'active' : ''}`}
               onClick={() => setPage('backliner')}
             >
-              Backliner
+              {t('backline.title')}
             </button>
           )}
           {!demoMode && userRole !== 'admin' && (
@@ -859,7 +906,7 @@ function App({ demoMode = false }) {
               className={`nav-btn ${page === 'teams' ? 'active' : ''}`}
               onClick={() => setPage('teams')}
             >
-              Teams
+              {t('app.teams')}
             </button>
           )}
           {!demoMode && userRole === 'admin' && (
@@ -867,7 +914,7 @@ function App({ demoMode = false }) {
               className={`nav-btn ${page === 'team' ? 'active' : ''}`}
               onClick={() => setPage('team')}
             >
-              Teams
+              {t('app.teams')}
             </button>
           )}
           </>)}
@@ -895,8 +942,8 @@ function App({ demoMode = false }) {
             <button
               className="header-log-btn"
               onClick={() => setQuickLogOpen(true)}
-              title="Log time"
-              aria-label="Log time"
+              title={t('app.logTime')}
+              aria-label={t('app.logTime')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.6"/>
@@ -922,15 +969,15 @@ function App({ demoMode = false }) {
         {loading ? (
           <div className="loading-screen">
             <div className="spinner" />
-            <p>Loading productions…</p>
+            <p>{t('app.loading')}</p>
           </div>
         ) : error ? (
           <div className="error-state">
             <div className="error-icon">!</div>
-            <p className="error-title">Could not reach server</p>
+            <p className="error-title">{t('app.serverError')}</p>
             <p className="error-sub">{error}</p>
             <button className="btn-primary" onClick={() => window.location.reload()}>
-              Retry
+              {t('app.retry')}
             </button>
           </div>
         ) : page === 'home' ? (
@@ -962,7 +1009,7 @@ function App({ demoMode = false }) {
           // inside an administration workspace.
           <div className="adm-page">
             <div className="adm-empty">
-              <p>Finance is not built yet — it arrives in a later phase.</p>
+              <p>{t('app.financeComingSoon')}</p>
             </div>
           </div>
         ) : page === 'clients' ? (
@@ -992,6 +1039,15 @@ function App({ demoMode = false }) {
             onApplyCrew={!demoMode ? applyCrewTemplates : null}
             applyStatus={applyStatus}
             onConfirmImport={userRole === 'admin' ? confirmImportedShows : null}
+          />
+        ) : page === 'production-projects' ? (
+          <ProductionProjectsPage
+            projects={productionProjects}
+            tasks={tasks}
+            workspaceId={currentArtist?.id || null}
+            api={productionProjectsApi}
+            onRefresh={async () => { await Promise.all([fetchProductionProjects(), fetchTasks()]); }}
+            onToggleAssignedTask={toggleTask}
           />
         ) : page === 'automations' ? (
           <AutomationsPage />
@@ -1141,11 +1197,12 @@ function App({ demoMode = false }) {
 
 // ── Tools dropdown nav item ───────────────────────────────────────────────────
 const TOOLS = [
-  { key: 'calculator',  label: 'Setlist Calculator' },
-  { key: 'tech-spec',   label: 'Tech Spec Parser' },
+  { key: 'calculator',  labelKey: 'app.setlistCalculator' },
+  { key: 'tech-spec',   labelKey: 'techSpec.title' },
 ];
 
 function ToolsDropdown({ activeTool, onSelectTool }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const isActive = TOOLS.some((t) => t.key === activeTool);
@@ -1166,18 +1223,18 @@ function ToolsDropdown({ activeTool, onSelectTool }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        Tools
+        {t('app.tools')}
         <span className="tools-nav-caret" aria-hidden="true">▾</span>
       </button>
       {open && (
         <div className="tools-nav-dropdown-panel">
-          {TOOLS.map((t) => (
+          {TOOLS.map((tool) => (
             <button
-              key={t.key}
-              className={`tools-nav-dropdown-item${t.key === activeTool ? ' active' : ''}`}
-              onClick={() => { onSelectTool(t.key); setOpen(false); }}
+              key={tool.key}
+              className={`tools-nav-dropdown-item${tool.key === activeTool ? ' active' : ''}`}
+              onClick={() => { onSelectTool(tool.key); setOpen(false); }}
             >
-              {t.label}
+              {t(tool.labelKey)}
             </button>
           ))}
         </div>
@@ -1190,12 +1247,13 @@ function ToolsDropdown({ activeTool, onSelectTool }) {
 const QUICK_LOG_ARTISTS = [
   { id: 'assaf',   name: 'Assaf Amdursky', color: '#3852B4' },
   { id: 'hila',    name: 'Hila Ruach',     color: '#F08D39' },
-  { id: 'general', name: 'General',        color: '#6B6259' },
+  { id: 'general', nameKey: 'app.quickLog.general', color: '#6B6259' },
 ];
 
 function QuickLogModal({ onClose }) {
+  const { t, lang } = useT();
   const todayISO  = new Date().toISOString().slice(0, 10);
-  const dateLabel = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  const dateLabel = new Date().toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 
   const [artist, setArtist] = useState('assaf');
   const [desc,   setDesc]   = useState('');
@@ -1211,8 +1269,8 @@ function QuickLogModal({ onClose }) {
 
   const save = async (andClose) => {
     const h = parseFloat(hours);
-    if (!desc.trim()) { setErr('תיאור חסר'); return; }
-    if (!(h > 0))     { setErr('שעות חייבות להיות > 0'); return; }
+    if (!desc.trim()) { setErr(t('app.quickLog.descriptionRequired')); return; }
+    if (!(h > 0))     { setErr(t('app.quickLog.hoursRequired')); return; }
     setSaving(true); setErr('');
     try {
       const res = await fetch('/api/timelog', {
@@ -1223,7 +1281,7 @@ function QuickLogModal({ onClose }) {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'שמירה נכשלה');
+        throw new Error(body.error || t('app.quickLog.saveFailed'));
       }
       if (andClose) {
         onClose();
@@ -1253,7 +1311,7 @@ function QuickLogModal({ onClose }) {
 
   return (
     <div className="ql-backdrop" onMouseDown={handleBackdrop}>
-      <div className="ql-modal" role="dialog" aria-modal="true" aria-label="Log Time">
+      <div className="ql-modal" role="dialog" aria-modal="true" aria-label={t('app.quickLog.title')}>
         {/* Header */}
         <div className="ql-header">
           <div className="ql-header-left">
@@ -1261,7 +1319,7 @@ function QuickLogModal({ onClose }) {
               <circle cx="9" cy="9" r="7.2" stroke="currentColor" strokeWidth="1.6"/>
               <path d="M9 5.5v4l2.6 1.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
             </svg>
-            <span className="ql-title">Log Time</span>
+            <span className="ql-title">{t('app.quickLog.title')}</span>
           </div>
           <span className="ql-date">{dateLabel}</span>
         </div>
@@ -1270,7 +1328,7 @@ function QuickLogModal({ onClose }) {
         <div className="ql-body">
           {/* Artist */}
           <div className="ql-field">
-            <span className="ql-label">Artist</span>
+            <span className="ql-label">{t('app.quickLog.artist')}</span>
             <div className="ql-artist-select-wrap">
               <span className="ql-artist-dot" style={{ background: activeArtist?.color }} />
               <select
@@ -1279,7 +1337,7 @@ function QuickLogModal({ onClose }) {
                 onChange={(e) => setArtist(e.target.value)}
               >
                 {QUICK_LOG_ARTISTS.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
+                  <option key={a.id} value={a.id} dir="auto">{a.nameKey ? t(a.nameKey) : a.name}</option>
                 ))}
               </select>
             </div>
@@ -1288,19 +1346,19 @@ function QuickLogModal({ onClose }) {
           {/* Description + Hours */}
           <div className="ql-row">
             <div className="ql-field ql-field--grow">
-              <span className="ql-label">Description</span>
+              <span className="ql-label">{t('app.quickLog.description')}</span>
               <input
                 className="ql-input"
                 type="text"
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                placeholder="Soundcheck attendance…"
+                placeholder={t('app.quickLog.descriptionPlaceholder')}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) save(false); }}
               />
             </div>
             <div className="ql-field ql-field--hours">
-              <span className="ql-label">Hours</span>
+              <span className="ql-label">{t('app.quickLog.hours')}</span>
               <input
                 className="ql-input ql-input--hours"
                 type="number"
@@ -1318,9 +1376,9 @@ function QuickLogModal({ onClose }) {
 
         {/* Actions */}
         <div className="ql-actions">
-          <button className="ql-cancel" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="ql-cancel" onClick={onClose} disabled={saving}>{t('common.cancel')}</button>
           <button className="ql-save" onClick={() => save(false)} disabled={saving}>
-            {saving ? 'Saving…' : 'Save & Stay'}
+            {saving ? t('common.saving') : t('app.quickLog.saveStay')}
           </button>
         </div>
       </div>
@@ -1330,6 +1388,7 @@ function QuickLogModal({ onClose }) {
 
 // ── Artist switcher dropdown ──────────────────────────────────────────────────
 function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [dotsOpenFor, setDotsOpenFor] = useState(null);
   const ref = useRef(null);
@@ -1346,7 +1405,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const label = currentArtist?.name || (artists.length === 0 ? 'No artists' : 'Select');
+  const label = currentArtist?.name || (artists.length === 0 ? t('app.noArtists') : t('app.select'));
 
   return (
     <div className="artist-switcher" ref={ref}>
@@ -1354,9 +1413,9 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
         className="artist-switcher-btn"
         onClick={() => { setOpen((o) => !o); setDotsOpenFor(null); }}
         aria-expanded={open}
-        title="Switch artist"
+        title={t('app.switchArtist')}
       >
-        <span className="artist-switcher-label">{label}</span>
+        <span className="artist-switcher-label" dir="auto">{label}</span>
         <span className="artist-switcher-caret">▾</span>
       </button>
 
@@ -1368,11 +1427,11 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
                 className={`artist-option${a.id === currentArtist?.id ? ' active' : ''}`}
                 onClick={() => { onSwitch(a); setOpen(false); setDotsOpenFor(null); }}
               >
-                {a.name}
+                <span dir="auto">{a.name}</span>
               </button>
               <button
                 className={`artist-dots-btn${dotsOpenFor === a.id ? ' active' : ''}`}
-                title="Artist options"
+                title={t('app.artistOptions')}
                 onClick={(e) => {
                   e.stopPropagation();
                   setDotsOpenFor((prev) => (prev === a.id ? null : a.id));
@@ -1391,7 +1450,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
                       onDelete(a);
                     }}
                   >
-                    Delete artist
+                    {t('app.deleteArtist')}
                   </button>
                 </div>
               )}
@@ -1402,7 +1461,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
             className="artist-option artist-option--new"
             onClick={() => { setOpen(false); setDotsOpenFor(null); onAddNew(); }}
           >
-            + New Artist
+            {t('app.newArtist')}
           </button>
         </div>
       )}
@@ -1414,6 +1473,7 @@ function ArtistSwitcher({ artists, currentArtist, onSwitch, onAddNew, onDelete }
 const WS_PALETTE = ['#3852B4', '#F08D39', '#C79A3F', '#4E7265'];
 
 function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, onOpenTimeLog, onAddNew, demoMode = false }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -1438,7 +1498,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
         className="ws-trigger"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label="Switch workspace"
+        aria-label={t('app.switchWorkspace')}
       >
         {activeColor ? (
           <span className="ws-artist-dot-trigger" style={{ background: activeColor }} />
@@ -1446,9 +1506,9 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
           <span className="ws-globe-dot" />
         )}
         <span className="ws-trigger-text">
-          <span className="ws-trigger-eyebrow">WORKSPACE</span>
-          <span className="ws-trigger-label">
-            {isTimeLog ? 'Time Log' : isHome ? 'Global Home' : (currentArtist?.name || 'Global Home')}
+          <span className="ws-trigger-eyebrow">{t('app.workspace')}</span>
+          <span className="ws-trigger-label" dir="auto">
+            {isTimeLog ? t('app.timeLog') : isHome ? t('app.globalHome') : (currentArtist?.name || t('app.globalHome'))}
           </span>
         </span>
         <span className="ws-trigger-caret">▾</span>
@@ -1456,7 +1516,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
 
       {open && (
         <div className="ws-dropdown">
-          <div className="ws-dropdown-head">Switch workspace</div>
+          <div className="ws-dropdown-head">{t('app.switchWorkspace')}</div>
 
           {/* Global Home row */}
           <button
@@ -1465,8 +1525,8 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
           >
             <span className="ws-dropdown-item-globe" />
             <span className="ws-dropdown-item-text">
-              <span className="ws-dropdown-item-name">Global Home</span>
-              <span className="ws-dropdown-item-sub">All artists</span>
+              <span className="ws-dropdown-item-name">{t('app.globalHome')}</span>
+              <span className="ws-dropdown-item-sub">{t('app.allArtists')}</span>
             </span>
             {page === 'home' && <span className="ws-dropdown-check">✓</span>}
           </button>
@@ -1483,8 +1543,8 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
               </svg>
             </span>
             <span className="ws-dropdown-item-text">
-              <span className="ws-dropdown-item-name">Time Log</span>
-              <span className="ws-dropdown-item-sub">Sessions &amp; billing</span>
+              <span className="ws-dropdown-item-name">{t('app.timeLog')}</span>
+              <span className="ws-dropdown-item-sub">{t('app.sessionsBilling')}</span>
             </span>
             {isTimeLog ? <span className="ws-dropdown-check">✓</span> : <span className="ws-dropdown-arrow">→</span>}
           </button>}
@@ -1493,7 +1553,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
               per type, then its workspaces. Deliberately not a nested menu. */}
           {groupByWorkType(artists).map((group) => (
             <div key={group.type}>
-              <div className="ws-dropdown-divider">{group.label.toUpperCase()}</div>
+              <div className="ws-dropdown-divider">{t(`app.workspaceType.${group.type}.label`)}</div>
               {group.items.map((a) => {
                 // Colour is the workspace's identity — keep it stable per record
                 // rather than tied to position in a filtered list.
@@ -1508,7 +1568,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
                   >
                     <span className="ws-dropdown-item-swatch" style={{ background: color }} />
                     <span className="ws-dropdown-item-text">
-                      <span className="ws-dropdown-item-name">{a.name}</span>
+                      <span className="ws-dropdown-item-name" dir="auto">{a.name}</span>
                     </span>
                     {isActive
                       ? <span className="ws-dropdown-check">✓</span>
@@ -1532,15 +1592,15 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
               >
                 <span className="ws-dropdown-item-add-icon">+</span>
                 <span className="ws-dropdown-item-text">
-                  <span className="ws-dropdown-item-name">New workspace</span>
-                  <span className="ws-dropdown-item-sub">Production or Administration</span>
+                  <span className="ws-dropdown-item-name">{t('app.newWorkspace')}</span>
+                  <span className="ws-dropdown-item-sub">{t('app.newWorkspaceHint')}</span>
                 </span>
               </button>
             </>
           )}
 
           <div className="ws-dropdown-footer">
-            Opening a workspace enters it in isolation, with the nav its template defines. Return here anytime via Global Home.
+            {t('app.workspaceFooter')}
           </div>
         </div>
       )}
@@ -1550,6 +1610,7 @@ function WorkspaceSelector({ page, artists, currentArtist, onSwitch, onGoHome, o
 
 // ── New Artist modal ───────────────────────────────────────────────────────────
 function NewArtistModal({ onClose, onCreate }) {
+  const { t } = useT();
   const [name, setName] = useState('');
   const [workType, setWorkType] = useState('production');
   const [busy, setBusy] = useState(false);
@@ -1557,13 +1618,13 @@ function NewArtistModal({ onClose, onCreate }) {
 
   const handleCreate = async () => {
     const trimmed = name.trim();
-    if (!trimmed) { setErr('Please enter a name'); return; }
+    if (!trimmed) { setErr(t('app.workspaceNameRequired')); return; }
     setBusy(true);
     try {
       await onCreate(trimmed, workType);
       onClose();
     } catch {
-      setErr('Could not create workspace — please try again');
+      setErr(t('app.workspaceCreateFailed'));
     } finally {
       setBusy(false);
     }
@@ -1572,19 +1633,19 @@ function NewArtistModal({ onClose, onCreate }) {
   return (
     <div className="modal-overlay confirm-overlay" onClick={onClose}>
       <div className="modal artist-modal" onClick={(e) => e.stopPropagation()}>
-        <h3 className="artist-modal-title">New Workspace</h3>
+        <h3 className="artist-modal-title">{t('app.newWorkspaceTitle')}</h3>
         {/* Template first: it decides the navigation and the screens this
             workspace opens on, so it is a choice, not a setting to find later. */}
         <div className="ws-type-picker">
-          {creatableTypes().map((t) => (
+          {creatableTypes().map((type) => (
             <button
-              key={t.id}
+              key={type.id}
               type="button"
-              className={`ws-type-option${workType === t.id ? ' ws-type-option--active' : ''}`}
-              onClick={() => setWorkType(t.id)}
+              className={`ws-type-option${workType === type.id ? ' ws-type-option--active' : ''}`}
+              onClick={() => setWorkType(type.id)}
             >
-              <span className="ws-type-option-label">{t.label}</span>
-              <span className="ws-type-option-hint">{t.hint}</span>
+              <span className="ws-type-option-label">{t(`app.workspaceType.${type.id}.label`)}</span>
+              <span className="ws-type-option-hint">{t(`app.workspaceType.${type.id}.hint`)}</span>
             </button>
           ))}
         </div>
@@ -1593,7 +1654,7 @@ function NewArtistModal({ onClose, onCreate }) {
           type="text"
           value={name}
           onChange={(e) => { setName(e.target.value); setErr(''); }}
-          placeholder="Workspace name"
+          placeholder={t('app.workspaceName')}
           autoFocus
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleCreate();
@@ -1602,9 +1663,9 @@ function NewArtistModal({ onClose, onCreate }) {
         />
         {err && <p className="artist-modal-error">{err}</p>}
         <div className="artist-modal-actions">
-          <button className="btn-ghost" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="btn-ghost" onClick={onClose} disabled={busy}>{t('common.cancel')}</button>
           <button className="btn-primary" onClick={handleCreate} disabled={busy || !name.trim()}>
-            {busy ? 'Creating…' : 'Create'}
+            {busy ? t('app.creating') : t('app.create')}
           </button>
         </div>
       </div>
@@ -1614,6 +1675,7 @@ function NewArtistModal({ onClose, onCreate }) {
 
 // ── User avatar + logout panel ────────────────────────────────────────────────
 function UserMenu({ username, userRole, onOpenSettings, avatarUrl }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [imgBroken, setImgBroken] = useState(false);
   const ref = useRef(null);
@@ -1642,29 +1704,29 @@ function UserMenu({ username, userRole, onOpenSettings, avatarUrl }) {
       <button
         className="user-avatar-btn"
         onClick={() => setOpen((o) => !o)}
-        aria-label="User menu"
-        title={username || 'Account'}
+        aria-label={t('app.userMenu')}
+        title={t('app.userMenu')}
       >
         {avatarUrl && !imgBroken
-          ? <img src={avatarUrl} alt={username || 'avatar'} className="user-avatar-img" onError={() => setImgBroken(true)} />
+          ? <img src={avatarUrl} alt={username || t('app.avatar')} className="user-avatar-img" onError={() => setImgBroken(true)} />
           : initials}
       </button>
 
       {open && (
         <div className="user-menu-panel">
           <div className="user-menu-info">
-            <span className="user-menu-name">{username || 'User'}</span>
+            <span className="user-menu-name" dir="auto">{username || t('app.user')}</span>
             {userRole && (
-              <span className={`user-menu-role user-menu-role--${userRole}`}>{userRole}</span>
+              <span className={`user-menu-role user-menu-role--${userRole}`}>{t(`app.userRole.${userRole}`)}</span>
             )}
           </div>
           <div className="user-menu-divider" />
           <button className="user-menu-item" onClick={() => { setOpen(false); onOpenSettings?.(); }}>
-            Settings
+            {t('settings.title')}
           </button>
           <div className="user-menu-divider" />
           <button className="user-menu-logout" onClick={logout}>
-            Sign out
+            {t('app.signOut')}
           </button>
         </div>
       )}
@@ -1674,6 +1736,7 @@ function UserMenu({ username, userRole, onOpenSettings, avatarUrl }) {
 
 // ── Notification Bell ─────────────────────────────────────────────────────────
 function NotificationBell({ joinRequests, tasks, onNavigate }) {
+  const { t: tr, tx } = useT();
   const [open, setOpen] = useState(false);
   const [seenIds, setSeenIds] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('ph-seen-notifs') || '[]')); }
@@ -1693,7 +1756,7 @@ function NotificationBell({ joinRequests, tasks, onNavigate }) {
   const inviteNotifs = (joinRequests || []).map((r) => ({
     id:   `invite:${r.id}`,
     type: 'invite',
-    text: `${r.fromUsername || 'Admin'} invited you to join their team`,
+    text: tx('app.notification.invite', { user: r.fromUsername || tr('teams.admin') }),
     nav:  'teams',
   }));
 
@@ -1702,7 +1765,7 @@ function NotificationBell({ joinRequests, tasks, onNavigate }) {
     .map((t) => ({
       id:   `task:${t.id}`,
       type: 'task',
-      text: t.text ? `Task assigned: ${t.text}` : 'New task assigned',
+      text: t.text ? tx('app.notification.taskAssigned', { task: t.text }) : tr('app.notification.newTask'),
       nav:  'tasks',
     }));
 
@@ -1723,7 +1786,7 @@ function NotificationBell({ joinRequests, tasks, onNavigate }) {
       <button
         className="notif-bell-btn"
         onClick={() => setOpen((o) => !o)}
-        aria-label={`${unread.length} notification${unread.length !== 1 ? 's' : ''}`}
+        aria-label={tr('app.notifications')}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -1737,15 +1800,15 @@ function NotificationBell({ joinRequests, tasks, onNavigate }) {
       {open && (
         <div className="notif-panel">
           <div className="notif-panel-header">
-            <span className="notif-panel-title">Notifications</span>
+            <span className="notif-panel-title">{tr('app.notifications')}</span>
             {unread.length > 0 && (
               <button className="notif-dismiss-all" onClick={dismissAll}>
-                Dismiss all
+                {tr('app.dismissAll')}
               </button>
             )}
           </div>
           {all.length === 0 ? (
-            <p className="notif-empty">No notifications</p>
+            <p className="notif-empty">{tr('app.noNotifications')}</p>
           ) : (
             <div className="notif-list">
               {all.map((n) => (
@@ -1759,7 +1822,7 @@ function NotificationBell({ joinRequests, tasks, onNavigate }) {
                   <button
                     className="notif-item-dismiss"
                     onClick={() => dismiss(n.id)}
-                    title="Dismiss"
+                    title={tr('app.dismiss')}
                   >
                     ✕
                   </button>
@@ -1775,30 +1838,16 @@ function NotificationBell({ joinRequests, tasks, onNavigate }) {
 
 // ── Timezone list ─────────────────────────────────────────────────────────────
 const TIMEZONES = [
-  { value: 'Africa/Cairo',         label: 'Cairo (UTC+2)' },
-  { value: 'Africa/Johannesburg',  label: 'Johannesburg (UTC+2)' },
-  { value: 'America/New_York',     label: 'New York (EST/EDT)' },
-  { value: 'America/Chicago',      label: 'Chicago (CST/CDT)' },
-  { value: 'America/Denver',       label: 'Denver (MST/MDT)' },
-  { value: 'America/Los_Angeles',  label: 'Los Angeles (PST/PDT)' },
-  { value: 'America/Sao_Paulo',    label: 'São Paulo (BRT)' },
-  { value: 'Asia/Jerusalem',       label: 'Jerusalem / Tel Aviv (IST)' },
-  { value: 'Asia/Dubai',           label: 'Dubai (GST)' },
-  { value: 'Asia/Kolkata',         label: 'Mumbai / Delhi (IST)' },
-  { value: 'Asia/Bangkok',         label: 'Bangkok (ICT)' },
-  { value: 'Asia/Singapore',       label: 'Singapore (SGT)' },
-  { value: 'Asia/Tokyo',           label: 'Tokyo (JST)' },
-  { value: 'Europe/London',        label: 'London (GMT/BST)' },
-  { value: 'Europe/Lisbon',        label: 'Lisbon (WET/WEST)' },
-  { value: 'Europe/Paris',         label: 'Paris / Berlin (CET/CEST)' },
-  { value: 'Europe/Helsinki',      label: 'Helsinki (EET/EEST)' },
-  { value: 'Europe/Moscow',        label: 'Moscow (MSK)' },
-  { value: 'Pacific/Sydney',       label: 'Sydney (AEST/AEDT)' },
-  { value: 'Pacific/Auckland',     label: 'Auckland (NZST/NZDT)' },
+  'Africa/Cairo', 'Africa/Johannesburg', 'America/New_York', 'America/Chicago',
+  'America/Denver', 'America/Los_Angeles', 'America/Sao_Paulo', 'Asia/Jerusalem',
+  'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Singapore', 'Asia/Tokyo',
+  'Europe/London', 'Europe/Lisbon', 'Europe/Paris', 'Europe/Helsinki', 'Europe/Moscow',
+  'Pacific/Sydney', 'Pacific/Auckland',
 ];
 
 // ── User Settings Modal ───────────────────────────────────────────────────────
 function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWorkspaceRole, onAvatarChange, theme, onToggleTheme }) {
+  const { t, lang } = useT();
   // ── Push notifications ────────────────────────────────────────────────────
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushMsg,     setPushMsg]     = useState('');
@@ -1830,6 +1879,8 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
   const [timezone, setTimezone] = useState('');
   const [tzSaving, setTzSaving] = useState(false);
   const [tzMsg,    setTzMsg]    = useState('');
+  const [languageSaving, setLanguageSaving] = useState(false);
+  const [languageMsg, setLanguageMsg] = useState('');
 
   // ── Integrations ──────────────────────────────────────────────────────────
   const [integrations,    setIntegrations]    = useState({ gmail: false, gcal: false, gdrive: false });
@@ -1890,8 +1941,8 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
   const handleAvatarPick = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setProfileMsg('Please select an image file'); return; }
-    if (file.size > 2 * 1024 * 1024) { setProfileMsg('Image must be under 2 MB'); return; }
+    if (!file.type.startsWith('image/')) { setProfileMsg(t('app.settings.selectImage')); return; }
+    if (file.size > 2 * 1024 * 1024) { setProfileMsg(t('app.settings.imageTooLarge')); return; }
 
     const reader = new FileReader();
     reader.onload = async (ev) => {
@@ -1908,13 +1959,13 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
         if (r.ok) {
           const d = await r.json();
           onAvatarChange?.(d.avatarUrl);
-          setProfileMsg('Avatar updated');
+          setProfileMsg(t('app.settings.avatarUpdated'));
           setTimeout(() => setProfileMsg(''), 2500);
         } else {
-          setProfileMsg('Could not upload avatar');
+          setProfileMsg(t('app.settings.avatarUploadFailed'));
         }
       } catch {
-        setProfileMsg('Could not upload avatar');
+        setProfileMsg(t('app.settings.avatarUploadFailed'));
       } finally {
         setAvatarUploading(false);
       }
@@ -1932,13 +1983,13 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
         body: JSON.stringify({ displayName }),
       });
       if (r.ok) {
-        setProfileMsg('Saved');
+        setProfileMsg(t('settings.saved'));
         setTimeout(() => setProfileMsg(''), 2500);
       } else {
-        setProfileMsg('Error saving');
+        setProfileMsg(t('settings.saveError'));
       }
     } catch {
-      setProfileMsg('Error saving');
+      setProfileMsg(t('settings.saveError'));
     } finally {
       setProfileSaving(false);
     }
@@ -1954,24 +2005,36 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
         body: JSON.stringify({ timezone }),
       });
       if (r.ok) {
-        setTzMsg('Saved');
+        setTzMsg(t('settings.saved'));
         setTimeout(() => setTzMsg(''), 2500);
       } else {
-        setTzMsg('Error saving');
+        setTzMsg(t('settings.saveError'));
       }
     } catch {
-      setTzMsg('Error saving');
+      setTzMsg(t('settings.saveError'));
     } finally {
       setTzSaving(false);
+    }
+  };
+
+  const handleLanguageChange = async (nextLang) => {
+    if (nextLang === lang || languageSaving) return;
+    setLanguageSaving(true);
+    setLanguageMsg('');
+    try {
+      await switchLanguage(nextLang);
+    } catch {
+      setLanguageSaving(false);
+      setLanguageMsg(t('settings.lang.error'));
     }
   };
 
   // ── Change password ─────────────────────────────────────────────────────
   const handleChangePassword = async () => {
     setPwMsg('');
-    if (!pwCurrent || !pwNew) { setPwMsg('All fields are required'); return; }
-    if (pwNew !== pwConfirm)  { setPwMsg('Passwords do not match');  return; }
-    if (pwNew.length < 8)     { setPwMsg('New password must be at least 8 characters'); return; }
+    if (!pwCurrent || !pwNew) { setPwMsg(t('app.settings.passwordRequired')); return; }
+    if (pwNew !== pwConfirm)  { setPwMsg(t('app.settings.passwordMismatch'));  return; }
+    if (pwNew.length < 8)     { setPwMsg(t('app.settings.passwordLength')); return; }
     setPwSaving(true);
     try {
       const r = await fetch('/api/me/change-password', {
@@ -1981,14 +2044,14 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
       });
       const d = await r.json();
       if (r.ok) {
-        setPwMsg('Password changed');
+        setPwMsg(t('app.settings.passwordChanged'));
         setPwOpen(false);
         setPwCurrent(''); setPwNew(''); setPwConfirm('');
       } else {
-        setPwMsg(d.error || 'Error changing password');
+        setPwMsg(d.error || t('app.settings.passwordChangeFailed'));
       }
     } catch {
-      setPwMsg('Could not reach server');
+      setPwMsg(t('app.serverError'));
     } finally {
       setPwSaving(false);
     }
@@ -2003,7 +2066,7 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
       const r = await fetch(`/api/automations/integrations/${provider}`, { method: 'DELETE' });
       if (r.ok) {
         setIntegrations((prev) => ({ ...prev, [provider]: false }));
-        setIntgMsg(`Disconnected`);
+        setIntgMsg(t('app.settings.disconnected'));
         setTimeout(() => setIntgMsg(''), 2500);
       }
     } catch {}
@@ -2014,13 +2077,13 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
   const handleBackupIntegrations = async () => {
     try {
       const r = await fetch('/api/automations/integrations/export');
-      if (!r.ok) throw new Error('Export failed');
+      if (!r.ok) throw new Error(t('app.settings.exportFailed'));
       const { data } = await r.json();
       await navigator.clipboard.writeText(data);
-      setIntgMsg('Copied — paste as INTEGRATIONS_DATA in Railway Variables');
+      setIntgMsg(<>{t('app.settings.integrationDataCopiedPrefix')} <span className="ltr">INTEGRATIONS_DATA</span> {t('app.settings.integrationDataCopiedSuffix')}</>);
       setTimeout(() => setIntgMsg(''), 6000);
     } catch (e) {
-      setIntgMsg(e.message || 'Could not copy integration data');
+      setIntgMsg(e.message || t('app.settings.integrationDataCopyFailed'));
       setTimeout(() => setIntgMsg(''), 4000);
     }
   };
@@ -2032,17 +2095,17 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
       if (!pushEnabled) {
         await subscribeToPush();
         setPushEnabled(true);
-        setPushMsg('Push notifications enabled');
+        setPushMsg(t('app.settings.pushEnabled'));
       } else {
-        if (!('serviceWorker' in navigator)) throw new Error('Not supported');
+        if (!('serviceWorker' in navigator)) throw new Error(t('app.settings.pushUnsupported'));
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (sub) await sub.unsubscribe();
         setPushEnabled(false);
-        setPushMsg('Push notifications disabled');
+        setPushMsg(t('app.settings.pushDisabled'));
       }
     } catch (e) {
-      setPushMsg(e.message || 'Could not update notification settings');
+      setPushMsg(e.message || t('app.settings.pushUpdateFailed'));
     } finally {
       setPushBusy(false);
     }
@@ -2060,13 +2123,13 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
       });
       if (r.ok) {
         onChangeWorkspaceRole?.(newRole);
-        setRoleMsg('Saved');
+        setRoleMsg(t('settings.saved'));
         setTimeout(() => setRoleMsg(''), 2500);
       } else {
-        setRoleMsg('Error saving');
+        setRoleMsg(t('settings.saveError'));
       }
     } catch {
-      setRoleMsg('Error saving');
+      setRoleMsg(t('settings.saveError'));
     } finally {
       setRoleSaving(false);
     }
@@ -2077,9 +2140,9 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
     : '?';
 
   const GOOGLE_SERVICES = [
-    { id: 'gcal',   label: 'Google Calendar' },
-    { id: 'gdrive', label: 'Google Drive' },
-    { id: 'gmail',  label: 'Gmail' },
+    { id: 'gcal',   labelKey: 'app.settings.googleCalendar' },
+    { id: 'gdrive', labelKey: 'app.settings.googleDrive' },
+    { id: 'gmail',  labelKey: 'app.settings.gmail' },
   ];
 
   const INTG_ICONS = {
@@ -2125,19 +2188,19 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
 
         {/* ── Header ── */}
         <div className="user-settings-header">
-          <h3 className="user-settings-title">Settings</h3>
-          <button className="user-settings-close" onClick={onClose} aria-label="Close">✕</button>
+          <h3 className="user-settings-title">{t('settings.title')}</h3>
+          <button className="user-settings-close" onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
 
         {/* ── Appearance ── */}
         <div className="user-settings-section">
-          <h4 className="user-settings-section-title">Appearance</h4>
+          <h4 className="user-settings-section-title">{t('app.settings.appearance')}</h4>
           <div className="user-settings-row">
             <div className="user-settings-row-info">
-              <span className="user-settings-row-label">Theme</span>
-              <span className="user-settings-row-desc">Light or dark interface for this device.</span>
+              <span className="user-settings-row-label">{t('app.settings.theme')}</span>
+              <span className="user-settings-row-desc">{t('app.settings.themeDescription')}</span>
             </div>
-            <div className="ust-theme-seg" role="radiogroup" aria-label="Theme">
+            <div className="ust-theme-seg" role="radiogroup" aria-label={t('app.settings.theme')}>
               <button
                 type="button"
                 className={`ust-theme-opt${theme !== 'dark' ? ' is-active' : ''}`}
@@ -2151,7 +2214,7 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
                     <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/>
                   </g>
                 </svg>
-                Light
+                {t('app.settings.light')}
               </button>
               <button
                 type="button"
@@ -2163,7 +2226,7 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8 5.6 5.6 0 1 0 13.2 9.6z" fill="currentColor"/>
                 </svg>
-                Dark
+                {t('app.settings.dark')}
               </button>
             </div>
           </div>
@@ -2171,19 +2234,19 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
 
         {/* ── Account ── */}
         <div className="user-settings-section">
-          <h4 className="user-settings-section-title">Account</h4>
+          <h4 className="user-settings-section-title">{t('app.account')}</h4>
 
           {/* Avatar + Display Name */}
           <div className="ust-profile-row">
             <div
               className={`ust-avatar-wrap${avatarUploading ? ' uploading' : ''}`}
               onClick={() => avatarInputRef.current?.click()}
-              title="Click to change photo"
+              title={t('app.settings.changePhoto')}
             >
               {avatarPreview
-                ? <img src={avatarPreview} alt="avatar" className="ust-avatar-img" />
+                ? <img src={avatarPreview} alt={t('app.avatar')} className="ust-avatar-img" />
                 : <span className="ust-avatar-initials">{initials}</span>}
-              <span className="ust-avatar-overlay">{avatarUploading ? '…' : 'Edit'}</span>
+              <span className="ust-avatar-overlay">{avatarUploading ? '…' : t('common.edit')}</span>
             </div>
             <input
               ref={avatarInputRef}
@@ -2193,13 +2256,14 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
               onChange={handleAvatarPick}
             />
             <div className="ust-profile-fields">
-              <label className="ust-field-label">Display Name</label>
+              <label className="ust-field-label">{t('app.settings.displayName')}</label>
               <input
                 className="ust-field-input"
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your name"
+                placeholder={t('app.settings.yourName')}
+                dir="auto"
                 maxLength={100}
               />
             </div>
@@ -2207,10 +2271,10 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
 
           <div className="ust-save-row">
             <button className="btn-primary ust-save-btn" onClick={handleSaveProfile} disabled={profileSaving}>
-              {profileSaving ? 'Saving…' : 'Save'}
+              {profileSaving ? t('common.saving') : t('common.save')}
             </button>
             {profileMsg && (
-              <span className={`user-settings-msg${profileMsg === 'Saved' || profileMsg === 'Avatar updated' ? ' ok' : ' err'}`}>
+              <span className={`user-settings-msg${profileMsg === t('settings.saved') || profileMsg === t('app.settings.avatarUpdated') ? ' ok' : ' err'}`}>
                 {profileMsg}
               </span>
             )}
@@ -2218,18 +2282,18 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
 
           {/* ── Change Password ── */}
           <div className="ust-security-block">
-            <span className="ust-security-label">Security</span>
+            <span className="ust-security-label">{t('app.settings.security')}</span>
 
             {userRole === 'admin' ? (
               <p className="ust-security-note">
-                Admin password is set via the <code>AUTH_PASSWORD</code> environment variable.
+                {t('app.settings.adminPasswordPrefix')} <code className="ltr">AUTH_PASSWORD</code> {t('app.settings.adminPasswordSuffix')}
               </p>
             ) : (
               <div className="ust-pw-form">
                 <input
                   className="ust-field-input"
                   type="password"
-                  placeholder="Current password"
+                  placeholder={t('app.settings.currentPassword')}
                   value={pwCurrent}
                   onChange={(e) => setPwCurrent(e.target.value)}
                   autoComplete="current-password"
@@ -2237,7 +2301,7 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
                 <input
                   className="ust-field-input"
                   type="password"
-                  placeholder="New password (min 8 chars)"
+                  placeholder={t('app.settings.newPassword')}
                   value={pwNew}
                   onChange={(e) => setPwNew(e.target.value)}
                   autoComplete="new-password"
@@ -2245,7 +2309,7 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
                 <input
                   className="ust-field-input"
                   type="password"
-                  placeholder="Confirm new password"
+                  placeholder={t('app.settings.confirmPassword')}
                   value={pwConfirm}
                   onChange={(e) => setPwConfirm(e.target.value)}
                   autoComplete="new-password"
@@ -2253,10 +2317,10 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
                 />
                 <div className="ust-save-row" style={{ marginTop: 6 }}>
                   <button className="btn-primary ust-save-btn" onClick={handleChangePassword} disabled={pwSaving}>
-                    {pwSaving ? 'Saving…' : 'Update Password'}
+                    {pwSaving ? t('common.saving') : t('app.settings.updatePassword')}
                   </button>
                   {pwMsg && (
-                    <span className={`user-settings-msg${pwMsg === 'Password changed' ? ' ok' : ' err'}`}>
+                    <span className={`user-settings-msg${pwMsg === t('app.settings.passwordChanged') ? ' ok' : ' err'}`}>
                       {pwMsg}
                     </span>
                   )}
@@ -2268,54 +2332,83 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
 
         {/* ── Preferences ── */}
         <div className="user-settings-section">
-          <h4 className="user-settings-section-title">Preferences</h4>
+          <h4 className="user-settings-section-title">{t('app.settings.preferences')}</h4>
+          <div className="user-settings-row">
+            <div className="user-settings-row-info">
+              <span className="user-settings-row-label">{t('settings.language')}</span>
+              <span className="user-settings-row-desc">{t('settings.languageDesc')}</span>
+            </div>
+            <div className="ust-theme-seg" role="radiogroup" aria-label={t('settings.language')}>
+              <button
+                type="button"
+                className={`ust-theme-opt${lang === 'en' ? ' is-active' : ''}`}
+                role="radio"
+                aria-checked={lang === 'en'}
+                onClick={() => handleLanguageChange('en')}
+                disabled={languageSaving}
+              >
+                {t('settings.lang.en')}
+              </button>
+              <button
+                type="button"
+                className={`ust-theme-opt${lang === 'he' ? ' is-active' : ''}`}
+                role="radio"
+                aria-checked={lang === 'he'}
+                onClick={() => handleLanguageChange('he')}
+                disabled={languageSaving}
+              >
+                {t('settings.lang.he')}
+              </button>
+            </div>
+          </div>
+          {languageMsg && <p className="user-settings-msg err">{languageMsg}</p>}
           <div className="user-settings-row ust-tz-row">
             <div className="user-settings-row-info">
-              <span className="user-settings-row-label">Timezone</span>
-              <span className="user-settings-row-desc">Used for scheduling alerts and task reminders.</span>
+              <span className="user-settings-row-label">{t('app.settings.timezone')}</span>
+              <span className="user-settings-row-desc">{t('app.settings.timezoneDescription')}</span>
             </div>
             <select
               className="ust-select"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
             >
-              <option value="">System default</option>
-              {TIMEZONES.map((tz) => (
-                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              <option value="">{t('app.settings.systemDefault')}</option>
+              {TIMEZONES.map((timezoneValue) => (
+                <option key={timezoneValue} value={timezoneValue}>{t(`app.timezone.${timezoneValue}`)}</option>
               ))}
             </select>
           </div>
           <div className="ust-save-row">
             <button className="btn-primary ust-save-btn" onClick={handleSaveTz} disabled={tzSaving}>
-              {tzSaving ? 'Saving…' : 'Save'}
+              {tzSaving ? t('common.saving') : t('common.save')}
             </button>
             {tzMsg && (
-              <span className={`user-settings-msg${tzMsg === 'Saved' ? ' ok' : ' err'}`}>{tzMsg}</span>
+              <span className={`user-settings-msg${tzMsg === t('settings.saved') ? ' ok' : ' err'}`}>{tzMsg}</span>
             )}
           </div>
         </div>
 
         {/* ── Integrations ── */}
         <div className="user-settings-section">
-          <h4 className="user-settings-section-title">Integrations</h4>
+          <h4 className="user-settings-section-title">{t('app.settings.integrations')}</h4>
           {intgLoading ? (
-            <p className="user-settings-section-desc">Loading…</p>
+            <p className="user-settings-section-desc">{t('common.loading')}</p>
           ) : (
             <div className="ust-intg-list">
-              {GOOGLE_SERVICES.map(({ id, label }) => (
+              {GOOGLE_SERVICES.map(({ id, labelKey }) => (
                 <div key={id} className="ust-intg-row">
                   <span className="ust-intg-icon">{INTG_ICONS[id]}</span>
-                  <span className="ust-intg-name">{label}</span>
+                  <span className="ust-intg-name">{t(labelKey)}</span>
                   <span className={`ust-intg-status${integrations[id] ? ' connected' : ''}`}>
-                    {integrations[id] ? 'Connected' : 'Disconnected'}
+                    {integrations[id] ? t('app.settings.connected') : t('app.settings.disconnected')}
                   </span>
                   {integrations[id] ? (
                     <button className="ust-btn-disconnect" onClick={() => handleDisconnect(id)}>
-                      Disconnect
+                      {t('app.settings.disconnect')}
                     </button>
                   ) : (
                     <button className="ust-btn-connect" onClick={() => handleConnect(id)}>
-                      Connect
+                      {t('app.settings.connect')}
                     </button>
                   )}
                 </div>
@@ -2323,12 +2416,14 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
               {/* Spotify — server credentials only */}
               <div className="ust-intg-row">
                 <span className="ust-intg-icon">{INTG_ICONS.spotify}</span>
-                <span className="ust-intg-name">Spotify</span>
+                <span className="ust-intg-name">{t('app.settings.spotify')}</span>
                 <span className={`ust-intg-status${spotifyConnected ? ' connected' : ''}`}>
-                  {spotifyConnected ? 'Connected' : 'Not configured'}
+                  {spotifyConnected ? t('app.settings.connected') : t('app.settings.notConfigured')}
                 </span>
                 <span className="ust-intg-hint">
-                  {spotifyConnected ? 'Server credentials' : 'Add SPOTIFY_CLIENT_ID env var'}
+                  {spotifyConnected ? t('app.settings.serverCredentials') : (
+                    <>{t('app.settings.addCredentialsPrefix')} <code className="ltr">SPOTIFY_CLIENT_ID</code> {t('app.settings.addCredentialsSuffix')}</>
+                  )}
                 </span>
               </div>
             </div>
@@ -2336,10 +2431,10 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
           {userRole === 'admin' && (
             <div className="ust-intg-backup-row">
               <button className="ust-btn-backup" onClick={handleBackupIntegrations}>
-                Backup connections
+                {t('app.settings.backupConnections')}
               </button>
               <span className="ust-intg-backup-hint">
-                Copy token data → paste as <code>INTEGRATIONS_DATA</code> in Railway Variables to keep integrations connected after deploys.
+                {t('app.settings.backupHintPrefix')} <code className="ltr">INTEGRATIONS_DATA</code> {t('app.settings.backupHintSuffix')}
               </span>
             </div>
           )}
@@ -2348,11 +2443,11 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
 
         {/* ── Notifications ── */}
         <div className="user-settings-section">
-          <h4 className="user-settings-section-title">Notifications</h4>
+          <h4 className="user-settings-section-title">{t('app.notifications')}</h4>
           <div className="user-settings-row">
             <div className="user-settings-row-info">
-              <span className="user-settings-row-label">Push Notifications</span>
-              <span className="user-settings-row-desc">Receive task reminders and show alerts on this device.</span>
+              <span className="user-settings-row-label">{t('app.settings.pushNotifications')}</span>
+              <span className="user-settings-row-desc">{t('app.settings.pushDescription')}</span>
             </div>
             <button
               role="switch"
@@ -2360,13 +2455,13 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
               className={`settings-toggle-switch${pushEnabled ? ' on' : ''}`}
               onClick={handlePushToggle}
               disabled={pushBusy}
-              aria-label="Toggle push notifications"
+              aria-label={t('app.settings.togglePush')}
             >
               <span className="settings-toggle-thumb" />
             </button>
           </div>
           {pushMsg && (
-            <p className={`user-settings-msg${pushMsg.includes('enabled') ? ' ok' : pushMsg.includes('disabled') ? '' : ' err'}`}>
+            <p className={`user-settings-msg${pushMsg === t('app.settings.pushEnabled') ? ' ok' : pushMsg === t('app.settings.pushDisabled') ? '' : ' err'}`}>
               {pushMsg}
             </p>
           )}
@@ -2375,25 +2470,25 @@ function UserSettingsModal({ onClose, currentWorkspaceRole, userRole, onChangeWo
         {/* ── My View (non-admin only) ── */}
         {userRole !== 'admin' && (
           <div className="user-settings-section">
-            <h4 className="user-settings-section-title">My View</h4>
-            <p className="user-settings-section-desc">Choose your default focus. You can switch at any time.</p>
+            <h4 className="user-settings-section-title">{t('app.settings.myView')}</h4>
+            <p className="user-settings-section-desc">{t('app.settings.myViewDescription')}</p>
             <div className="user-settings-role-grid">
               {[
-                { value: 'producer',  label: 'Producer',  desc: 'Manage shows, crew, tasks and automations.' },
-                { value: 'backliner', label: 'Backliner', desc: 'Focus on backline setup, checklists and setlists.' },
-              ].map(({ value, label, desc }) => (
+                { value: 'producer',  labelKey: 'app.settings.producer',  descKey: 'app.settings.producerDescription' },
+                { value: 'backliner', labelKey: 'app.settings.backliner', descKey: 'app.settings.backlinerDescription' },
+              ].map(({ value, labelKey, descKey }) => (
                 <button
                   key={value}
                   className={`user-settings-role-card${roleValue === value ? ' active' : ''}`}
                   onClick={() => handleRoleChange(value)}
                   disabled={roleSaving}
                 >
-                  <span className="user-settings-role-label">{label}</span>
-                  <span className="user-settings-role-desc">{desc}</span>
+                  <span className="user-settings-role-label">{t(labelKey)}</span>
+                  <span className="user-settings-role-desc">{t(descKey)}</span>
                 </button>
               ))}
             </div>
-            {roleMsg && <p className={`user-settings-msg${roleMsg === 'Saved' ? ' ok' : ' err'}`}>{roleMsg}</p>}
+            {roleMsg && <p className={`user-settings-msg${roleMsg === t('settings.saved') ? ' ok' : ' err'}`}>{roleMsg}</p>}
           </div>
         )}
 

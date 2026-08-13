@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PageBar from './ui/PageBar';
 import NotificationSettingsScreen from './NotificationSettingsScreen';
+import { useT } from '../i18n';
 
 const fmtDate = (d) => {
   if (!d) return null;
@@ -23,6 +24,7 @@ function normalizeShowIds(task) {
 
 // ── Multi-show picker dropdown ────────────────────────────────────────────────
 function ShowMultiPicker({ selected, shows, onChange }) {
+  const { t, tx } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -40,10 +42,10 @@ function ShowMultiPicker({ selected, shows, onChange }) {
   const today = new Date().toISOString().slice(0, 10);
   const list = sortedShows(shows).filter(s => !s.archived && (!s.date || s.date >= today));
   const labelText = selected.length === 0
-    ? 'Link to shows…'
+    ? t('globalTasks.linkShows')
     : selected.length === 1
-      ? (shows.find(s => s.id === selected[0])?.name || '1 show')
-      : `${selected.length} shows`;
+      ? (shows.find(s => s.id === selected[0])?.name || t('globalTasks.oneShow'))
+      : tx('globalTasks.showsCount', { count: selected.length });
 
   return (
     <div className="gtask-show-picker" ref={ref}>
@@ -52,12 +54,12 @@ function ShowMultiPicker({ selected, shows, onChange }) {
         className={`gtask-select gtask-show-picker-btn${selected.length ? ' has-value' : ''}`}
         onClick={() => setOpen(o => !o)}
       >
-        {labelText}
+        <span dir="auto">{labelText}</span>
         <span className="gtask-picker-caret">▾</span>
       </button>
       {open && (
         <div className="gtask-show-picker-dropdown">
-          {list.length === 0 && <div className="gtask-picker-empty">No shows</div>}
+          {list.length === 0 && <div className="gtask-picker-empty">{t('globalTasks.noShows')}</div>}
           {list.map(s => (
             <label key={s.id} className="gtask-picker-option">
               <input
@@ -65,9 +67,9 @@ function ShowMultiPicker({ selected, shows, onChange }) {
                 checked={selected.includes(s.id)}
                 onChange={() => toggle(s.id)}
               />
-              <span className="gtask-picker-label">
-                {s.name}
-                {s.date && <span className="gtask-picker-date">{s.date}</span>}
+              <span className="gtask-picker-label" dir="auto">
+                <span dir="auto">{s.name}</span>
+                {s.date && <span className="gtask-picker-date ltr" dir="ltr">{s.date}</span>}
               </span>
             </label>
           ))}
@@ -79,6 +81,7 @@ function ShowMultiPicker({ selected, shows, onChange }) {
 
 // ── Inline edit form ──────────────────────────────────────────────────────────
 function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
+  const { t } = useT();
   const [text,       setText]       = useState(task.text);
   const [notes,      setNotes]      = useState(task.notes || '');
   const [dueDate,    setDueDate]    = useState(task.dueDate    || '');
@@ -117,7 +120,7 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
         dir="auto"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Additional details…"
+        placeholder={t('globalTasks.detailsPlaceholder')}
         rows={3}
       />
       <div className="gtask-add-meta">
@@ -132,19 +135,19 @@ function TaskEditForm({ task, crew, shows, onSave, onCancel }) {
           className="gtask-time-input"
           value={dueTime}
           onChange={(e) => setDueTime(e.target.value)}
-          title="Time (optional)"
+          title={t('globalTasks.optionalTime')}
         />
-        <select className="gtask-select" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-          <option value="">Assign to…</option>
+        <select className="gtask-select" dir="auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+          <option value="">{t('globalTasks.assignTo')}</option>
           {(crew || []).map((m) => (
-            <option key={m.id} value={m.id}>{m.name}{m.role ? ` (${m.role})` : ''}</option>
+            <option key={m.id} value={m.id} dir="auto">{m.name}{m.role ? ` (${m.role})` : ''}</option>
           ))}
         </select>
         <ShowMultiPicker selected={showIds} shows={shows} onChange={setShowIds} />
       </div>
       <div className="gtask-edit-actions">
-        <button className="btn-primary" onClick={handleSave} disabled={!text.trim()}>Save</button>
-        <button className="btn-ghost"   onClick={onCancel}>Cancel</button>
+        <button className="btn-primary" onClick={handleSave} disabled={!text.trim()}>{t('common.save')}</button>
+        <button className="btn-ghost"   onClick={onCancel}>{t('common.cancel')}</button>
       </div>
     </div>
   );
@@ -184,6 +187,7 @@ function DatePill({ dueDate, dueTime, completed }) {
 
 // ── Single task row (board view) ──────────────────────────────────────────────
 function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, setExpandedId, noteDraft, setNoteDraft, saveNoteBlur, editingId, setEditingId, crew, shows }) {
+  const { t: tr } = useT();
   const linkedIds   = normalizeShowIds(t);
   const linkedShows = linkedIds.map(id => showById[id]).filter(Boolean);
   const isEditing   = editingId  === t.id;
@@ -232,11 +236,11 @@ function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, set
               <button
                 className="btn-action"
                 onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setExpandedId(null); }}
-              >Edit</button>
+              >{tr('common.edit')}</button>
               <button
                 className="btn-action btn-action--danger"
                 onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}
-              >Delete</button>
+              >{tr('common.delete')}</button>
             </div>
           </div>
 
@@ -245,7 +249,7 @@ function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, set
             <div className="gtask-board-row-pills">
               <DatePill dueDate={t.dueDate} dueTime={t.dueTime} completed={t.completed} />
               {linkedShows.map(s => (
-                <span key={s.id} className="gtask-pill gtask-pill--show">{s.name}</span>
+                <span key={s.id} className="gtask-pill gtask-pill--show" dir="auto">{s.name}</span>
               ))}
             </div>
           )}
@@ -259,11 +263,11 @@ function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, set
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
                 onBlur={() => saveNoteBlur(t.id)}
-                placeholder="Additional details…"
+                placeholder={tr('globalTasks.detailsPlaceholder')}
                 rows={3}
                 autoFocus
               />
-              <div className="gtask-notes-hint">Saves automatically when you click away</div>
+              <div className="gtask-notes-hint">{tr('globalTasks.autoSaveHint')}</div>
             </div>
           )}
         </>
@@ -274,6 +278,7 @@ function BoardTaskRow({ t, showById, onToggle, onEdit, onDelete, expandedId, set
 
 // ── Two-column board (Active tab only) ───────────────────────────────────────
 function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows }) {
+  const { t } = useT();
   const [expandedId,  setExpandedId]  = useState(null);
   const [noteDraft,   setNoteDraft]   = useState('');
   const [editingId,   setEditingId]   = useState(null);
@@ -300,11 +305,11 @@ function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows })
       <div className="gtask-board-col">
         <div className="gtask-board-col-header">
           <span className="gtask-board-col-dot gtask-board-col-dot--blue" aria-hidden="true">●</span>
-          <span className="gtask-board-col-title">Scheduled</span>
+          <span className="gtask-board-col-title">{t('globalTasks.scheduled')}</span>
           <span className="gtask-board-col-count">{scheduled.length}</span>
         </div>
         {scheduled.length === 0 ? (
-          <div className="gtask-board-empty">No dated tasks</div>
+          <div className="gtask-board-empty">{t('globalTasks.noDatedTasks')}</div>
         ) : (
           scheduled.map(t => (
             <BoardTaskRow key={t.id} t={t} {...rowProps} />
@@ -316,11 +321,11 @@ function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows })
       <div className="gtask-board-col">
         <div className="gtask-board-col-header">
           <span className="gtask-board-col-dot gtask-board-col-dot--orange" aria-hidden="true">●</span>
-          <span className="gtask-board-col-title">No date</span>
+          <span className="gtask-board-col-title">{t('globalTasks.noDate')}</span>
           <span className="gtask-board-col-count">{noDate.length}</span>
         </div>
         {noDate.length === 0 ? (
-          <div className="gtask-board-empty">No undated tasks</div>
+          <div className="gtask-board-empty">{t('globalTasks.noUndatedTasks')}</div>
         ) : (
           noDate.map(t => (
             <BoardTaskRow key={t.id} t={t} {...rowProps} />
@@ -333,6 +338,7 @@ function TaskBoard({ tasks, showById, onToggle, onEdit, onDelete, crew, shows })
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpdate }) {
+  const { t: tr } = useT();
   const [text,        setText]        = useState('');
   const [notes,       setNotes]       = useState('');
   const [showNotes,   setShowNotes]   = useState(false);
@@ -414,17 +420,17 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
   return (
     <div className="gtask-page">
       <PageBar
-        title="Tasks"
+        title={tr('globalTasks.title')}
         count={countActive}
-        countLabel="active"
+        countLabel={tr('globalTasks.active')}
         metrics={[
-          { value: countActive,                       label: 'Active' },
-          { value: countDone,                         label: 'Done' },
-          { value: ownTasks.filter(t=>t.dueDate).length, label: 'With date' },
+          { value: countActive,                       label: tr('globalTasks.active') },
+          { value: countDone,                         label: tr('globalTasks.done') },
+          { value: ownTasks.filter(task => task.dueDate).length, label: tr('globalTasks.withDate') },
         ]}
         headerAction={
-          <button className="gtask-notif-btn" onClick={() => setScreen('settings')} title="Notification settings">
-            <span className="gtask-notif-bell">Notifications</span>
+          <button className="gtask-notif-btn" onClick={() => setScreen('settings')} title={tr('globalTasks.notificationSettings')}>
+            <span className="gtask-notif-bell">{tr('globalTasks.notifications')}</span>
             {armedCount > 0 && <span className="gtask-notif-badge">{armedCount}</span>}
           </button>
         }
@@ -439,10 +445,10 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            placeholder="New task…"
+            placeholder={tr('globalTasks.newTask')}
           />
           <button className="btn-primary gtask-add-btn" onClick={handleAdd} disabled={!text.trim()}>
-            Add
+            {tr('common.add')}
           </button>
         </div>
 
@@ -452,13 +458,13 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
             dir="auto"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional details…"
+            placeholder={tr('globalTasks.detailsPlaceholder')}
             rows={3}
             autoFocus
           />
         ) : (
           <button className="gtask-add-details-btn" onClick={() => setShowNotes(true)}>
-            + Details
+            {tr('globalTasks.addDetails')}
           </button>
         )}
 
@@ -468,20 +474,20 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
             className="gtask-date-input"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            title="Due date (optional)"
-            placeholder="dd/mm/yyyy — optional"
+            title={tr('globalTasks.optionalDueDate')}
+            placeholder={tr('globalTasks.datePlaceholder')}
           />
           <input
             type="time"
             className="gtask-time-input"
             value={dueTime}
             onChange={(e) => setDueTime(e.target.value)}
-            title="Time (optional)"
+            title={tr('globalTasks.optionalTime')}
           />
-          <select className="gtask-select" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-            <option value="">Assign to…</option>
+          <select className="gtask-select" dir="auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <option value="">{tr('globalTasks.assignTo')}</option>
             {(crew || []).map((m) => (
-              <option key={m.id} value={m.id}>{m.name}{m.role ? ` (${m.role})` : ''}</option>
+              <option key={m.id} value={m.id} dir="auto">{m.name}{m.role ? ` (${m.role})` : ''}</option>
             ))}
           </select>
           <ShowMultiPicker selected={showIds} shows={shows} onChange={setShowIds} />
@@ -491,8 +497,8 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
       {/* Filter bar — Active / Completed only */}
       <div className="gtask-filter-bar">
         {[
-          { key: 'active', label: 'Active',    count: countActive },
-          { key: 'done',   label: 'Completed',  count: countDone },
+          { key: 'active', label: tr('globalTasks.active'),    count: countActive },
+          { key: 'done',   label: tr('globalTasks.completed'), count: countDone },
         ].map(({ key, label, count }) => (
           <button key={key}
             className={`gtask-filter-btn ${filter === key ? 'active' : ''}`}
@@ -506,7 +512,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
       {/* Assigned-to-me section */}
       {assignedTasks.length > 0 && (
         <div className="gtask-assigned-section">
-          <div className="gtask-assigned-header">Assigned to me</div>
+          <div className="gtask-assigned-header">{tr('globalTasks.assignedToMe')}</div>
           <ul className="gtask-list">
             {assignedTasks.map((t) => {
               const today  = new Date(); today.setHours(0, 0, 0, 0);
@@ -521,7 +527,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                   <div className="gtask-body" onClick={() => toggleExpand(t)}>
                     <span className="gtask-text" dir="auto">{t.text}</span>
                     <div className="gtask-pills">
-                      <span className="gtask-pill gtask-pill--assigned">assigned</span>
+                      <span className="gtask-pill gtask-pill--assigned">{tr('globalTasks.assigned')}</span>
                       {(t.dueDate || t.dueTime) && (
                         <span className={`gtask-pill gtask-pill--date${overdue ? ' overdue' : ''}`}>
                           {overdue ? '⚠ ' : ''}{t.dueDate ? fmtDate(t.dueDate) : ''}{fmtTime(t.dueTime) ? `${t.dueDate ? ' · ' : ''}${fmtTime(t.dueTime)}` : ''}
@@ -536,11 +542,11 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                           value={noteDraft}
                           onChange={(e) => setNoteDraft(e.target.value)}
                           onBlur={() => saveNoteBlur(t.id)}
-                          placeholder="Additional details…"
+                          placeholder={tr('globalTasks.detailsPlaceholder')}
                           rows={3}
                           autoFocus
                         />
-                        <div className="gtask-notes-hint">Saves automatically when you click away</div>
+                        <div className="gtask-notes-hint">{tr('globalTasks.autoSaveHint')}</div>
                       </div>
                     )}
                   </div>
@@ -554,7 +560,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
       {/* Active tab: two-column board */}
       {filter === 'active' && (
         filtered.length === 0 ? (
-          <div className="gtask-empty">No active tasks — you're all caught up!</div>
+          <div className="gtask-empty">{tr('globalTasks.noActiveTasks')}</div>
         ) : (
           <TaskBoard
             tasks={filtered}
@@ -571,7 +577,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
       {/* Completed tab: flat list */}
       {filter === 'done' && (
         filtered.length === 0 ? (
-          <div className="gtask-empty">No completed tasks yet</div>
+          <div className="gtask-empty">{tr('globalTasks.noCompletedTasks')}</div>
         ) : (
           <ul className="gtask-list">
             {filtered.map((t) => {
@@ -607,10 +613,10 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                         <span className="gtask-text" dir="auto">{t.text}</span>
                         <div className="gtask-pills">
                           {assignee && (
-                            <span className="gtask-pill gtask-pill--crew">{assignee.name}</span>
+                            <span className="gtask-pill gtask-pill--crew" dir="auto">{assignee.name}</span>
                           )}
                           {linkedShows.map(s => (
-                            <span key={s.id} className="gtask-pill gtask-pill--show" title={s.date || ''}>
+                            <span key={s.id} className="gtask-pill gtask-pill--show" dir="auto" title={s.date || ''}>
                               {s.name}
                             </span>
                           ))}
@@ -620,7 +626,7 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                             </span>
                           )}
                           {t.notes && !isExpanded && (
-                            <span className="gtask-pill gtask-pill--notes" title={t.notes}>details</span>
+                            <span className="gtask-pill gtask-pill--notes" title={t.notes}>{tr('globalTasks.details')}</span>
                           )}
                         </div>
 
@@ -632,18 +638,18 @@ function GlobalTaskPanel({ tasks, crew, shows, onAdd, onToggle, onDelete, onUpda
                               value={noteDraft}
                               onChange={(e) => setNoteDraft(e.target.value)}
                               onBlur={() => saveNoteBlur(t.id)}
-                              placeholder="Additional details…"
+                              placeholder={tr('globalTasks.detailsPlaceholder')}
                               rows={3}
                               autoFocus
                             />
-                            <div className="gtask-notes-hint">Saves automatically when you click away</div>
+                            <div className="gtask-notes-hint">{tr('globalTasks.autoSaveHint')}</div>
                           </div>
                         )}
                       </div>
 
                       <div className="gtask-item-actions">
-                        <button className="btn-action" onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setExpandedId(null); }}>Edit</button>
-                        <button className="btn-action btn-action--danger" onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}>Delete</button>
+                        <button className="btn-action" onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setExpandedId(null); }}>{tr('common.edit')}</button>
+                        <button className="btn-action btn-action--danger" onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}>{tr('common.delete')}</button>
                       </div>
                     </>
                   )}

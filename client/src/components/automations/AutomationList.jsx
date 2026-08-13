@@ -1,28 +1,29 @@
 import { useState } from 'react';
+import { useT } from '../../i18n';
 
 const TRIGGER_LABELS = {
-  'email':      'When an email arrives',
-  'schedule':   'On a daily schedule',
-  'show-event': 'When a show is created/updated',
-  'task':       'When a task is completed',
-  'cal-event':  'When a calendar event is created',
+  'email':      'auto.list.trigger.email',
+  'schedule':   'auto.list.trigger.schedule',
+  'show-event': 'auto.list.trigger.showEvent',
+  'task':       'auto.list.trigger.task',
+  'cal-event':  'auto.list.trigger.calEvent',
 };
 
 const ACTION_LABELS = {
-  'push':          'send a push notification',
-  'create-show':   'create a new show',
-  'create-folder': 'create a Google Drive folder',
-  'send-email':    'send an email',
-  'cal-invite':    'send a calendar invite',
-  'add-task':      'add a task',
+  'push':          'auto.list.action.push',
+  'create-show':   'auto.list.action.createShow',
+  'create-folder': 'auto.list.action.createFolder',
+  'send-email':    'auto.list.action.sendEmail',
+  'cal-invite':    'auto.list.action.calInvite',
+  'add-task':      'auto.list.action.addTask',
 };
 
-function buildSentence(auto) {
-  const trig = TRIGGER_LABELS[auto.triggerType] || auto.triggerType;
-  const act  = ACTION_LABELS[auto.actionType]   || auto.actionType;
+function buildSentence(t, auto) {
+  const trig = TRIGGER_LABELS[auto.triggerType] ? t(TRIGGER_LABELS[auto.triggerType]) : auto.triggerType;
+  const act  = ACTION_LABELS[auto.actionType] ? t(ACTION_LABELS[auto.actionType]) : auto.actionType;
   const conds = (auto.conditions || []);
   const condStr = conds.length
-    ? ` · if ${conds.map((c, i) => {
+    ? ` · ${t('auto.list.if')} ${conds.map((c, i) => {
         const prefix = i > 0 ? ` ${c.logic || 'AND'} ` : '';
         return `${prefix}${c.field} ${c.op} "${c.value}"`;
       }).join('')}`
@@ -31,6 +32,7 @@ function buildSentence(auto) {
 }
 
 export default function AutomationList({ automations, onToggle, onDelete }) {
+  const { t, tx } = useT();
   const [busy, setBusy] = useState(null);
 
   const handleToggle = async (auto) => {
@@ -40,7 +42,7 @@ export default function AutomationList({ automations, onToggle, onDelete }) {
   };
 
   const handleDelete = async (auto) => {
-    if (!window.confirm(`Delete "${auto.label}"?`)) return;
+    if (!window.confirm(t('auto.list.confirmDelete'))) return;
     setBusy(auto.id + '-delete');
     try { await onDelete(auto.id); }
     finally { setBusy(null); }
@@ -49,13 +51,13 @@ export default function AutomationList({ automations, onToggle, onDelete }) {
   return (
     <div className="auto-list">
       <div className="auto-list-head">
-        <span className="auto-list-lbl">Active rules</span>
-        <span className="auto-list-count">{automations.filter((a) => a.active).length} active</span>
+        <span className="auto-list-lbl">{t('auto.list.activeRules')}</span>
+        <span className="auto-list-count">{tx('auto.list.activeCount', { count: automations.filter((a) => a.active).length })}</span>
       </div>
 
       {automations.length === 0 ? (
         <div style={{ padding: '24px 18px', textAlign: 'center', color: 'var(--text-3)', fontSize: '0.875rem' }}>
-          No automation rules yet — create one above or activate a recipe.
+          {t('auto.list.empty')}
         </div>
       ) : (
         automations.map((auto) => (
@@ -64,7 +66,7 @@ export default function AutomationList({ automations, onToggle, onDelete }) {
             <div className="auto-sentence">
               <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{auto.label}</strong>
               <div style={{ marginTop: 2, fontSize: '0.75rem', opacity: 0.75 }}>
-                {buildSentence(auto)}
+                {buildSentence(t, auto)}
               </div>
             </div>
             <div className="auto-row-actions">
@@ -72,7 +74,7 @@ export default function AutomationList({ automations, onToggle, onDelete }) {
                 className="auto-act-btn"
                 onClick={() => handleToggle(auto)}
                 disabled={busy === auto.id + '-toggle'}
-                title={auto.active ? 'Pause' : 'Resume'}
+                title={auto.active ? t('auto.list.pause') : t('auto.list.resume')}
               >
                 {auto.active ? '⏸' : '▶'}
               </button>
@@ -80,7 +82,7 @@ export default function AutomationList({ automations, onToggle, onDelete }) {
                 className="auto-act-btn auto-act-btn--del"
                 onClick={() => handleDelete(auto)}
                 disabled={busy === auto.id + '-delete'}
-                title="Delete rule"
+                title={t('auto.list.delete')}
               >
                 ✕
               </button>

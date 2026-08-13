@@ -131,7 +131,7 @@ async function writeStatus(s) {
 // ── Entry point ─────────────────────────────────────────────────────────────
 // Local copy and Drive upload are independent: if Drive fails we still keep the
 // local snapshot and report the failure rather than losing the run entirely.
-async function runBackup({ trigger = 'cron' } = {}) {
+async function runBackup({ trigger = 'cron', upload = uploadToDrive, notify = alert } = {}) {
   const startedAt = new Date();
   const name = `production-hub_${stamp(startedAt)}.zip`;
   const result = { startedAt: startedAt.toISOString(), trigger, name, ok: false };
@@ -145,7 +145,7 @@ async function runBackup({ trigger = 'cron' } = {}) {
     } catch (e) { result.local = 'failed'; result.localError = e.message; }
 
     try {
-      result.driveFileId = await uploadToDrive(buf, name);
+      result.driveFileId = await upload(buf, name);
       result.drive = 'ok';
     } catch (e) { result.drive = 'failed'; result.driveError = e.message; }
 
@@ -161,7 +161,7 @@ async function runBackup({ trigger = 'cron' } = {}) {
   // data, so warn on any degradation — not only on total failure. The off-site
   // copy dying (expired Google token) still leaves local copies, which look fine
   // until the volume is lost.
-  if (!result.ok || result.drive !== 'ok') await alert(result).catch(() => {});
+  if (!result.ok || result.drive !== 'ok') await notify(result).catch(() => {});
   return result;
 }
 
@@ -189,19 +189,33 @@ async function alert(result) {
   console.log('[backup] failure alert emailed to', ALERT_TO);
 }
 
+function classifyStatus({ last, stale }) {
+  if (stale || !last) return { state: 'stale', category: 'data' };
+  if (last.error) return { state: 'failed', category: 'application' };
+  if (last.local !== 'ok' || last.drive !== 'ok') {
+    return {
+      state: 'degraded',
+      category: last.drive !== 'ok' ? 'external' : 'data',
+    };
+  }
+  return { state: 'healthy', category: null };
+}
+
 function status() {
   const last = readStatus();
   let localCount = 0;
   try { localCount = fs.readdirSync(BACKUP_DIR).filter((f) => f.endsWith('.zip')).length; } catch {}
   const ageHours = last?.finishedAt
     ? Math.round((Date.now() - new Date(last.finishedAt).getTime()) / 36e5) : null;
-  return {
+  const result = {
     configured: true,
     last, localCount, ageHours,
     // Surfaced so a quietly-dead backup is noticeable rather than assumed fine
     stale: ageHours === null || ageHours > 48,
     keepLocal: KEEP_LOCAL, keepRemote: KEEP_REMOTE, driveFolder: DRIVE_FOLDER,
   };
+  result.health = classifyStatus(result);
+  return result;
 }
 
 function startSchedule() {
@@ -227,4 +241,4 @@ function startSchedule() {
   console.log('[backup] Staleness watchdog scheduled (10:00 Asia/Jerusalem)');
 }
 
-module.exports = { runBackup, status, startSchedule, BACKUP_DIR };
+module.exports = { runBackup, status, startSchedule, BACKUP_DIR, buildArchive, classifyStatus };

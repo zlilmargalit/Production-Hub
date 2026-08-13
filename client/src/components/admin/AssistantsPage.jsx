@@ -1,5 +1,6 @@
 import PageBar from '../ui/PageBar';
 import { ils } from './adminFormat';
+import { useT } from '../../i18n';
 
 // The assistant roster — the administration workspace's Team screen.
 //
@@ -10,6 +11,7 @@ import { ils } from './adminFormat';
 export default function AssistantsPage({
   assistants = [], projects = [], loading = false, onAdd, onOpen,
 }) {
+  const { t, tx } = useT();
   // Derived per assistant, never stored: unpaid bookings across all projects.
   // Matched on assistantId, so a booking whose person was removed from the
   // roster simply stops being attributed here — it stays on its work day.
@@ -27,10 +29,10 @@ export default function AssistantsPage({
   return (
     <div className="adm-page">
       <PageBar
-        title="Assistants"
+        title={t('assistants.title')}
         count={assistants.length}
-        countLabel={assistants.length === 1 ? 'PERSON' : 'PEOPLE'}
-        actions={onAdd ? <button className="btn-primary" onClick={onAdd}>+ Add Assistant</button> : null}
+        countLabel={assistants.length === 1 ? t('assistants.person') : t('assistants.people')}
+        actions={onAdd ? <button className="btn-primary" onClick={onAdd}>+ {t('assistants.add')}</button> : null}
       />
 
       {loading ? (
@@ -39,9 +41,9 @@ export default function AssistantsPage({
         </div>
       ) : assistants.length === 0 ? (
         <div className="adm-empty">
-          <p>No assistants yet. Add the people you book onto work days.</p>
+          <p>{t('assistants.empty')}</p>
           <div className="adm-empty-actions">
-            <button className="btn-primary" onClick={onAdd}>+ Add assistant</button>
+            <button className="btn-primary" onClick={onAdd}>+ {t('assistants.add')}</button>
           </div>
         </div>
       ) : (
@@ -56,8 +58,8 @@ export default function AssistantsPage({
                 <h3 dir="auto" className="adm-client-name he">{a.name}</h3>
                 <p className="adm-client-caption">
                   {a.dayRate > 0
-                    ? <><span className="n">{ils(a.dayRate)}</span> a day</>
-                    : 'No day rate set'}
+                    ? tx('assistants.rateDay', { rate: <span className="n">{ils(a.dayRate)}</span> })
+                    : t('assistants.noRate')}
                 </p>
                 {a.phone && (
                   <p dir="auto" className="adm-client-contact he">
@@ -66,17 +68,17 @@ export default function AssistantsPage({
                 )}
                 <div className="adm-client-foot">
                   <span className="adm-client-projects n">
-                    {days} day{days === 1 ? '' : 's'} booked
+                    {tx(days === 1 ? 'assistants.dayBooked.one' : 'assistants.dayBooked.many', { count: days })}
                   </span>
                   {owed > 0 && (
-                    <span className="adm-client-owed n adm-line--alarm">{ils(owed)} owed</span>
+                    <span className="adm-client-owed n adm-line--alarm">{tx('assistants.owed', { amount: ils(owed) })}</span>
                   )}
                 </div>
               </div>
             );
           })}
 
-          <button className="adm-add-card" onClick={onAdd}>+ Add Assistant</button>
+          <button className="adm-add-card" onClick={onAdd}>+ {t('assistants.add')}</button>
         </div>
       )}
     </div>

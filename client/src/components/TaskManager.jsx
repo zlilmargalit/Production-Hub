@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ConfirmModal from './ConfirmModal';
+import { useT } from '../i18n';
 // ConfirmModal kept for calendar invite confirm dialog
 
 const MODES = ['Taxi', 'Van', 'Self'];
@@ -50,6 +51,7 @@ const countGuests = (text) => {
 };
 
 function TaskManager({ show, onUpdate, artistId }) {
+  const { t, tx } = useT();
   const [transport, setTransport] = useState({
     mode: show.transportMode || '',
     driver: show.transportDriver || '',
@@ -214,12 +216,12 @@ function TaskManager({ show, onUpdate, artistId }) {
 
   const sendCalendarInvite = (testMode = false) => {
     setConfirmModal({
-      title: testMode ? 'Send Test Invite' : 'Send Invite to All Crew',
+      title: testMode ? t('task.sendTestInvite') : t('task.sendAllInvite'),
       message: testMode
-        ? 'Send a calendar invite to your email only (zlilmargalit0@gmail.com)?'
-        : `Send a calendar invite to all crew members assigned to "${show.name}"?`,
+        ? t('task.testInviteMessage')
+        : tx('task.allInviteMessage', { name: show.name }),
       danger: false,
-      confirmLabel: 'Send',
+      confirmLabel: t('task.send'),
       onConfirm: () => { setConfirmModal(null); doSendCalendarInvite(testMode); },
     });
   };
@@ -281,7 +283,7 @@ function TaskManager({ show, onUpdate, artistId }) {
     <div className="fixed-tasks">
       {/* Transport */}
       <div className="fixed-task-section">
-        <h4 className="fixed-task-title">Transport</h4>
+        <h4 className="fixed-task-title">{t('task.transport')}</h4>
         <div className="transport-modes">
           {MODES.map((m) => (
             <label key={m} className="mode-check-label">
@@ -290,24 +292,24 @@ function TaskManager({ show, onUpdate, artistId }) {
                 checked={transport.mode === m}
                 onChange={() => setMode(m)}
               />
-              {m}
+              {t(`task.mode.${m.toLowerCase()}`)}
             </label>
           ))}
         </div>
         <div className="fixed-inputs-row">
           <div className="fixed-input-group">
-            <label>Driver</label>
+            <label>{t('task.driver')}</label>
             <input
               className="fixed-input"
               dir="auto"
               value={transport.driver}
               onChange={(e) => setTransport((p) => ({ ...p, driver: e.target.value }))}
               onBlur={() => saveTransport(transport)}
-              placeholder="Driver name"
+              placeholder={t('task.driverName')}
             />
           </div>
           <div className="fixed-input-group">
-            <label>Time</label>
+            <label>{t('task.time')}</label>
             <input
               className="fixed-input"
               dir="ltr"
@@ -322,21 +324,21 @@ function TaskManager({ show, onUpdate, artistId }) {
 
       {/* Food */}
       <div className="fixed-task-section">
-        <h4 className="fixed-task-title">Food</h4>
+        <h4 className="fixed-task-title">{t('task.food')}</h4>
         <div className="fixed-inputs-row">
           <div className="fixed-input-group">
-            <label>Name</label>
+            <label>{t('task.name')}</label>
             <input
               className="fixed-input"
               dir="auto"
               value={food.name}
               onChange={(e) => setFood((p) => ({ ...p, name: e.target.value }))}
               onBlur={() => saveFood(food)}
-              placeholder="Name / Restaurant"
+              placeholder={t('task.restaurantName')}
             />
           </div>
           <div className="fixed-input-group">
-            <label>Phone</label>
+            <label>{t('admin.phone')}</label>
             <input
               className="fixed-input"
               dir="ltr"
@@ -347,7 +349,7 @@ function TaskManager({ show, onUpdate, artistId }) {
             />
           </div>
           <div className="fixed-input-group">
-            <label>Time</label>
+            <label>{t('task.time')}</label>
             <input
               className="fixed-input"
               dir="ltr"
@@ -362,11 +364,11 @@ function TaskManager({ show, onUpdate, artistId }) {
 
       {/* Calendar Invite */}
       <div className="fixed-task-section">
-        <h4 className="fixed-task-title">Calendar Invite</h4>
+        <h4 className="fixed-task-title">{t('task.calendarInvite')}</h4>
 
         {/* Calendar selector */}
         <div className="cal-picker-row">
-          <span className="cal-picker-label">Calendar:</span>
+          <span className="cal-picker-label">{t('task.calendar')}</span>
           <button className="cal-picker-btn" ref={calBtnRef} onClick={openCalPicker}>
             {calConfig ? calConfig.calendarName : 'primary'} ▾
           </button>
@@ -376,7 +378,7 @@ function TaskManager({ show, onUpdate, artistId }) {
               style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999 }}
             >
               {calConfig.calendars.length === 0 && (
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', padding: '6px 10px' }}>No calendars found</p>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', padding: '6px 10px' }}>{t('task.noCalendars')}</p>
               )}
               {calConfig.calendars.map((c) => (
                 <button
@@ -396,17 +398,17 @@ function TaskManager({ show, onUpdate, artistId }) {
             className="btn-calendar-invite"
             onClick={() => sendCalendarInvite(true)}
             disabled={inviteStatus === 'loading'}
-            title="Test — sends invite only to zlilmargalit0@gmail.com"
+            title={t('task.testInviteHint')}
           >
-            Test invite (my email only)
+            {t('task.testInvite')}
           </button>
           <button
             className="btn-calendar-invite btn-calendar-invite--full"
             onClick={() => sendCalendarInvite(false)}
             disabled={inviteStatus === 'loading'}
-            title="Send calendar invite to all crew members assigned to this show"
+            title={t('task.allInviteHint')}
           >
-            Invite all crew
+            {t('task.inviteAllCrew')}
           </button>
         </div>
         {inviteStatus && inviteStatus !== 'loading' && (
@@ -421,7 +423,7 @@ function TaskManager({ show, onUpdate, artistId }) {
       {/* Guest List */}
       <div className="fixed-task-section">
         <div className="fixed-task-title-row">
-          <h4 className="fixed-task-title">Guest List</h4>
+          <h4 className="fixed-task-title">{t('task.guestList')}</h4>
           {countGuests(guestText) > 0 && (
             <span className="guest-count-badge">{countGuests(guestText)}</span>
           )}
@@ -431,9 +433,9 @@ function TaskManager({ show, onUpdate, artistId }) {
                 type="button"
                 className={`guest-sort-btn${guestCopied ? ' guest-sort-btn--ok' : ''}`}
                 onClick={copyGuestList}
-                title="Copy the whole guest list"
+                title={t('task.copyGuestList')}
               >
-                {guestCopied ? 'Copied ✓' : 'Copy'}
+                {guestCopied ? t('task.copied') : t('task.copy')}
               </button>
               <button
                 type="button"
@@ -457,7 +459,7 @@ function TaskManager({ show, onUpdate, artistId }) {
             }
           }}
           onBlur={() => saveGuestList(guestText)}
-          placeholder={`שם מוזמן\nשם מוזמן נוסף`}
+          placeholder={t('task.guestPlaceholder')}
           rows={4}
         />
       </div>

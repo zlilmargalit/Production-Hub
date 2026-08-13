@@ -4,11 +4,14 @@ import App from './App';
 import './App.css';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { applyDirection } from './utils/direction';
+import { I18nProvider, makeT, readStoredLang, DIR_FOR_LANG } from './i18n';
 
-// TEMPORARY (stage 1): resolve dir/lang before the first render so there is no
-// LTR flash. See utils/direction.js — stage 2 replaces this with the real
-// per-user preference.
-applyDirection();
+// Resolve direction before the first render so there is no flash of the wrong
+// direction. The cached language is only a first-paint hint; /api/me remains
+// the source of truth and reconciles once it answers.
+const initialLang = readStoredLang();
+const { t: bootT } = makeT(initialLang);
+applyDirection(DIR_FOR_LANG[initialLang]);
 
 // window.__DEMO__ is injected by the server at GET /demo.
 // As a belt-and-suspenders fallback, also detect it from the URL so that
@@ -19,8 +22,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {/* Last line of defence: without this, any uncaught render error unmounts
         the whole tree and the user sees a blank page with no explanation. */}
-    <ErrorBoundary label="Production Hub">
-      <App demoMode={demoMode} />
+    <ErrorBoundary label={bootT('app.productName')}>
+      <I18nProvider lang={initialLang}>
+        <App demoMode={demoMode} />
+      </I18nProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

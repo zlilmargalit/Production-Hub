@@ -1,9 +1,11 @@
 import PageBar from '../ui/PageBar';
 import { ils, todayStr } from './adminFormat';
+import { useT } from '../../i18n';
 
 // Clients — reuses the crew-card grid shape. Chrome English, names Hebrew/RTL.
 
 export default function ClientsPage({ clients = [], projects = [], loading = false, onAdd, onOpen }) {
+  const { t, tx } = useT();
   const today = todayStr();
 
   // Derived per client, never stored: how many projects, and what is overdue.
@@ -21,10 +23,10 @@ export default function ClientsPage({ clients = [], projects = [], loading = fal
   return (
     <div className="adm-page">
       <PageBar
-        title="Clients"
+        title={t('clients.title')}
         count={clients.length}
-        countLabel="CLIENTS"
-        actions={onAdd ? <button className="btn-primary" onClick={onAdd}>+ Add Client</button> : null}
+        countLabel={t('clients.count')}
+        actions={onAdd ? <button className="btn-primary" onClick={onAdd}>+ {t('clients.add')}</button> : null}
       />
 
       {loading ? (
@@ -41,8 +43,8 @@ export default function ClientsPage({ clients = [], projects = [], loading = fal
                    onKeyDown={(e) => e.key === 'Enter' && onOpen?.(c)}>
                 <h3 dir="auto" className="adm-client-name he">{c.name}</h3>
                 <p className="adm-client-caption">
-                  {c.businessId ? <span className="n">{c.businessId}</span> : 'No business number'}
-                  {' · '}<span className="n">Net {c.paymentTerms}</span>
+                  {c.businessId ? <span className="n">{c.businessId}</span> : t('clients.noBusinessNumber')}
+                  {' · '}{tx('clients.netTerms', { days: c.paymentTerms })}
                 </p>
                 {/* The separator belongs between two values, so it only appears
                     when there are two — a phone with no contact name must not
@@ -56,7 +58,7 @@ export default function ClientsPage({ clients = [], projects = [], loading = fal
                 )}
                 <div className="adm-client-foot">
                   <span className="adm-client-projects n">
-                    {s.count} project{s.count === 1 ? '' : 's'}
+                    {tx(s.count === 1 ? 'clients.projects.one' : 'clients.projects.many', { count: s.count })}
                   </span>
                   {s.owed > 0 && (
                     <span className={`adm-client-owed n${s.overdue ? ' adm-line--alarm' : ''}`}>
@@ -69,7 +71,7 @@ export default function ClientsPage({ clients = [], projects = [], loading = fal
           })}
 
           {/* Dashed add card closes the grid, matching the crew screens. */}
-          <button className="adm-add-card" onClick={onAdd}>+ Add Client</button>
+          <button className="adm-add-card" onClick={onAdd}>+ {t('clients.add')}</button>
         </div>
       )}
     </div>

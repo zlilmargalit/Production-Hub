@@ -4,10 +4,12 @@ import RecipeCards     from './RecipeCards';
 import AutomationBuilder from './AutomationBuilder';
 import AutomationList  from './AutomationList';
 import PageBar from '../ui/PageBar';
+import { useT } from '../../i18n';
 import './automations.css';
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AutomationsPage() {
+  const { t } = useT();
   const [integrations,  setIntegrations]  = useState({ gmail: false, gcal: false, gdrive: false });
   const [automations,   setAutomations]   = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -99,19 +101,19 @@ export default function AutomationsPage() {
   return (
     <div className="auto-page">
       <PageBar
-        title="Automations"
+        title={t('automations.title')}
         count={activeCount}
-        countLabel="active rules"
+        countLabel={t('automations.activeRules')}
         metrics={[
-          { value: String(activeCount).padStart(2, '0'), label: 'Active' },
-          { value: String(connectedCount).padStart(2, '0'), label: 'Connected' },
-          { value: String(automations.length).padStart(2, '0'), label: 'Recipes' },
+          { value: String(activeCount).padStart(2, '0'), label: t('automations.active') },
+          { value: String(connectedCount).padStart(2, '0'), label: t('automations.connected') },
+          { value: String(automations.length).padStart(2, '0'), label: t('automations.recipes') },
         ]}
       />
 
       {/* ── Integrations ── */}
       <div className="auto-section">
-        <div className="auto-section-lbl">Connected apps</div>
+        <div className="auto-section-lbl">{t('automations.connectedApps')}</div>
         <IntegrationsBar statuses={integrations} onRefresh={fetchIntegrations} />
       </div>
 
@@ -119,8 +121,8 @@ export default function AutomationsPage() {
       <div className="auto-section">
         <div className="auto-section-header-row">
           <div>
-            <div className="auto-section-lbl">Recipes</div>
-            <p className="auto-section-sub">One-click automation templates — activate and go.</p>
+            <div className="auto-section-lbl">{t('automations.recipes')}</div>
+            <p className="auto-section-sub">{t('automations.recipesHint')}</p>
           </div>
         </div>
         <RecipeCards
@@ -132,14 +134,14 @@ export default function AutomationsPage() {
 
       {/* ── Builder ── */}
       <div className="auto-section">
-        <div className="auto-section-lbl">Build a custom rule</div>
-        <p className="auto-section-sub">Define your own trigger → condition → action pipeline.</p>
+        <div className="auto-section-lbl">{t('automations.customRule')}</div>
+        <p className="auto-section-sub">{t('automations.customRuleHint')}</p>
         <AutomationBuilder onSave={handleCreateAutomation} />
       </div>
 
       {/* ── List ── */}
       <div className="auto-section">
-        <div className="auto-section-lbl">Your rules</div>
+        <div className="auto-section-lbl">{t('automations.yourRules')}</div>
         <AutomationList
           automations={automations}
           onToggle={handleToggle}

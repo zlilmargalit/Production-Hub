@@ -2,14 +2,16 @@ import { useState } from 'react';
 import BacklineChecklist from './backliner/BacklineChecklist';
 import TechnicalSetlist  from './backliner/TechnicalSetlist';
 import TechFiles         from './backliner/TechFiles';
+import { useT } from '../i18n';
 
 const TABS = [
-  { key: 'checklist', label: 'Checklist' },
-  { key: 'setlist',   label: 'Setlist' },
-  { key: 'files',     label: 'Files' },
+  { key: 'checklist', labelKey: 'backline.tab.checklist' },
+  { key: 'setlist',   labelKey: 'backline.tab.setlist' },
+  { key: 'files',     labelKey: 'backline.tab.files' },
 ];
 
 export default function ShowBacklinePanel({ show, onUpdateShow }) {
+  const { t } = useT();
   const [tab, setTab] = useState('checklist');
 
   return (
@@ -21,7 +23,7 @@ export default function ShowBacklinePanel({ show, onUpdateShow }) {
             className={`bk-inline-tab-btn${tab === t.key ? ' active' : ''}`}
             onClick={() => setTab(t.key)}
           >
-            {t.label}
+            {t(t.labelKey)}
           </button>
         ))}
       </div>

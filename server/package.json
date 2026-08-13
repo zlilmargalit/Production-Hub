@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "test": "vitest run && npm run test:node",
+    "test:vitest": "vitest run",
+    "test:node": "node --test test/production-project*.test.js test/task-authorization.test.js",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
@@ -21,5 +25,9 @@
     "uuid": "^9.0.0",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1",
+    "vitest": "^3.2.4"
   }
 }

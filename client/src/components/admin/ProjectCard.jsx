@@ -2,6 +2,7 @@ import { useState } from 'react';
 import IconButton from '../ui/IconButton';
 import PurchasesPanel from './PurchasesPanel';
 import { decimalOnly } from '../../utils/fieldInput';
+import { useT } from '../../i18n';
 import {
   ils, fmtDate, dateRange, todayStr, ballInCourt, projectAlert, daysBetween,
 } from './adminFormat';
@@ -18,7 +19,10 @@ import {
 // which is what keeps the returns detail from inflating the common case.
 
 const TYPE_LABEL = {
-  advertising: 'Advertising', film: 'Film', talent: 'Talent', other: 'Other',
+  advertising: 'projectCard.type.advertising',
+  film: 'projectCard.type.film',
+  talent: 'projectCard.type.talent',
+  other: 'projectCard.type.other',
 };
 
 // The bar colour is the project TYPE, never the status — status is carried by
@@ -28,37 +32,41 @@ const TYPE_COLOR = {
 };
 
 const EXPENSE_TYPES = [
-  ['taxi', 'Taxi'], ['parking', 'Parking'], ['shipping', 'Shipping'], ['other', 'Other'],
+  ['taxi', 'projectCard.expense.taxi'],
+  ['parking', 'projectCard.expense.parking'],
+  ['shipping', 'projectCard.expense.shipping'],
+  ['other', 'projectCard.expense.other'],
 ];
 
 // Every figure here is derived server-side, so the card only ever displays what
 // the API returned — the totals can never disagree with the rows they sum.
 function Money({ project }) {
+  const { t, tx } = useT();
   const rate = Number(project.rate || 0);
   const vatPct = Math.round((project.vatRate ?? 0.18) * 10000) / 100;
   const hasBillable = project.billableExpenses > 0;
 
   return (
     <dl className="adm-facts">
-      <div><dt>Fee, before VAT</dt><dd className="n">{ils(rate)}</dd></div>
+      <div><dt>{t('projectCard.money.feeBeforeVat')}</dt><dd className="n ltr">{ils(rate)}</dd></div>
       {hasBillable && (
-        <div><dt>Billable expenses</dt><dd className="n">{ils(project.billableExpenses)}</dd></div>
+        <div><dt>{t('projectCard.money.billableExpenses')}</dt><dd className="n ltr">{ils(project.billableExpenses)}</dd></div>
       )}
-      <div><dt>VAT</dt><dd className="n">{vatPct}%</dd></div>
+      <div><dt>{t('projectCard.money.vat')}</dt><dd className="n ltr">{vatPct}%</dd></div>
       <div>
-        <dt>{hasBillable ? 'To invoice' : 'Total'}</dt>
-        <dd className="n adm-fact--strong">{ils(project.invoiceTotal)}</dd>
+        <dt>{hasBillable ? t('projectCard.money.toInvoice') : t('projectCard.money.total')}</dt>
+        <dd className="n adm-fact--strong ltr">{ils(project.invoiceTotal)}</dd>
       </div>
       {project.paymentTerms != null && (
-        <div><dt>Payment terms</dt><dd className="n">Net {project.paymentTerms}</dd></div>
+        <div><dt>{t('projectCard.money.paymentTerms')}</dt><dd className="n ltr">{tx('projectCard.money.net', { days: project.paymentTerms })}</dd></div>
       )}
       {project.invoiceSentAt && (
-        <div><dt>Invoiced</dt><dd className="n">{fmtDate(project.invoiceSentAt)}</dd></div>
+        <div><dt>{t('projectCard.money.invoiced')}</dt><dd className="n ltr">{fmtDate(project.invoiceSentAt)}</dd></div>
       )}
       {project.paymentDueAt && (
-        <div><dt>Due</dt><dd className="n">{fmtDate(project.paymentDueAt)}</dd></div>
+        <div><dt>{t('projectCard.money.due')}</dt><dd className="n ltr">{fmtDate(project.paymentDueAt)}</dd></div>
       )}
-      {project.paidAt && <div><dt>Paid</dt><dd className="n">{fmtDate(project.paidAt)}</dd></div>}
+      {project.paidAt && <div><dt>{t('projectCard.money.paid')}</dt><dd className="n ltr">{fmtDate(project.paidAt)}</dd></div>}
     </dl>
   );
 }
@@ -66,13 +74,14 @@ function Money({ project }) {
 // One work day: the date, who worked it, what was spent on it, and whether it
 // has been checked over yet.
 function WorkDay({ day, today, roster, handlers, busy }) {
+  const { t, tx } = useT();
   const [adding, setAdding] = useState(null);          // 'assistant' | 'expense' | null
   const [pick, setPick] = useState({ assistantId: '', amount: '' });
   const [exp, setExp]   = useState({ type: 'taxi', amount: '', billable: true });
 
   const away = daysBetween(today, day.date);
-  const when = away === 0 ? 'Today' : away === 1 ? 'Tomorrow'
-    : away > 1 ? `In ${away} days` : null;
+  const when = away === 0 ? t('projectCard.day.today') : away === 1 ? t('projectCard.day.tomorrow')
+    : away > 1 ? tx('projectCard.day.inDays', { count: away }) : null;
 
   const booked = day.assistants || [];
   const spent  = handlers.expensesFor(day.id);
@@ -112,7 +121,7 @@ function WorkDay({ day, today, roster, handlers, busy }) {
   return (
     <li className="adm-day">
       <div className="adm-day-when">
-        <span className="adm-day-date n">{fmtDate(day.date)}</span>
+        <span className="adm-day-date n ltr">{fmtDate(day.date)}</span>
         {when && <span className="adm-day-rel">{when}</span>}
         {/* Only a day that has happened can be checked over. */}
         {past && (
@@ -121,9 +130,9 @@ function WorkDay({ day, today, roster, handlers, busy }) {
             className={`adm-day-check${checked ? ' adm-day-check--done' : ''}`}
             disabled={busy}
             onClick={() => handlers.setChecked(day.id, !checked)}
-            title={checked ? 'Checked for expenses — click to reopen' : 'Not yet checked for expenses'}
+            title={checked ? t('projectCard.day.checkedTitle') : t('projectCard.day.notCheckedTitle')}
           >
-            {checked ? '✓ Checked' : '⚠ Check expenses'}
+            {checked ? t('projectCard.day.checked') : t('projectCard.day.checkExpenses')}
           </button>
         )}
       </div>
@@ -131,26 +140,26 @@ function WorkDay({ day, today, roster, handlers, busy }) {
       <ul className="adm-bookings">
         {booked.map((b) => (
           <li key={b.id} className={`adm-booking${b.paidAt ? ' adm-booking--paid' : ''}`}>
-            <span dir="auto" className="adm-booking-name">{b.nameSnapshot || 'Unnamed'}</span>
-            <span className="adm-booking-amount n">{ils(b.amount)}</span>
+            <span dir="auto" className="adm-booking-name">{b.nameSnapshot || t('projectCard.unnamed')}</span>
+            <span className="adm-booking-amount n ltr">{ils(b.amount)}</span>
             <button type="button" className="adm-booking-state" disabled={busy}
                     onClick={() => handlers.setPaid(day.id, b.id, !b.paidAt)}
-                    title={b.paidAt ? 'Mark as unpaid' : 'Mark as paid'}>
-              {b.paidAt ? '✓ Paid' : 'Unpaid'}
+                    title={b.paidAt ? t('projectCard.markUnpaid') : t('projectCard.markPaid')}>
+              {b.paidAt ? t('projectCard.paid') : t('projectCard.unpaid')}
             </button>
-            <IconButton danger onClick={() => handlers.unbook(day.id, b.id)} title="Remove from this day">✕</IconButton>
+            <IconButton danger onClick={() => handlers.unbook(day.id, b.id)} title={t('projectCard.removeFromDay')}>✕</IconButton>
           </li>
         ))}
         {spent.map((e) => (
           <li key={e.id} className="adm-booking adm-booking--expense">
             <span className="adm-booking-name">
-              {(EXPENSE_TYPES.find(([v]) => v === e.type) || [, 'Other'])[1]}
+              {t((EXPENSE_TYPES.find(([v]) => v === e.type) || [, 'projectCard.expense.other'])[1])}
             </span>
-            <span className="adm-booking-amount n">{ils(e.amount)}</span>
+            <span className="adm-booking-amount n ltr">{ils(e.amount)}</span>
             <span className="adm-booking-state adm-booking-state--static">
-              {e.billable ? 'Billable' : 'Not billed on'}
+              {e.billable ? t('projectCard.billable') : t('projectCard.notBilledOn')}
             </span>
-            <IconButton danger onClick={() => handlers.removeExpense(e.id)} title="Remove expense">✕</IconButton>
+            <IconButton danger onClick={() => handlers.removeExpense(e.id)} title={t('projectCard.removeExpense')}>✕</IconButton>
           </li>
         ))}
       </ul>
@@ -158,45 +167,45 @@ function WorkDay({ day, today, roster, handlers, busy }) {
       {adding === 'assistant' ? (
         <div className="adm-inline-add">
           <select value={pick.assistantId} onChange={(e) => choose(e.target.value)}>
-            <option value="">— Choose —</option>
+            <option value="">{t('projectCard.choose')}</option>
             {available.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
-          <input dir="ltr" inputMode="decimal" placeholder="Amount" value={pick.amount}
+          <input dir="ltr" inputMode="decimal" placeholder={t('projectCard.amount')} value={pick.amount}
                  onChange={(e) => setPick((p) => ({ ...p, amount: decimalOnly(e.target.value) }))} />
           <button type="button" className="btn-primary btn-sm" disabled={busy || !pick.assistantId}
-                  onClick={confirmAssistant}>Book</button>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(null)}>Cancel</button>
+                  onClick={confirmAssistant}>{t('projectCard.book')}</button>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(null)}>{t('common.cancel')}</button>
         </div>
       ) : adding === 'expense' ? (
         <div className="adm-inline-add">
           <select value={exp.type} onChange={(e) => setExp((x) => ({ ...x, type: e.target.value }))}>
-            {EXPENSE_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            {EXPENSE_TYPES.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
           </select>
-          <input dir="ltr" inputMode="decimal" placeholder="Amount" value={exp.amount}
+          <input dir="ltr" inputMode="decimal" placeholder={t('projectCard.amount')} value={exp.amount}
                  onChange={(e) => setExp((x) => ({ ...x, amount: decimalOnly(e.target.value) }))} />
           <label className="adm-inline-check">
             <input type="checkbox" checked={exp.billable}
                    onChange={(e) => setExp((x) => ({ ...x, billable: e.target.checked }))} />
-            Bill to client
+            {t('projectCard.billToClient')}
           </label>
           <button type="button" className="btn-primary btn-sm" disabled={busy || !exp.amount}
-                  onClick={confirmExpense}>Add</button>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(null)}>Cancel</button>
+                  onClick={confirmExpense}>{t('common.add')}</button>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => setAdding(null)}>{t('common.cancel')}</button>
         </div>
       ) : (
         <div className="adm-day-actions">
           {available.length > 0 && (
             <button type="button" className="btn-ghost btn-sm"
                     onClick={() => { setPick({ assistantId: '', amount: '' }); setAdding('assistant'); }}>
-              + Assistant
+              {t('projectCard.addAssistant')}
             </button>
           )}
           <button type="button" className="btn-ghost btn-sm" onClick={() => setAdding('expense')}>
-            + Expense
+            {t('projectCard.addExpense')}
           </button>
           {/* Says why there is nothing to add, instead of just showing nothing. */}
           {roster.length > 0 && available.length === 0 && (
-            <span className="field-hint">Everyone on the roster is already on this day.</span>
+            <span className="field-hint">{t('projectCard.allBooked')}</span>
           )}
         </div>
       )}
@@ -207,6 +216,7 @@ function WorkDay({ day, today, roster, handlers, busy }) {
 export default function ProjectCard({
   project, assistants = [], busy = false, onEdit, handlers,
 }) {
+  const { t, tx } = useT();
   const [expanded, setExpanded] = useState(false);
   const [panel, setPanel] = useState(null);            // 'purchases' | null
 
@@ -219,7 +229,7 @@ export default function ProjectCard({
   // Separate parts, never one joined string: mixing Hebrew and English in a
   // single dir="auto" run makes bidi reorder the English to the far end.
   const secondary = [project.clientNameSnapshot, project.brand,
-    days.length ? `${days.length} work day${days.length === 1 ? '' : 's'}` : null].filter(Boolean);
+    days.length ? tx(days.length === 1 ? 'projectCard.workDays.one' : 'projectCard.workDays.many', { count: days.length }) : null].filter(Boolean);
 
   return (
     <div className={`adm-card${isPaid ? ' adm-card--settled' : ''}${expanded ? ' adm-card--open' : ''}`}>
@@ -227,10 +237,10 @@ export default function ProjectCard({
 
       <div className="adm-card-body">
         <div className="adm-card-top">
-          <span className="adm-card-type">{TYPE_LABEL[project.projectType] || 'Other'}</span>
-          <span className="adm-card-date n">{dateRange(project)}</span>
+          <span className="adm-card-type">{t(TYPE_LABEL[project.projectType] || TYPE_LABEL.other)}</span>
+          <span className="adm-card-date n ltr">{dateRange(project)}</span>
           <button className="adm-card-expand" onClick={() => setExpanded((v) => !v)}
-                  title={expanded ? 'Collapse' : 'Expand'} aria-expanded={expanded}>
+                  title={expanded ? t('projectCard.collapse') : t('projectCard.expand')} aria-expanded={expanded}>
             {expanded ? '−' : '+'}
           </button>
         </div>
@@ -250,24 +260,24 @@ export default function ProjectCard({
       {expanded && (
         <div className="adm-card-open-body">
           <section className="adm-section">
-            <h4 className="adm-section-title">Money</h4>
+            <h4 className="adm-section-title">{t('projectCard.section.money')}</h4>
             <Money project={project} />
             {project.outstandingOnCard > 0 && (
               <p className="adm-line adm-line--waiting">
-                {ils(project.outstandingOnCard)} still out on the card
+                <span className="n ltr">{ils(project.outstandingOnCard)}</span> {t('projectCard.stillOutOnCard')}
               </p>
             )}
             {project.owedToAssistants > 0 && (
               <p className="adm-line adm-line--waiting">
-                {ils(project.owedToAssistants)} owed to assistants
+                <span className="n ltr">{ils(project.owedToAssistants)}</span> {t('projectCard.owedToAssistants')}
               </p>
             )}
           </section>
 
           <section className="adm-section">
-            <h4 className="adm-section-title">Work days</h4>
+            <h4 className="adm-section-title">{t('projectCard.section.workDays')}</h4>
             {days.length === 0 ? (
-              <p className="adm-none">No work days yet. Add them from Edit.</p>
+              <p className="adm-none">{t('projectCard.noWorkDays')}</p>
             ) : (
               <ul className="adm-days">
                 {days.map((d) => (
@@ -280,7 +290,7 @@ export default function ProjectCard({
 
           {project.notes && (
             <section className="adm-section">
-              <h4 className="adm-section-title">Notes</h4>
+              <h4 className="adm-section-title">{t('projectCard.section.notes')}</h4>
               <p dir="auto" className="adm-detail-notes">{project.notes}</p>
             </section>
           )}
@@ -289,14 +299,14 @@ export default function ProjectCard({
           <div className="adm-panel-row">
             <button className={`show-expand-btn${panel === 'purchases' ? ' active' : ''}`}
                     onClick={() => setPanel((p) => (p === 'purchases' ? null : 'purchases'))}>
-              Purchases &amp; Returns
+              {t('projectCard.purchasesReturns')}
               {project.outstandingOnCard > 0 && (
                 <span className="nav-tasks-badge nav-badge--warn">
                   {ils(project.outstandingOnCard)}
                 </span>
               )}
             </button>
-            <button className="btn-ghost btn-sm" onClick={() => onEdit?.(project)}>Edit project</button>
+            <button className="btn-ghost btn-sm" onClick={() => onEdit?.(project)}>{t('projectCard.editProject')}</button>
           </div>
 
           {panel === 'purchases' && (

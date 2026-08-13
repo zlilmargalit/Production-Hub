@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useT } from '../i18n';
 
 const RUBRIC_LABELS = {
-  schedule:  'Schedule',
-  logistics: 'Logistics (Transport / Food / Contacts)',
-  technical: 'Technical (Sound / Lighting)',
-  notes:     'Notes',
-  budget:    'Budget',
+  schedule:  'settings.rubric.schedule',
+  logistics: 'settings.rubric.logistics',
+  technical: 'settings.rubric.technical',
+  notes:     'settings.rubric.notes',
+  budget:    'settings.rubric.budget',
 };
 
 const ALL_RUBRICS = Object.keys(RUBRIC_LABELS);
 
 // ── Panel A: Invite link + users table ───────────────────────────────────────
 function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
+  const { t, tx } = useT();
   const [link,          setLink]          = useState('');
   const [expires,       setExpires]       = useState('');
   const [copied,        setCopied]        = useState(false);
@@ -69,45 +71,45 @@ function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
 
   return (
     <div className="settings-section">
-      <h3 className="settings-section-title">Invite New Team Member</h3>
-      <p className="settings-section-desc">Generate a one-time invite link. Expires in 48 hours.</p>
+      <h3 className="settings-section-title">{t('settings.inviteMember')}</h3>
+      <p className="settings-section-desc">{t('settings.inviteMemberHint')}</p>
 
       <div className="settings-invite-role-row">
-        <span className="settings-invite-role-label">Role:</span>
+        <span className="settings-invite-role-label">{t('settings.role')}</span>
         <label className="settings-role-radio">
           <input type="radio" name="inviteRole" value="producer" checked={inviteRole === 'producer'} onChange={() => setInviteRole('producer')} />
-          Producer
+          {t('settings.producer')}
         </label>
         <label className="settings-role-radio">
           <input type="radio" name="inviteRole" value="backliner" checked={inviteRole === 'backliner'} onChange={() => setInviteRole('backliner')} />
-          Backliner
+          {t('settings.backliner')}
         </label>
       </div>
       <button className="btn-primary settings-generate-btn" onClick={generate} disabled={generating}>
-        {generating ? 'Generating…' : 'Generate Invite Link'}
+        {generating ? t('settings.generating') : t('settings.generateInvite')}
       </button>
 
       {link && (
         <div className="settings-invite-box">
           <input className="settings-invite-input" value={link} readOnly />
           <button className="btn-ghost settings-copy-btn" onClick={copyLink}>
-            {copied ? '✓ Copied' : 'Copy'}
+            {copied ? t('common.copied') : t('common.copy')}
           </button>
-          <p className="settings-invite-exp">Expires: {fmtDate(expires)}</p>
+          <p className="settings-invite-exp">{tx('settings.expires', { date: fmtDate(expires) })}</p>
         </div>
       )}
 
       {/* Active invitations */}
       {!loadingInv && invitations.length > 0 && (
         <div className="settings-inv-list">
-          <h4 className="settings-sub-title">Active Invitations</h4>
+          <h4 className="settings-sub-title">{t('settings.activeInvitations')}</h4>
           <table className="settings-table">
             <thead>
               <tr>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Expires</th>
-                <th>Used by</th>
+                <th>{t('settings.status')}</th>
+                <th>{t('settings.created')}</th>
+                <th>{t('settings.expiresLabel')}</th>
+                <th>{t('settings.usedBy')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -116,18 +118,18 @@ function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
                 <tr key={inv.token} className={isExpired(inv.expiresAt) ? 'row-muted' : ''}>
                   <td>
                     {inv.usedBy
-                      ? <span className="badge-used">Used</span>
+                      ? <span className="badge-used">{t('settings.used')}</span>
                       : isExpired(inv.expiresAt)
-                        ? <span className="badge-expired">Expired</span>
-                        : <span className="badge-active">Active</span>}
+                        ? <span className="badge-expired">{t('settings.expired')}</span>
+                        : <span className="badge-active">{t('settings.active')}</span>}
                   </td>
                   <td>{fmtDate(inv.createdAt)}</td>
                   <td>{fmtDate(inv.expiresAt)}</td>
-                  <td>{inv.usedByUsername || '—'}</td>
+                  <td>{inv.usedByUsername ? <span dir="auto">{inv.usedByUsername}</span> : '—'}</td>
                   <td>
                     {!inv.usedBy && (
                       <button className="btn-action btn-action--danger" onClick={() => revokeInvite(inv.token)}>
-                        Revoke
+                        {t('settings.revoke')}
                       </button>
                     )}
                   </td>
@@ -139,24 +141,24 @@ function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
       )}
 
       {/* Users table */}
-      <h3 className="settings-section-title" style={{ marginTop: '28px' }}>Team Members</h3>
+      <h3 className="settings-section-title" style={{ marginTop: '28px' }}>{t('settings.teamMembers')}</h3>
       {users.length === 0
-        ? <p className="settings-empty">No team members yet. Generate an invite link to add someone.</p>
+        ? <p className="settings-empty">{t('settings.emptyTeam')}</p>
         : (
           <table className="settings-table">
             <thead>
               <tr>
-                <th>Username</th>
-                <th>Auth Role</th>
-                <th>Workspace Role</th>
-                <th>Joined</th>
+                <th>{t('settings.username')}</th>
+                <th>{t('settings.authRole')}</th>
+                <th>{t('settings.workspaceRole')}</th>
+                <th>{t('settings.joined')}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
-                  <td>{u.username}</td>
+                  <td><span dir="auto">{u.username}</span></td>
                   <td><span className={`badge-role badge-role--${u.role}`}>{u.role}</span></td>
                   <td>
                     <select
@@ -164,14 +166,14 @@ function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
                       value={u.workspaceRole || 'producer'}
                       onChange={(e) => onChangeWorkspaceRole(u.id, e.target.value)}
                     >
-                      <option value="producer">Producer</option>
-                      <option value="backliner">Backliner</option>
+                      <option value="producer">{t('settings.producer')}</option>
+                      <option value="backliner">{t('settings.backliner')}</option>
                     </select>
                   </td>
-                  <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
+                  <td>{u.createdAt ? <span className="ltr" dir="ltr">{new Date(u.createdAt).toLocaleDateString()}</span> : '—'}</td>
                   <td>
                     <button className="btn-action btn-action--danger" onClick={() => onDeleteUser(u)}>
-                      Remove
+                      {t('common.remove')}
                     </button>
                   </td>
                 </tr>
@@ -186,11 +188,12 @@ function PanelInvite({ users, onDeleteUser, onChangeWorkspaceRole }) {
 
 // ── Panel B: Rubric visibility ────────────────────────────────────────────────
 function PanelRubrics({ visibleRubrics, onChange }) {
+  const { t } = useT();
   return (
     <div className="settings-section">
-      <h3 className="settings-section-title">Visible Sections for Team</h3>
+      <h3 className="settings-section-title">{t('settings.visibleSections')}</h3>
       <p className="settings-section-desc">
-        Choose which show sections team members can see. Core info (name, date, venue) is always visible.
+        {t('settings.visibleSectionsHint')}
       </p>
       <div className="settings-rubric-list">
         {ALL_RUBRICS.map((key) => (
@@ -206,7 +209,7 @@ function PanelRubrics({ visibleRubrics, onChange }) {
                 onChange(next);
               }}
             />
-            <span>{RUBRIC_LABELS[key]}</span>
+            <span>{t(RUBRIC_LABELS[key])}</span>
           </label>
         ))}
       </div>
@@ -216,19 +219,20 @@ function PanelRubrics({ visibleRubrics, onChange }) {
 
 // ── Panel C: Per-user artist access ──────────────────────────────────────────
 function PanelAccess({ users, artists, userArtistAccess, onChange }) {
+  const { t } = useT();
   if (users.length === 0) {
     return (
       <div className="settings-section">
-        <h3 className="settings-section-title">Artist Access per Member</h3>
-        <p className="settings-empty">No team members yet.</p>
+        <h3 className="settings-section-title">{t('settings.artistAccess')}</h3>
+        <p className="settings-empty">{t('settings.noTeamMembers')}</p>
       </div>
     );
   }
   if (artists.length === 0) {
     return (
       <div className="settings-section">
-        <h3 className="settings-section-title">Artist Access per Member</h3>
-        <p className="settings-empty">No artists in your workspace yet.</p>
+        <h3 className="settings-section-title">{t('settings.artistAccess')}</h3>
+        <p className="settings-empty">{t('settings.noArtists')}</p>
       </div>
     );
   }
@@ -243,16 +247,16 @@ function PanelAccess({ users, artists, userArtistAccess, onChange }) {
 
   return (
     <div className="settings-section">
-      <h3 className="settings-section-title">Artist Access per Member</h3>
+      <h3 className="settings-section-title">{t('settings.artistAccess')}</h3>
       <p className="settings-section-desc">
-        Check which artists each team member can view. They will only see the rubrics enabled above.
+        {t('settings.artistAccessHint')}
       </p>
       <div className="settings-access-table-wrap">
         <table className="settings-table settings-access-table">
           <thead>
             <tr>
-              <th>Member</th>
-              {artists.map((a) => <th key={a.id}>{a.name}</th>)}
+              <th>{t('settings.member')}</th>
+              {artists.map((a) => <th key={a.id}><span dir="auto">{a.name}</span></th>)}
             </tr>
           </thead>
           <tbody>
@@ -260,7 +264,7 @@ function PanelAccess({ users, artists, userArtistAccess, onChange }) {
               const permitted = userArtistAccess[u.id] || [];
               return (
                 <tr key={u.id}>
-                  <td>{u.username}</td>
+                  <td><span dir="auto">{u.username}</span></td>
                   {artists.map((a) => (
                     <td key={a.id} className="settings-access-cell">
                       <input
@@ -282,6 +286,7 @@ function PanelAccess({ users, artists, userArtistAccess, onChange }) {
 
 // ── Main Settings Panel ───────────────────────────────────────────────────────
 function SettingsPanel({ artists }) {
+  const { t } = useT();
   const [tab,              setTab]              = useState('invite');
   const [users,            setUsers]            = useState([]);
   const [visibleRubrics,   setVisibleRubrics]   = useState([]);
@@ -324,16 +329,16 @@ function SettingsPanel({ artists }) {
         body: JSON.stringify({ visibleRubrics, userArtistAccess }),
       });
       if (r.ok) {
-        setSaveMsg('Saved');
+        setSaveMsg('settings.saved');
       } else {
-        setSaveMsg('Error saving');
+        setSaveMsg('settings.saveError');
       }
       setTimeout(() => setSaveMsg(''), 3000);
     } finally { setSaving(false); }
   };
 
   const deleteUser = async (user) => {
-    if (!window.confirm(`Remove ${user.username} from the team?`)) return;
+    if (!window.confirm(t('settings.removeMemberConfirmation'))) return;
     const r = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
     if (r.ok) setUsers((prev) => prev.filter((u) => u.id !== user.id));
   };
@@ -356,17 +361,17 @@ function SettingsPanel({ artists }) {
       {/* Page header */}
       <div className="page-header-edit">
         <div className="page-header-left">
-          <h1 className="page-title">Settings<span className="page-title-dot">.</span></h1>
+          <h1 className="page-title">{t('settings.title')}<span className="page-title-dot">.</span></h1>
           <p className="page-subtitle">
             <span className="page-subtitle-num">{String(users.length).padStart(2, '0')}</span>
             <span className="page-subtitle-line" />
-            <span>team members</span>
+            <span>{t('settings.teamMembers')}</span>
           </p>
         </div>
         <div className="page-marquee" aria-hidden="true">
           <span className="page-marquee-track">
-            <span>Settings</span><span>·</span><span>Settings</span><span>·</span>
-            <span>Settings</span><span>·</span><span>Settings</span><span>·</span>
+            <span>{t('settings.title')}</span><span>·</span><span>{t('settings.title')}</span><span>·</span>
+            <span>{t('settings.title')}</span><span>·</span><span>{t('settings.title')}</span><span>·</span>
           </span>
         </div>
       </div>
@@ -374,9 +379,9 @@ function SettingsPanel({ artists }) {
       {/* Tab bar */}
       <div className="settings-tabs">
         {[
-          { key: 'invite',  label: 'Team & Invites' },
-          { key: 'rubrics', label: 'Visible Sections' },
-          { key: 'access',  label: 'Artist Access' },
+          { key: 'invite',  label: t('settings.teamInvites') },
+          { key: 'rubrics', label: t('settings.visibleSections') },
+          { key: 'access',  label: t('settings.artistAccess') },
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -389,7 +394,7 @@ function SettingsPanel({ artists }) {
       </div>
 
       {isLoading ? (
-        <div className="settings-loading">Loading…</div>
+        <div className="settings-loading">{t('common.loading')}</div>
       ) : (
         <>
           {tab === 'invite' && (
@@ -411,9 +416,9 @@ function SettingsPanel({ artists }) {
           {(tab === 'rubrics' || tab === 'access') && (
             <div className="settings-save-row">
               <button className="btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Changes'}
+                {saving ? t('common.saving') : t('common.saveChanges')}
               </button>
-              {saveMsg && <span className={`settings-save-msg${saveMsg === 'Saved' ? ' ok' : ' err'}`}>{saveMsg}</span>}
+              {saveMsg && <span className={`settings-save-msg${saveMsg === 'settings.saved' ? ' ok' : ' err'}`}>{t(saveMsg)}</span>}
             </div>
           )}
         </>

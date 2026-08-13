@@ -5,10 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Language Rule
 Reply to the user in Hebrew.
 
-Separate from how you reply: the **product's UI chrome is English** — labels,
-buttons, headings, tabs, statuses, empty states. Only content the user types
-(project, client, shop and people names, notes) is Hebrew, and that renders RTL.
-Do not translate UI strings to Hebrew and do not add an i18n layer.
+Separate from how you reply: the product UI supports English and Hebrew. UI
+chrome (labels, buttons, headings, tabs, statuses and empty states) follows the
+selected interface language through the existing i18n layer. User-entered
+content (project, client, shop and people names, notes) is never translated;
+it renders exactly as stored and uses its own text direction.
 
 ## Found issues log
 
@@ -18,6 +19,34 @@ it**, unless it is critical (data loss, a security hole, or something actively
 broken for users), in which case fix it and say so.
 
 The point is that noticing something is not a reason to widen the current task.
+
+## i18n rule
+
+All user-facing strings go through `t()`. Never write a literal string into
+JSX, a `placeholder`, a `title`, an `aria-label`, or a toast/alert/error.
+
+Every new key is added to BOTH `client/src/i18n/en.js` and
+`client/src/i18n/he.js` in the same change. Never English only — a key present
+in `en.js` and missing from `he.js` silently degrades the Hebrew interface and
+nothing will catch it.
+
+`t(key)` returns a string and never interpolates. `tx(key, vars)` returns React
+elements and wraps each interpolated value in its own `<span dir="auto">`.
+Never build a display string with a template literal — `` `${count} shows` ``
+reorders under RTL.
+
+Module-scope config arrays store keys, not strings. `t` is never called at
+module scope.
+
+Data values are never translated. Crew roles, event type names, show names,
+venue names, task text — anything the user typed renders exactly as stored, in
+both language modes.
+
+Numeric and Latin atoms — phones, time ranges, dates, emails, URLs, counts,
+percentages — get the `.ltr` isolate class.
+
+Before deploying any change touching the client, run:
+`node scripts/i18n-check.js`
 
 ## Common commands
 

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { parseScheduleRows, scheduleToString } from '../utils/schedule';
+import { useT } from '../i18n';
 
 function compressImage(dataUrl, maxWidth = 1200, quality = 0.85) {
   return new Promise((resolve) => {
@@ -45,11 +46,11 @@ function buildCrewText(crewIds, crew) {
 }
 
 const SECTIONS = [
-  { id: 'basics',    label: 'Basics' },
-  { id: 'brief',     label: 'Brief Content' },
-  { id: 'logistics', label: 'Logistics' },
-  { id: 'crew',      label: 'Crew' },
-  { id: 'custom',    label: 'Custom' },
+  { id: 'basics',    labelKey: 'sf.section.basics' },
+  { id: 'brief',     labelKey: 'sf.section.brief' },
+  { id: 'logistics', labelKey: 'sf.section.logistics' },
+  { id: 'crew',      labelKey: 'sf.section.crew' },
+  { id: 'custom',    labelKey: 'sf.section.custom' },
 ];
 
 function isRehearsal(eventType) {
@@ -71,6 +72,7 @@ function sectionCount(sectionId, form) {
 }
 
 export default function ShowForm({ show, crew, templates, fieldTemplates, eventTypes, onSubmit, onClose }) {
+  const { t } = useT();
   const formRef = useRef(null);
   const sectionRefs = useRef({});
   const schedTimeRefs     = useRef([]);
@@ -268,10 +270,10 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
         {/* Header */}
         <div className="sf-head">
           <div className="sf-head-title">
-            <span className="sf-eyebrow">{show ? 'EDIT SHOW' : 'NEW SHOW'}</span>
-            <h2 className="sf-title" dir="auto">{form.name || 'Untitled Show'}</h2>
+            <span className="sf-eyebrow">{show ? t('sf.eyebrow.edit') : t('sf.eyebrow.new')}</span>
+            <h2 className="sf-title" dir="auto">{form.name || t('sf.untitled')}</h2>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label={t('sf.close')}>✕</button>
         </div>
 
         {/* Body */}
@@ -294,7 +296,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                   onClick={() => scrollTo(s.id)}
                 >
                   <span className="sf-rail-dot" />
-                  {s.label}
+                  {t(s.labelKey)}
                   {count != null && <span className="sf-rail-count">{count}</span>}
                 </button>
               );
@@ -302,7 +304,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             <div className="sf-rail-spacer" />
             {show?.updatedAt && (
               <div className="sf-rail-meta">
-                <b>Last saved</b> {new Date(show.updatedAt).toLocaleDateString()}
+                <b>{t('sf.lastSaved')}</b> <span className="ltr">{new Date(show.updatedAt).toLocaleDateString()}</span>
               </div>
             )}
           </nav>
@@ -313,32 +315,32 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             {/* BASICS */}
             <section ref={(el) => { sectionRefs.current.basics = el; }} className="sf-section" id="sf-basics">
               <div className="sf-sec-head">
-                Basics
-                <span className="sf-sec-sub">show name · date · type · venue</span>
+                {t('sf.section.basics')}
+                <span className="sf-sec-sub">{t('sf.sub.basics')}</span>
               </div>
               <div className="sf-grid2">
                 <div className="sf-field full">
-                  <label>Show Name <span className="sf-req">*</span></label>
-                  <input dir="auto" name="name" value={form.name} onChange={set} required placeholder="Show or event name" className="sf-inp" />
+                  <label>{t('sf.label.name')} <span className="sf-req">*</span></label>
+                  <input dir="auto" name="name" value={form.name} onChange={set} required placeholder={t('sf.ph.name')} className="sf-inp" />
                 </div>
                 <div className="sf-field">
-                  <label>Date <span className="sf-req">*</span></label>
+                  <label>{t('sf.label.date')} <span className="sf-req">*</span></label>
                   <input type="date" name="date" value={form.date} onChange={set} className="sf-inp" />
                 </div>
                 <div className="sf-field">
-                  <label>Event Type</label>
+                  <label>{t('sf.label.eventType')}</label>
                   <select name="eventType" value={form.eventType} onChange={handleEventTypeChange} className="sf-inp">
-                    <option value="">Select type…</option>
-                    {(eventTypes || []).map((t) => <option key={t} value={t}>{t}</option>)}
+                    <option value="">{t('sf.ph.selectType')}</option>
+                    {(eventTypes || []).map((et) => <option key={et} value={et}>{et}</option>)}
                   </select>
                 </div>
                 <div className="sf-field">
-                  <label>Venue</label>
-                  <input dir="auto" name="venue" value={form.venue} onChange={set} placeholder="Hall / stage name" className="sf-inp" />
+                  <label>{t('sf.label.venue')}</label>
+                  <input dir="auto" name="venue" value={form.venue} onChange={set} placeholder={t('sf.ph.venue')} className="sf-inp" />
                 </div>
                 <div className="sf-field">
-                  <label>Address</label>
-                  <input dir="auto" name="address" value={form.address} onChange={set} placeholder="Street, City" className="sf-inp" />
+                  <label>{t('sf.label.address')}</label>
+                  <input dir="auto" name="address" value={form.address} onChange={set} placeholder={t('sf.ph.address')} className="sf-inp" />
                 </div>
               </div>
             </section>
@@ -346,13 +348,13 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             {/* BRIEF CONTENT */}
             <section ref={(el) => { sectionRefs.current.brief = el; }} className="sf-section" id="sf-brief">
               <div className="sf-sec-head">
-                Brief Content
-                <span className="sf-sec-sub">schedule · contacts · notes</span>
+                {t('sf.section.brief')}
+                <span className="sf-sec-sub">{t('sf.sub.brief')}</span>
               </div>
 
               {/* Structured schedule */}
               <div className="sf-field full" style={{ marginBottom: 20 }}>
-                <label>Schedule</label>
+                <label>{t('sf.label.schedule')}</label>
                 {form.scheduleRows.map((row, idx) => (
                   <div
                     key={idx}
@@ -363,7 +365,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                     onDrop={(e) => onSchedDrop(e, idx)}
                     onDragEnd={onSchedDragEnd}
                   >
-                    <span className="sf-sched-handle" title="Drag to reorder">⠿</span>
+                    <span className="sf-sched-handle" title={t('sf.sched.drag')}>⠿</span>
                     <input
                       type="text"
                       className="sf-inp sf-sched-time"
@@ -379,31 +381,31 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                       value={row.activity}
                       onChange={(e) => updateScheduleRow(idx, 'activity', e.target.value)}
                       onKeyDown={(e) => schedKeyDown(e, idx, 'activity')}
-                      placeholder="Activity…"
+                      placeholder={t('sf.ph.activity')}
                       ref={(el) => { schedActivityRefs.current[idx] = el; }}
                     />
                     <button
                       type="button"
                       className="icon-btn danger sf-sched-del"
                       onClick={() => removeScheduleRow(idx)}
-                      aria-label="Remove row"
+                      aria-label={t('sf.sched.removeRow')}
                     >✕</button>
                   </div>
                 ))}
                 <button type="button" className="sf-sched-add" onClick={addScheduleRow}>
-                  ＋ Add row
+                  ＋ {t('sf.sched.addRow')}
                 </button>
               </div>
 
               {/* Contacts */}
               <div className="sf-field full" style={{ marginBottom: 20 }}>
-                <label>Contacts</label>
+                <label>{t('sf.label.contacts')}</label>
                 <textarea
                   dir="auto"
                   name="contacts"
                   value={form.contacts}
                   onChange={set}
-                  placeholder="Name — Phone"
+                  placeholder={t('sf.ph.contacts')}
                   rows={3}
                   className="sf-inp sf-textarea"
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) e.preventDefault(); }}
@@ -412,14 +414,14 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
 
               {/* Additional Details */}
               <div className="sf-field full">
-                <label>Additional Details</label>
+                <label>{t('sf.label.details')}</label>
                 <textarea
                   dir="auto"
                   name="additionalDetails"
                   value={form.additionalDetails}
                   onChange={set}
                   rows={3}
-                  placeholder="Notes, special requirements, equipment…"
+                  placeholder={t('sf.ph.details')}
                   className="sf-inp sf-textarea"
                 />
               </div>
@@ -428,21 +430,21 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             {/* LOGISTICS */}
             <section ref={(el) => { sectionRefs.current.logistics = el; }} className="sf-section" id="sf-logistics">
               <div className="sf-sec-head">
-                Logistics
-                <span className="sf-sec-sub">parking · transport · guests</span>
+                {t('sf.section.logistics')}
+                <span className="sf-sec-sub">{t('sf.sub.logistics')}</span>
               </div>
               <div className="sf-grid2">
                 <div className="sf-field">
-                  <label>Parking</label>
-                  <input dir="auto" name="parking" value={form.parking} onChange={set} placeholder="Parking details" className="sf-inp" />
+                  <label>{t('sf.label.parking')}</label>
+                  <input dir="auto" name="parking" value={form.parking} onChange={set} placeholder={t('sf.ph.parking')} className="sf-inp" />
                 </div>
                 <div className="sf-field">
-                  <label>Transportation</label>
-                  <input dir="auto" name="transportation" value={form.transportation} onChange={set} placeholder="Pickup time and details" className="sf-inp" />
+                  <label>{t('sf.label.transport')}</label>
+                  <input dir="auto" name="transportation" value={form.transportation} onChange={set} placeholder={t('sf.ph.transport')} className="sf-inp" />
                 </div>
                 <div className="sf-field full">
-                  <label>Notes</label>
-                  <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder="Internal notes…" className="sf-inp sf-textarea" />
+                  <label>{t('sf.label.notes')}</label>
+                  <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder={t('sf.ph.notes')} className="sf-inp sf-textarea" />
                 </div>
               </div>
 
@@ -450,7 +452,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
               {!isRehearsal(form.eventType) && (
                 <div className="sf-field full" style={{ marginTop: 8 }}>
                   <label>
-                    Guest List
+                    {t('sf.label.guests')}
                     {(form.guestList || []).length > 0 && (
                       <span className="sf-guest-count">{(form.guestList || []).length}</span>
                     )}
@@ -462,25 +464,25 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                         className="sf-inp sf-guest-name"
                         value={guest.name}
                         onChange={(e) => updateGuest(idx, 'name', e.target.value)}
-                        placeholder="Guest name…"
+                        placeholder={t('sf.ph.guestName')}
                       />
                       <input
                         dir="auto"
                         className="sf-inp sf-guest-notes"
                         value={guest.notes}
                         onChange={(e) => updateGuest(idx, 'notes', e.target.value)}
-                        placeholder="Notes (optional)"
+                        placeholder={t('sf.ph.guestNotes')}
                       />
                       <button
                         type="button"
                         className="icon-btn danger sf-sched-del"
                         onClick={() => removeGuest(idx)}
-                        aria-label="Remove guest"
+                        aria-label={t('sf.guest.remove')}
                       >✕</button>
                     </div>
                   ))}
                   <button type="button" className="sf-sched-add" onClick={addGuest}>
-                    ＋ Add guest
+                    ＋ {t('sf.guest.add')}
                   </button>
                 </div>
               )}
@@ -489,8 +491,8 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             {/* CREW */}
             <section ref={(el) => { sectionRefs.current.crew = el; }} className="sf-section" id="sf-crew">
               <div className="sf-sec-head">
-                Crew
-                <span className="sf-sec-sub">tap to toggle assignment</span>
+                {t('sf.section.crew')}
+                <span className="sf-sec-sub">{t('sf.sub.crew')}</span>
               </div>
               <div className="sf-crew-wrap">
                 {sortedRoles.map((role) =>
@@ -523,7 +525,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
             {customDefs.length > 0 && (
               <section ref={(el) => { sectionRefs.current.custom = el; }} className="sf-section" id="sf-custom">
                 <div className="sf-sec-head">
-                  Custom Fields
+                  {t('sf.label.customFields')}
                   <span className="sf-sec-sub">{form.eventType}</span>
                 </div>
                 <div className="sf-grid2">
@@ -580,7 +582,7 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
                               )}
                               <button type="button" className="btn-icon btn-danger"
                                 style={{ marginTop: 4, fontSize: '0.75rem', display: 'block' }}
-                                onClick={() => setCustomField(def.id, null)}>Remove</button>
+                                onClick={() => setCustomField(def.id, null)}>{t('sf.remove')}</button>
                             </div>
                           )}
                         </div>
@@ -619,9 +621,9 @@ export default function ShowForm({ show, crew, templates, fieldTemplates, eventT
 
         {/* Footer */}
         <div className="sf-foot">
-          <button type="button" className="btn ghost sz-md" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn ghost sz-md" onClick={onClose}>{t('sf.cancel')}</button>
           <button type="button" className="btn primary sz-md" onClick={handleSubmit}>
-            {show ? 'Save Changes' : 'Add Show'}
+            {show ? t('sf.saveChanges') : t('sf.addShow')}
           </button>
         </div>
 

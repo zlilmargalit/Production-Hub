@@ -5,6 +5,7 @@ import SegmentedControl from './ui/SegmentedControl';
 import IconButton from './ui/IconButton';
 import PageBar from './ui/PageBar';
 import { phoneChars, isEmail } from '../utils/fieldInput';
+import { useT } from '../i18n';
 const uuidv4 = () => crypto.randomUUID();
 
 // ── Per-group color helpers ─────────────────────────────────────────────────
@@ -78,6 +79,7 @@ function buildCrewText(crewIds, crew) {
 }
 
 function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, onSaveFieldTemplate, eventTypes, onSaveEventTypes, eventTypeChecklists = {}, onSaveEventTypeChecklist, tasks = [], demoMode = false, artistId }) {
+  const { t, tx } = useT();
   const [tab, setTab] = useState('members');
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -139,8 +141,8 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   const deleteMember = (id) => {
     const member = crew.find((m) => m.id === id);
     setConfirmModal({
-      title: 'Delete Crew Member',
-      message: member ? `Remove "${member.name}" from all shows and templates? This cannot be undone.` : 'Delete this crew member?',
+      title: t('crew.deleteMember'),
+      message: member ? tx('crew.deleteMemberNamed', { name: member.name }) : t('crew.deleteMemberUnnamed'),
       onConfirm: async () => {
         setConfirmModal(null);
         if (!demoMode) await fetch(`/api/crew/${id}${qs}`, { method: 'DELETE' });
@@ -190,25 +192,25 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
   return (
     <div>
       <PageBar
-        title={tab === 'members' ? 'Crew' : 'Event Types'}
+        title={tab === 'members' ? t('crew.title') : t('crew.eventTypes')}
         count={tab === 'members' ? crew.length : (eventTypes || []).length}
-        countLabel={tab === 'members' ? 'members' : 'types'}
+        countLabel={tab === 'members' ? t('crew.membersCount') : t('crew.typesCount')}
         metrics={tab === 'members' ? [
-          { value: crew.length, label: 'Total' },
-          { value: crew.filter(m => (m.role||'').toLowerCase().includes('sound') || (m.role||'').toLowerCase().includes('סאונד')).length, label: 'Sound' },
-          { value: crew.filter(m => (m.role||'').toLowerCase().includes('backline') || (m.role||'').toLowerCase().includes('בקלי')).length, label: 'Backline' },
+          { value: crew.length, label: t('crew.total') },
+          { value: crew.filter(m => (m.role||'').toLowerCase().includes('sound') || (m.role||'').toLowerCase().includes('סאונד')).length, label: t('crew.sound') },
+          { value: crew.filter(m => (m.role||'').toLowerCase().includes('backline') || (m.role||'').toLowerCase().includes('בקלי')).length, label: t('crew.backline') },
         ] : [
-          { value: (eventTypes || []).length, label: 'Types' },
+          { value: (eventTypes || []).length, label: t('crew.typesCount') },
         ]}
         actions={tab === 'members' && (
-          <button className="btn-primary" onClick={openAdd}>+ Add Member</button>
+          <button className="btn-primary" onClick={openAdd}>+ {t('crew.addMember')}</button>
         )}
       >
         <div className="crew-header-inner">
           <SegmentedControl
             items={[
-              { id: 'members', label: 'Members', count: crew.length },
-              { id: 'templates', label: 'Event Types', count: (eventTypes || []).length },
+              { id: 'members', label: t('crew.members'), count: crew.length },
+              { id: 'templates', label: t('crew.eventTypes'), count: (eventTypes || []).length },
             ]}
             activeId={tab}
             onChange={setTab}
@@ -220,8 +222,8 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
         crew.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">—</div>
-            <p>No crew members yet</p>
-            <p className="empty-sub">Click "+ Add Member" to get started</p>
+            <p>{t('crew.empty')}</p>
+            <p className="empty-sub">{t('crew.emptyHint')}</p>
           </div>
         ) : (
           <div className="crew-groups">
@@ -233,7 +235,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                     <button
                       className="crew-group-toggle"
                       onClick={() => toggleRole(role)}
-                      title={collapsedRoles.has(role) ? 'Expand' : 'Collapse'}
+                      title={collapsedRoles.has(role) ? t('card.expand') : t('card.collapse')}
                     >
                       {collapsedRoles.has(role) ? '+' : '−'}
                     </button>
@@ -255,7 +257,7 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
                                 <div className="crew-member-name" dir="auto">
                                   {m.name}
                                   {activeTasks > 0 && (
-                                    <span className="crew-task-badge" title={`${activeTasks} active task${activeTasks > 1 ? 's' : ''}`}>{activeTasks}</span>
+                                    <span className="crew-task-badge" title={t(activeTasks === 1 ? 'crew.activeTask.one' : 'crew.activeTask.many')}>{activeTasks}</span>
                                   )}
                                 </div>
                                 <div className="crew-group-eyebrow" style={{ color: groupColor }}>
@@ -300,8 +302,8 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
 
                             {/* Actions (revealed on hover) */}
                             <div className="crew-card-actions">
-                              <IconButton onClick={() => openEdit(m)} title="Edit">✎</IconButton>
-                              <IconButton danger onClick={() => deleteMember(m.id)} title="Delete">✕</IconButton>
+                              <IconButton onClick={() => openEdit(m)} title={t('card.edit')}>✎</IconButton>
+                              <IconButton danger onClick={() => deleteMember(m.id)} title={t('card.delete')}>✕</IconButton>
                             </div>
                           </div>
                         );
@@ -345,14 +347,15 @@ function CrewManager({ crew, setCrew, templates, setTemplates, fieldTemplates, o
 }
 
 const FIELD_TYPES = [
-  { value: 'text',     label: 'Text (single line)' },
-  { value: 'textarea', label: 'Text (multi-line)' },
-  { value: 'checkbox', label: 'Checkbox' },
-  { value: 'image',    label: 'Image' },
-  { value: 'file',     label: 'File' },
+  { value: 'text',     labelKey: 'crew.fieldType.text' },
+  { value: 'textarea', labelKey: 'crew.fieldType.textarea' },
+  { value: 'checkbox', labelKey: 'crew.fieldType.checkbox' },
+  { value: 'image',    labelKey: 'crew.fieldType.image' },
+  { value: 'file',     labelKey: 'crew.fieldType.file' },
 ];
 
 function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onSaveFieldTemplate, onSaveEventTypes, eventTypeChecklists = {}, onSaveEventTypeChecklist }) {
+  const { t, tx } = useT();
   // ── Confirmation modal (for delete) ──
   const [confirmModal, setConfirmModal] = useState(null);
 
@@ -388,8 +391,8 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
   };
   const deleteEventType = (et) => {
     setConfirmModal({
-      title: 'Delete Event Type',
-      message: `Delete "${et}"? Existing shows with this type won't be affected.`,
+      title: t('crew.deleteEventType'),
+      message: tx('crew.deleteEventTypeMessage', { type: et }),
       onConfirm: () => {
         setConfirmModal(null);
         onSaveEventTypes(eventTypes.filter((t) => t !== et));
@@ -469,7 +472,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
   return (
     <div className="templates-page">
       <p className="templates-desc">
-        Define default crew and custom fields (rubrics) for each event type.
+        {t('crew.templatesDescription')}
       </p>
       <div className="templates-list">
         {eventTypes.map((et) => {
@@ -498,21 +501,21 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                     className={`btn-secondary btn-sm${isEditingCrew ? ' template-btn-active' : ''}`}
                     onClick={() => isEditingCrew ? setEditingCrewType(null) : startCrewEdit(et)}
                   >
-                    Crew{ids.length > 0 ? ` (${ids.length})` : ''}
+                    {t('crew.templateCrew')}{ids.length > 0 ? ` (${ids.length})` : ''}
                   </button>
                   <button
                     className={`btn-secondary btn-sm${isEditingFields ? ' template-btn-active' : ''}`}
                     onClick={() => isEditingFields ? setEditingFieldsType(null) : startFieldsEdit(et)}
                   >
-                    Fields{fieldDefs.length > 0 ? ` (${fieldDefs.length})` : ''}
+                    {t('crew.fields')}{fieldDefs.length > 0 ? ` (${fieldDefs.length})` : ''}
                   </button>
                   <button
                     className={`btn-secondary btn-sm${isEditingCl ? ' template-btn-active' : ''}`}
                     onClick={() => isEditingCl ? setEditingClType(null) : startClEdit(et)}
                   >
-                    Checklist{clCount > 0 ? ` (${clCount})` : ''}
+                    {t('crew.checklist')}{clCount > 0 ? ` (${clCount})` : ''}
                   </button>
-                  <IconButton danger onClick={() => deleteEventType(et)} title="Delete event type">✕</IconButton>
+                  <IconButton danger onClick={() => deleteEventType(et)} title={t('crew.deleteEventType')}>✕</IconButton>
                 </div>
                 <span className="template-type" dir="auto">{et}</span>
               </div>
@@ -531,7 +534,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                   </div>
                   {localIds.length > 0 && (
                     <div className="template-order">
-                      <p className="crew-section-label">Order — drag to reorder</p>
+                      <p className="crew-section-label">{t('crew.dragOrder')}</p>
                       {localIds.map((id, idx) => {
                         const m = crew.find((c) => c.id === id);
                         if (!m) return null;
@@ -560,14 +563,14 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                         );
                       })}
                       <div className="template-preview">
-                        <span className="crew-section-label">Preview:</span>
+                        <span className="crew-section-label">{t('crew.preview')}</span>
                         <span className="template-preview-text" dir="auto">{buildCrewText(localIds, crew)}</span>
                       </div>
                     </div>
                   )}
                   <div className="template-actions">
-                    <button className="btn-secondary" onClick={() => setEditingCrewType(null)}>Cancel</button>
-                    <button className="btn-primary" onClick={saveCrew}>Save Crew</button>
+                    <button className="btn-secondary" onClick={() => setEditingCrewType(null)}>{t('common.cancel')}</button>
+                    <button className="btn-primary" onClick={saveCrew}>{t('crew.saveCrew')}</button>
                   </div>
                 </div>
               )}
@@ -582,18 +585,18 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                       value={newFieldLabel}
                       onChange={(e) => setNewFieldLabel(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addField()}
-                      placeholder="Field name..."
+                      placeholder={t('crew.fieldName')}
                     />
                     <select
                       className="field-type-select"
                       value={newFieldType}
                       onChange={(e) => setNewFieldType(e.target.value)}
                     >
-                      {FIELD_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
+                      {FIELD_TYPES.map((fieldType) => (
+                        <option key={fieldType.value} value={fieldType.value}>{t(fieldType.labelKey)}</option>
                       ))}
                     </select>
-                    <button className="btn-primary btn-sm" onClick={addField}>+ Add</button>
+                    <button className="btn-primary btn-sm" onClick={addField}>+ {t('common.add')}</button>
                   </div>
                   {localFields.length > 0 && (
                     <div className="fields-list">
@@ -610,7 +613,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                         >
                           <span className="drag-handle">⠿</span>
                           <span className="field-def-label" dir="auto">{f.label}</span>
-                          <span className="field-def-type">{FIELD_TYPES.find((t) => t.value === f.type)?.label || f.type}</span>
+                          <span className="field-def-type">{FIELD_TYPES.find((fieldType) => fieldType.value === f.type) ? t(FIELD_TYPES.find((fieldType) => fieldType.value === f.type).labelKey) : f.type}</span>
                           <div className="field-def-actions">
                             <button className="btn-icon btn-danger" onClick={() => removeField(f.id)}>✕</button>
                           </div>
@@ -619,8 +622,8 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                     </div>
                   )}
                   <div className="template-actions">
-                    <button className="btn-secondary" onClick={() => setEditingFieldsType(null)}>Cancel</button>
-                    <button className="btn-primary" onClick={saveFields}>Save Fields</button>
+                    <button className="btn-secondary" onClick={() => setEditingFieldsType(null)}>{t('common.cancel')}</button>
+                    <button className="btn-primary" onClick={saveFields}>{t('crew.saveFields')}</button>
                   </div>
                 </div>
               )}
@@ -629,10 +632,10 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
               {isEditingCl && (
                 <div className="template-editor" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
                   <p className="crew-section-label" style={{ marginBottom: 8 }}>
-                    Define default tasks for "Before you leave" and "At the venue" checklists shown on the home page on show day.
+                    {t('crew.checklistDescription')}
                   </p>
                   {/* Before phase */}
-                  <p className="crew-section-label">Before you leave</p>
+                  <p className="crew-section-label">{t('crew.beforeLeave')}</p>
                   <div className="fields-list" style={{ marginBottom: 8 }}>
                     {localClBefore.map((item) => (
                       <div key={item.id} className="field-def-row">
@@ -650,12 +653,12 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                       value={newClBeforeText}
                       onChange={(e) => setNewClBeforeText(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addClItem('before')}
-                      placeholder="Add task..."
+                      placeholder={t('crew.addTask')}
                     />
-                    <button className="btn-primary btn-sm" onClick={() => addClItem('before')}>+ Add</button>
+                    <button className="btn-primary btn-sm" onClick={() => addClItem('before')}>+ {t('common.add')}</button>
                   </div>
                   {/* Venue phase */}
-                  <p className="crew-section-label">At the venue</p>
+                  <p className="crew-section-label">{t('crew.atVenue')}</p>
                   <div className="fields-list" style={{ marginBottom: 8 }}>
                     {localClVenue.map((item) => (
                       <div key={item.id} className="field-def-row">
@@ -673,13 +676,13 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
                       value={newClVenueText}
                       onChange={(e) => setNewClVenueText(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addClItem('venue')}
-                      placeholder="Add task..."
+                      placeholder={t('crew.addTask')}
                     />
-                    <button className="btn-primary btn-sm" onClick={() => addClItem('venue')}>+ Add</button>
+                    <button className="btn-primary btn-sm" onClick={() => addClItem('venue')}>+ {t('common.add')}</button>
                   </div>
                   <div className="template-actions">
-                    <button className="btn-secondary" onClick={() => setEditingClType(null)}>Cancel</button>
-                    <button className="btn-primary" onClick={saveCl}>Save Checklist</button>
+                    <button className="btn-secondary" onClick={() => setEditingClType(null)}>{t('common.cancel')}</button>
+                    <button className="btn-primary" onClick={saveCl}>{t('crew.saveChecklist')}</button>
                   </div>
                 </div>
               )}
@@ -696,9 +699,9 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
           value={newTypeName}
           onChange={(e) => setNewTypeName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addEventType()}
-          placeholder="Add new event type…"
+          placeholder={t('crew.addEventType')}
         />
-        <button className="btn-primary btn-sm" onClick={addEventType}>+ Add</button>
+        <button className="btn-primary btn-sm" onClick={addEventType}>+ {t('common.add')}</button>
       </div>
 
       {confirmModal && (
@@ -715,6 +718,7 @@ function TemplatesTab({ crew, templates, fieldTemplates, eventTypes, onSave, onS
 }
 
 function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onSubmit, onClose }) {
+  const { t } = useT();
   const [form, setForm] = useState(
     member
       ? { name: member.name || '', role: member.role || '', phone: member.phone || '', email: member.email || '', notes: member.notes || '', eventTypes: member.eventTypes || [] }
@@ -772,23 +776,23 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{member ? 'Edit Crew Member' : 'Add Crew Member'}</h2>
+          <h2>{member ? t('crew.editMember') : t('crew.addMember')}</h2>
           <IconButton onClick={onClose}>✕</IconButton>
         </div>
         <form onSubmit={handleSubmit} className="show-form">
           <div className="form-grid">
             <div className="form-group span-2">
-              <label>Name *</label>
-              <input dir="auto" name="name" value={form.name} onChange={set} required placeholder="Full name" />
+              <label>{t('admin.nameRequired')}</label>
+              <input dir="auto" name="name" value={form.name} onChange={set} required placeholder={t('admin.fullName')} />
             </div>
             <div className="form-group">
-              <label>Role</label>
+              <label>{t('crew.role')}</label>
               <select name="role" value={form.role} onChange={set}>
-                <option value="">-- Select role --</option>
+                <option value="">{t('crew.selectRole')}</option>
                 {allRoles.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
-                <option value="__add_new__">＋ Add new role...</option>
+                <option value="__add_new__">＋ {t('crew.addRole')}</option>
               </select>
               {addingRole && (
                 <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
@@ -797,29 +801,29 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
                     value={newRoleInput}
                     onChange={(e) => setNewRoleInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmNewRole(); } if (e.key === 'Escape') { setAddingRole(false); setNewRoleInput(''); } }}
-                    placeholder="New role name"
+                    placeholder={t('crew.newRole')}
                     style={{ flex: 1 }}
                   />
-                  <button type="button" className="btn-primary btn-sm" onClick={confirmNewRole}>Add</button>
-                  <button type="button" className="btn-secondary btn-sm" onClick={() => { setAddingRole(false); setNewRoleInput(''); }}>Cancel</button>
+                  <button type="button" className="btn-primary btn-sm" onClick={confirmNewRole}>{t('common.add')}</button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => { setAddingRole(false); setNewRoleInput(''); }}>{t('common.cancel')}</button>
                 </div>
               )}
             </div>
             <div className="form-group">
-              <label>Phone</label>
+              <label>{t('admin.phone')}</label>
               <input dir="auto" name="phone" value={form.phone} onChange={set}
                      placeholder="050-..." inputMode="tel" />
             </div>
             <div className="form-group span-2">
-              <label>Email</label>
+              <label>{t('admin.email')}</label>
               <input dir="auto" name="email" value={form.email} onChange={set}
                      placeholder="email@example.com" inputMode="email" />
               {emailError && (
-                <span className="field-error">Enter a valid email address, or leave it empty.</span>
+                <span className="field-error">{t('client.error.email')}</span>
               )}
             </div>
             <div className="form-group span-2">
-              <label>Usually works with</label>
+              <label>{t('crew.worksWith')}</label>
               <div className="checkbox-row" style={{ flexWrap: 'wrap' }}>
                 {(eventTypes || []).map((t) => (
                   <label key={t} className="checkbox-label" dir="auto">
@@ -834,13 +838,13 @@ function CrewForm({ member, eventTypes, customRoles = [], onSaveCustomRoles, onS
               </div>
             </div>
             <div className="form-group span-2">
-              <label>Notes</label>
-              <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder="Any notes..." />
+              <label>{t('admin.notes')}</label>
+              <textarea dir="auto" name="notes" value={form.notes} onChange={set} rows={2} placeholder={t('crew.notesPlaceholder')} />
             </div>
           </div>
           <div className="form-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">{member ? 'Save' : 'Add'}</button>
+            <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
+            <button type="submit" className="btn-primary">{member ? t('crew.save') : t('common.add')}</button>
           </div>
         </form>
       </div>

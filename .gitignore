@@ -2,6 +2,7 @@ node_modules/
 server/node_modules/
 client/node_modules/
 client/dist/
+quality-reports/
 server/data/gmail-credentials.json
 server/data/gmail-token.json
 .env

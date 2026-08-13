@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useT } from '../../i18n';
 
 // ── Recipe definitions ────────────────────────────────────────────────────────
 const RECIPES = [
   {
     id:          'email-to-shows',
-    name:        'Email → Show',
-    desc:        'When a booking email arrives in Gmail, automatically create a new show with the details extracted from the subject and body.',
+    nameKey:     'recipe.emailShow',
+    descKey:     'recipe.emailShowDescription',
     color:       '#EA4335',
-    requires:    'Requires Gmail',
+    requiresKey: 'recipe.requiresGmail',
     triggerType: 'email',
     actionType:  'create-show',
     defaultConditions: [
@@ -25,10 +26,10 @@ const RECIPES = [
   },
   {
     id:          'auto-folders',
-    name:        'Auto Folders',
-    desc:        'When a new show is added, create a matching folder named after the artist and date so files always land in the right place.',
+    nameKey:     'recipe.autoFolders',
+    descKey:     'recipe.autoFoldersDescription',
     color:       '#34A853',
-    requires:    'Requires Google Drive',
+    requiresKey: 'recipe.requiresDrive',
     triggerType: 'show-event',
     actionType:  'create-folder',
     defaultConditions: [],
@@ -42,10 +43,10 @@ const RECIPES = [
   },
   {
     id:          'early-coord',
-    name:        'Early Coordination Alert',
-    desc:        'Get a push notification N days before every show so you have time to confirm sound, lighting, and logistics well in advance.',
+    nameKey:     'recipe.earlyAlert',
+    descKey:     'recipe.earlyAlertDescription',
     color:       '#F08D39',
-    requires:    'Requires push notifications',
+    requiresKey: 'recipe.requiresPush',
     triggerType: 'schedule',
     actionType:  'push',
     defaultConditions: [
@@ -60,33 +61,34 @@ const RECIPES = [
 
 // ── Email-to-Show config panel ────────────────────────────────────────────────
 function EmailToShowConfig({ params, onChange }) {
+  const { t } = useT();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const set = (key, val) => onChange({ ...params, [key]: val });
 
   // Live example sentence
-  const exSender   = params.senderEmail?.trim()     || 'any sender';
-  const exKeywords = params.subjectKeywords?.trim()  || 'any subject';
+  const exSender   = params.senderEmail?.trim()     || t('recipe.anySender');
+  const exKeywords = params.subjectKeywords?.trim()  || t('recipe.anySubject');
   const exName     = params.nameField === 'manual' && params.namePattern?.trim()
     ? `"${params.namePattern.trim()}"`
-    : params.nameField === 'body' ? 'first match in email body' : 'email subject line';
+    : params.nameField === 'body' ? t('recipe.firstBodyMatch') : t('recipe.emailSubject');
 
   return (
     <div className="rc-cfg">
       <div className="rc-cfg-section">
         <div className="rc-cfg-example">
-          When Gmail arrives from <strong>{exSender}</strong> with{' '}
-          <strong>{exKeywords}</strong> in the subject
-          <span className="mirror" aria-hidden="true">→</span> create show named from <strong>{exName}</strong>
+          {t('recipe.whenGmailFrom')} <strong dir="auto">{exSender}</strong> {t('recipe.with')}
+          <strong dir="auto">{exKeywords}</strong> {t('recipe.inSubject')}
+          <span className="mirror" aria-hidden="true">→</span> {t('recipe.createShowFrom')} <strong dir="auto">{exName}</strong>
         </div>
       </div>
 
       <div className="rc-cfg-section">
-        <label className="rc-cfg-label">Only from this sender (optional)</label>
+        <label className="rc-cfg-label">{t('recipe.senderOptional')}</label>
         <input
           className="rc-cfg-input"
           type="email"
-          placeholder="e.g. agent@venue.com — leave blank for any sender"
+          placeholder={t('recipe.senderPlaceholder')}
           value={params.senderEmail || ''}
           onChange={e => set('senderEmail', e.target.value)}
           dir="ltr"
@@ -94,17 +96,17 @@ function EmailToShowConfig({ params, onChange }) {
       </div>
 
       <div className="rc-cfg-section">
-        <label className="rc-cfg-label">Subject must contain (comma-separated, optional)</label>
+        <label className="rc-cfg-label">{t('recipe.subjectOptional')}</label>
         <input
           className="rc-cfg-input"
           type="text"
-          placeholder="e.g. booking, concert, show"
+          placeholder={t('recipe.subjectPlaceholder')}
           value={params.subjectKeywords || ''}
           onChange={e => set('subjectKeywords', e.target.value)}
           dir="ltr"
         />
         <span className="rc-cfg-hint">
-          Leave blank to match all emails. Multiple keywords = any one must appear.
+          {t('recipe.subjectHint')}
         </span>
       </div>
 
@@ -113,28 +115,28 @@ function EmailToShowConfig({ params, onChange }) {
         type="button"
         onClick={() => setShowAdvanced(v => !v)}
       >
-        {showAdvanced ? '▲' : '▼'} Advanced field mapping
+        {showAdvanced ? '▲' : '▼'} {t('recipe.advancedMapping')}
       </button>
 
       {showAdvanced && (
         <div className="rc-cfg-advanced">
           <div className="rc-cfg-section">
-            <label className="rc-cfg-label">Show name taken from</label>
+            <label className="rc-cfg-label">{t('recipe.showNameFrom')}</label>
             <select
               className="rc-cfg-select"
               value={params.nameField || 'subject'}
               onChange={e => set('nameField', e.target.value)}
             >
-              <option value="subject">Email subject line</option>
-              <option value="body">First match in email body</option>
-              <option value="manual">Fixed text / manual pattern</option>
+              <option value="subject">{t('recipe.emailSubject')}</option>
+              <option value="body">{t('recipe.firstBodyMatch')}</option>
+              <option value="manual">{t('recipe.fixedText')}</option>
             </select>
             {params.nameField === 'manual' && (
               <input
                 className="rc-cfg-input"
                 style={{ marginTop: 6 }}
                 type="text"
-                placeholder="e.g. New Show or a regex like /^Show:\s*(.+)/"
+                placeholder={t('recipe.namePatternPlaceholder')}
                 value={params.namePattern || ''}
                 onChange={e => set('namePattern', e.target.value)}
                 dir="ltr"
@@ -144,22 +146,22 @@ function EmailToShowConfig({ params, onChange }) {
 
           <div className="rc-cfg-row2">
             <div className="rc-cfg-section">
-              <label className="rc-cfg-label">Artist hint (regex or keyword)</label>
+              <label className="rc-cfg-label">{t('recipe.artistHint')}</label>
               <input
                 className="rc-cfg-input"
                 type="text"
-                placeholder="e.g. Artist:"
+                placeholder={t('recipe.artistPlaceholder')}
                 value={params.artistPattern || ''}
                 onChange={e => set('artistPattern', e.target.value)}
                 dir="ltr"
               />
             </div>
             <div className="rc-cfg-section">
-              <label className="rc-cfg-label">Venue hint (regex or keyword)</label>
+              <label className="rc-cfg-label">{t('recipe.venueHint')}</label>
               <input
                 className="rc-cfg-input"
                 type="text"
-                placeholder="e.g. Venue:"
+                placeholder={t('recipe.venuePlaceholder')}
                 value={params.venuePattern || ''}
                 onChange={e => set('venuePattern', e.target.value)}
                 dir="ltr"
@@ -168,11 +170,11 @@ function EmailToShowConfig({ params, onChange }) {
           </div>
 
           <div className="rc-cfg-section">
-            <label className="rc-cfg-label">Date hint (regex or keyword)</label>
+            <label className="rc-cfg-label">{t('recipe.dateHint')}</label>
             <input
               className="rc-cfg-input"
               type="text"
-              placeholder="e.g. Date: or \d{1,2}/\d{1,2}/\d{4}"
+              placeholder={t('recipe.datePlaceholder')}
               value={params.datePattern || ''}
               onChange={e => set('datePattern', e.target.value)}
               dir="ltr"
@@ -180,7 +182,7 @@ function EmailToShowConfig({ params, onChange }) {
           </div>
 
           <div className="rc-cfg-tokens">
-            <span className="rc-cfg-tokens-label">Available in templates:</span>
+            <span className="rc-cfg-tokens-label">{t('recipe.availableTokens')}</span>
             {['[Subject]', '[From]', '[Body]', '[Date]'].map(t => (
               <code key={t} className="rc-cfg-token">{t}</code>
             ))}
@@ -193,12 +195,13 @@ function EmailToShowConfig({ params, onChange }) {
 
 // ── Auto-Folders config panel ─────────────────────────────────────────────────
 function AutoFoldersConfig({ params, onChange }) {
+  const { t } = useT();
   const set = (key, val) => onChange({ ...params, [key]: val });
 
   return (
     <div className="rc-cfg">
       <div className="rc-cfg-section">
-        <label className="rc-cfg-label">Folder name template</label>
+        <label className="rc-cfg-label">{t('recipe.folderTemplate')}</label>
         <input
           className="rc-cfg-input"
           type="text"
@@ -207,14 +210,14 @@ function AutoFoldersConfig({ params, onChange }) {
           dir="ltr"
         />
         <div className="rc-cfg-tokens">
-          <span className="rc-cfg-tokens-label">Tokens:</span>
+          <span className="rc-cfg-tokens-label">{t('recipe.tokens')}</span>
           {['[Artist]', '[Show Date]', '[Venue]', '[Show Name]'].map(t => (
             <code key={t} className="rc-cfg-token">{t}</code>
           ))}
         </div>
       </div>
 
-      <div className="rc-cfg-paths-label">Create the folder in:</div>
+      <div className="rc-cfg-paths-label">{t('recipe.createFolderIn')}</div>
 
       {/* Google Drive path */}
       <div className="rc-cfg-path-row">
@@ -227,20 +230,20 @@ function AutoFoldersConfig({ params, onChange }) {
           <span className="rc-cfg-path-icon rc-cfg-path-icon--drive">
             <svg viewBox="0 0 24 24" fill="none"><path d="M6.5 20L1 11l5-8h12l5 8-5 9H6.5z" fill="#34A853" opacity=".18"/><path d="M15 11L9 3H5.5L11 11H15z" fill="#FBBC05"/><path d="M9 3l6 8-3 9H8l3-9L7 3z" fill="#EA4335" opacity=".7"/><path d="M15 11h5.5l-5 9H9l3-9h3z" fill="#4285F4" opacity=".8"/></svg>
           </span>
-          <strong>Google Drive</strong>
+          <strong>{t('recipe.googleDrive')}</strong>
         </label>
         {params.useDrive && (
           <input
             className="rc-cfg-input rc-cfg-path-input"
             type="text"
-            placeholder="Drive folder ID (from the folder URL after /folders/)"
+            placeholder={t('recipe.driveFolderPlaceholder')}
             value={params.driveFolderId || ''}
             onChange={e => set('driveFolderId', e.target.value)}
             dir="ltr"
           />
         )}
         {params.useDrive && !params.driveFolderId && (
-          <span className="rc-cfg-hint">Leave blank to create in My Drive root.</span>
+          <span className="rc-cfg-hint">{t('recipe.driveRootHint')}</span>
         )}
       </div>
 
@@ -255,14 +258,14 @@ function AutoFoldersConfig({ params, onChange }) {
           <span className="rc-cfg-path-icon">
             <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="5" width="16" height="12" rx="1.5" fill="currentColor" opacity=".15"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.5"/><path d="M2 6.5C2 5.67 2.67 5 3.5 5h3.17L8 7H16.5c.83 0 1.5.67 1.5 1.5V16c0 .83-.67 1.5-1.5 1.5h-13C2.67 17.5 2 16.83 2 16V6.5z" stroke="currentColor" strokeWidth="1.3" fill="none"/></svg>
           </span>
-          <strong>Local folder</strong>
-          <span className="rc-cfg-path-note">(server must run on this machine)</span>
+          <strong>{t('recipe.localFolder')}</strong>
+          <span className="rc-cfg-path-note">{t('recipe.localFolderHint')}</span>
         </label>
         {params.useLocal && (
           <input
             className="rc-cfg-input rc-cfg-path-input"
             type="text"
-            placeholder="/Users/you/Shows  or  C:\Users\you\Shows"
+            placeholder={t('recipe.localPathPlaceholder')}
             value={params.localPath || ''}
             onChange={e => set('localPath', e.target.value)}
             dir="ltr"
@@ -272,7 +275,7 @@ function AutoFoldersConfig({ params, onChange }) {
 
       {!params.useDrive && !params.useLocal && (
         <div className="rc-cfg-hint rc-cfg-hint--warn">
-          Select at least one destination above.
+          {t('recipe.selectDestination')}
         </div>
       )}
     </div>
@@ -281,13 +284,14 @@ function AutoFoldersConfig({ params, onChange }) {
 
 // ── Early-Coord config panel ──────────────────────────────────────────────────
 function EarlyCoordConfig({ params, onChange }) {
+  const { t } = useT();
   const set = (key, val) => onChange({ ...params, [key]: val });
   const days = Number(params.daysBeforeShow) || 14;
 
   return (
     <div className="rc-cfg">
       <div className="rc-cfg-section">
-        <label className="rc-cfg-label">Days before show</label>
+        <label className="rc-cfg-label">{t('recipe.daysBeforeShow')}</label>
         <input
           className="rc-cfg-input rc-cfg-input--sm"
           type="number"
@@ -299,7 +303,7 @@ function EarlyCoordConfig({ params, onChange }) {
         />
       </div>
       <div className="rc-cfg-section">
-        <label className="rc-cfg-label">Notification message</label>
+        <label className="rc-cfg-label">{t('recipe.notificationMessage')}</label>
         <input
           className="rc-cfg-input"
           type="text"
@@ -308,7 +312,7 @@ function EarlyCoordConfig({ params, onChange }) {
           dir="ltr"
         />
         <div className="rc-cfg-tokens">
-          <span className="rc-cfg-tokens-label">Tokens:</span>
+          <span className="rc-cfg-tokens-label">{t('recipe.tokens')}</span>
           {['[Show Name]', '[Show Date]', '[Venue]'].map(t => (
             <code key={t} className="rc-cfg-token">{t}</code>
           ))}
@@ -326,6 +330,7 @@ const CONFIG_PANEL = {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function RecipeCards({ automations, onActivate, onUpdate }) {
+  const { t } = useT();
   // Which recipe card's config panel is open
   const [openConfig, setOpenConfig] = useState(null);
   // Live config form state per recipe (merged from defaults + existing actionParams)
@@ -383,7 +388,7 @@ export default function RecipeCards({ automations, onActivate, onUpdate }) {
         }
 
         await onActivate({
-          label:        recipe.name,
+          label:        t(recipe.nameKey),
           triggerType:  recipe.triggerType,
           conditions,
           actionType:   recipe.actionType,
@@ -410,11 +415,11 @@ export default function RecipeCards({ automations, onActivate, onUpdate }) {
             <div className="recipe-band" style={{ '--et-color': recipe.color }} />
             <div className="recipe-body">
               <div className="recipe-icon-row">
-                <span className="recipe-name">{recipe.name}</span>
+                <span className="recipe-name">{t(recipe.nameKey)}</span>
                 {active && <span className="recipe-active-dot" />}
               </div>
-              <p className="recipe-desc">{recipe.desc}</p>
-              <span className="recipe-requires">{recipe.requires}</span>
+              <p className="recipe-desc">{t(recipe.descKey)}</p>
+              <span className="recipe-requires">{t(recipe.requiresKey)}</span>
             </div>
 
             {/* Config panel — expanded when open */}
@@ -433,13 +438,13 @@ export default function RecipeCards({ automations, onActivate, onUpdate }) {
                   {active ? (
                     <>
                       <span className="recipe-btn recipe-btn--active" style={{ '--et-color': recipe.color }}>
-                        &#10003; Active
+                        {t('recipe.active')}
                       </span>
                       <button
                         className="recipe-edit-btn"
                         onClick={() => openCard(recipe)}
                       >
-                        Edit config
+                        {t('recipe.editConfig')}
                       </button>
                     </>
                   ) : (
@@ -448,7 +453,7 @@ export default function RecipeCards({ automations, onActivate, onUpdate }) {
                       style={{ '--et-color': recipe.color }}
                       onClick={() => openCard(recipe)}
                     >
-                      Activate recipe
+                      {t('recipe.activate')}
                     </button>
                   )}
                 </div>
@@ -461,11 +466,11 @@ export default function RecipeCards({ automations, onActivate, onUpdate }) {
                     disabled={saving === recipe.id}
                   >
                     {saving === recipe.id
-                      ? 'Saving…'
-                      : active ? 'Save changes' : 'Save & Activate'}
+                      ? t('common.saving')
+                      : active ? t('common.saveChanges') : t('recipe.saveActivate')}
                   </button>
                   <button className="recipe-cancel-btn" onClick={closeCard}>
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               )}

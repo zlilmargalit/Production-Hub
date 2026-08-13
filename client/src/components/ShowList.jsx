@@ -5,6 +5,7 @@ import { useT } from '../i18n';
 
 // ── Filter dropdown (month + type) ── Change 3: chips + footer ───────────────
 function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, onChangeMonth, onChangeType }) {
+  const { t, tx } = useT();
   const [open,        setOpen]        = useState(false);
   // Staged (uncommitted) state — committed on Apply
   const [stagedMonth, setStagedMonth] = useState(filterMonth);
@@ -57,7 +58,7 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
         <svg className="filter-drop-icon" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
           <path d="M1 2h11M3 6.5h7M5 11h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
         </svg>
-        Filter
+        {t('shows.filter')}
         {activeCount > 0 && <span className="filter-drop-badge">{activeCount}</span>}
         <span className="filter-drop-caret" aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
@@ -67,10 +68,10 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
           {monthOptions.length > 1 && (
             <div className="filter-drop-section">
               <div className="filter-drop-section-head">
-                <span className="filter-drop-label">Month</span>
+                <span className="filter-drop-label">{t('shows.month')}</span>
                 {stagedMonth && (
                   <button className="filter-drop-section-clear" onClick={() => setStagedMonth('')}>
-                    Clear
+                    {t('common.clear')}
                   </button>
                 )}
               </div>
@@ -79,7 +80,7 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
                 <button
                   className={`filter-drop-chip${!stagedMonth ? ' active' : ''}`}
                   onClick={() => setStagedMonth('')}
-                >All</button>
+                >{t('common.all')}</button>
                 {monthOptions.map((o) => (
                   <button
                     key={o.value}
@@ -93,10 +94,10 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
           {typeOptions.length > 1 && (
             <div className="filter-drop-section">
               <div className="filter-drop-section-head">
-                <span className="filter-drop-label">Type</span>
+                <span className="filter-drop-label">{t('shows.type')}</span>
                 {stagedType && (
                   <button className="filter-drop-section-clear" onClick={() => setStagedType('')}>
-                    Clear
+                    {t('common.clear')}
                   </button>
                 )}
               </div>
@@ -104,7 +105,7 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
                 <button
                   className={`filter-drop-chip${!stagedType ? ' active' : ''}`}
                   onClick={() => setStagedType('')}
-                >All</button>
+                >{t('common.all')}</button>
                 {typeOptions.map((t) => (
                   <button
                     key={t}
@@ -120,17 +121,17 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
           <div className="filter-drop-footer filter-drop-footer--bar">
             <span className="filter-drop-summary">
               {summaryParts.length > 0
-                ? `Showing ${summaryParts.join(' · ')}`
-                : 'All shows'}
+                ? tx('shows.showing', { filters: summaryParts.join(' · ') })
+                : t('shows.allShows')}
             </span>
             <div className="filter-drop-footer-actions">
               {(stagedMonth || stagedType) && (
                 <button className="filter-drop-clear" onClick={clear}>
-                  Clear
+                  {t('common.clear')}
                 </button>
               )}
               <button className="filter-drop-apply" onClick={apply}>
-                Apply
+                {t('common.apply')}
               </button>
             </div>
           </div>
@@ -249,9 +250,9 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
   return (
     <div>
       <PageBar
-        title="Shows"
+        title={t('shows.title')}
         count={thisMonthCount}
-        countLabel={`in ${monthName}`}
+        countLabel={tx('shows.inMonth', { month: monthName })}
         headerAction={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {onSync && (
@@ -259,12 +260,12 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
                 className="btn-sync"
                 onClick={onSync}
                 disabled={syncStatus === 'loading'}
-                title="Sync new shows from Excel spreadsheet"
+                title={t('shows.syncTitle')}
               >
-                {syncStatus === 'loading' ? 'Syncing…'
-                  : syncStatus?.error ? 'Error'
-                  : syncStatus?.added != null ? `+${syncStatus.added} added`
-                  : 'Sync'}
+                {syncStatus === 'loading' ? t('shows.syncing')
+                  : syncStatus?.error ? t('common.error')
+                  : syncStatus?.added != null ? tx('shows.added', { count: syncStatus.added })
+                  : t('shows.sync')}
               </button>
             )}
             {onApplyCrew && (
@@ -272,16 +273,16 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
                 className="btn-sync"
                 onClick={onApplyCrew}
                 disabled={applyStatus === 'loading'}
-                title="Auto-assign crew to active shows based on event type templates"
+                title={t('shows.applyCrewTitle')}
               >
-                {applyStatus === 'loading' ? 'Applying…'
-                  : applyStatus?.error ? 'Error'
-                  : applyStatus?.updated != null ? `${applyStatus.updated} updated`
-                  : 'Apply Crew'}
+                {applyStatus === 'loading' ? t('shows.applying')
+                  : applyStatus?.error ? t('common.error')
+                  : applyStatus?.updated != null ? tx('shows.updated', { count: applyStatus.updated })
+                  : t('shows.applyCrew')}
               </button>
             )}
             {onNew && (
-              <button className="btn-primary" onClick={onNew}>+ New</button>
+              <button className="btn-primary" onClick={onNew}>+ {t('common.new')}</button>
             )}
           </div>
         }
@@ -320,17 +321,17 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
       <div className="filter-bar-row">
         <div className="filter-bar">
           {[
-            { key: 'upcoming', label: 'Upcoming' },
-            { key: 'past', label: 'Past' },
-            { key: 'archived', label: 'Archived' },
-            { key: 'all', label: 'All' },
-          ].map(({ key, label }) => (
+            { key: 'upcoming', labelKey: 'shows.tab.upcoming' },
+            { key: 'past', labelKey: 'shows.tab.past' },
+            { key: 'archived', labelKey: 'shows.tab.archived' },
+            { key: 'all', labelKey: 'common.all' },
+          ].map(({ key, labelKey }) => (
             <button
               key={key}
               className={`filter-btn ${filter === key ? 'active' : ''}`}
               onClick={() => { setFilter(key); setFilterMonth(''); setFilterType(''); setOnlyPending(false); }}
             >
-              {label}
+              {t(labelKey)}
               <span className="filter-count">{counts[key]}</span>
             </button>
           ))}
@@ -351,11 +352,11 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
       {visible.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon" aria-hidden="true" />
-          <p>No shows in this view</p>
+          <p>{t('shows.empty')}</p>
           <p className="empty-sub">
             {filter === 'upcoming' && !filterMonth && !filterType
-              ? 'Click "+ New" to add one'
-              : 'Try a different filter'}
+              ? t('shows.emptyNew')
+              : t('shows.emptyFilter')}
           </p>
         </div>
       ) : (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import IconButton from '../ui/IconButton';
 import { phoneChars, decimalOnly } from '../../utils/fieldInput';
+import { useT } from '../../i18n';
 
 // Add / edit someone on the assistant roster.
 //
@@ -11,6 +12,7 @@ import { phoneChars, decimalOnly } from '../../utils/fieldInput';
 const EMPTY = { name: '', phone: '', dayRate: '', notes: '' };
 
 export default function AssistantForm({ assistant = null, onSave, onDelete, onClose }) {
+  const { t } = useT();
   const [form, setForm] = useState(() => ({
     ...EMPTY,
     ...(assistant || {}),
@@ -36,7 +38,7 @@ export default function AssistantForm({ assistant = null, onSave, onDelete, onCl
       await onSave({ ...form, dayRate: Number(form.dayRate) || 0 });
       onClose();
     } catch (err) {
-      setError(err.message || 'Could not save');
+      setError(err.message || t('admin.error.save'));
       setSaving(false);
     }
   };
@@ -45,34 +47,34 @@ export default function AssistantForm({ assistant = null, onSave, onDelete, onCl
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{assistant ? 'Edit Assistant' : 'Add Assistant'}</h2>
+          <h2>{assistant ? t('assistants.edit') : t('assistants.add')}</h2>
           <IconButton onClick={onClose}>✕</IconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="show-form">
           <div className="form-grid">
             <div className="form-group span-2">
-              <label>Name *</label>
+              <label>{t('admin.nameRequired')}</label>
               <input dir="auto" name="name" value={form.name} onChange={set}
-                     required autoFocus placeholder="Full name" />
+                     required autoFocus placeholder={t('admin.fullName')} />
             </div>
 
             <div className="form-group">
-              <label>Phone</label>
+              <label>{t('admin.phone')}</label>
               <input dir="auto" name="phone" value={form.phone} onChange={set} inputMode="tel" />
             </div>
 
             <div className="form-group">
-              <label>Usual day rate</label>
+              <label>{t('assistants.dayRate')}</label>
               <input dir="ltr" name="dayRate" value={form.dayRate} onChange={set}
                      inputMode="decimal" placeholder="0" />
               <span className="field-hint">
-                Only a default — each booking keeps its own amount.
+                {t('assistants.dayRateHint')}
               </span>
             </div>
 
             <div className="form-group span-2">
-              <label>Notes</label>
+              <label>{t('admin.notes')}</label>
               <textarea dir="auto" name="notes" rows={3} value={form.notes} onChange={set} />
             </div>
           </div>
@@ -85,12 +87,12 @@ export default function AssistantForm({ assistant = null, onSave, onDelete, onCl
             {assistant && onDelete && (
               <button type="button" className="btn-ghost adm-danger-action"
                       onClick={() => onDelete(assistant)}>
-                Remove from roster
+                {t('assistants.remove')}
               </button>
             )}
-            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
             <button type="submit" className="btn-primary" disabled={saving || !form.name.trim()}>
-              {saving ? 'Saving…' : assistant ? 'Save changes' : 'Add assistant'}
+              {saving ? t('common.saving') : assistant ? t('common.saveChanges') : t('assistants.add')}
             </button>
           </div>
         </form>

@@ -87,6 +87,15 @@ because it means archive size now grows with photos, not just JSON.
 
 ### Security / privacy
 
+~~**Shared workspace members can mutate the generic task store**~~
+Fixed: scoped shared-member reads now return only tasks assigned to the
+authenticated member; generic scoped create/edit/delete are denied; and the
+assigned-task endpoint accepts only a boolean `completed` update on the
+member's own task. The artist-scope decision and task policy have regression
+coverage for owners, permitted and unpermitted shared members, cross-artist
+requests, and mutation denial. Production Project task linking remains a
+separate phase; this fix only establishes the security boundary it needs.
+
 **`docs/` tracks files containing real personal data**
 `docs/source-data/*.xlsx` and `*.docx` hold real client and crew contact details
 and have been tracked in git since `c1ad909`. Git history is permanent, so this
@@ -172,6 +181,12 @@ notification settings screen shows one Hebrew rule among five English ones. This
 is the rule working as intended mid-migration, not a bug in it, but the mixed
 state is worse-looking than either end state — worth knowing before the Hebrew
 mode is shown to anyone.
+
+**Theme preference is persisted but not restored from the profile**
+`/api/me` now returns `theme` and `PATCH /api/me` accepts it, but `App.jsx`
+never reads `d.theme` or saves a theme change back to the server. Confirmed by
+following both sides of the new profile flow. Cost: theme remains device-local
+despite the API suggesting it will follow the user between devices.
 
 ### Cosmetic
 

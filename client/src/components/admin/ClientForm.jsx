@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import IconButton from '../ui/IconButton';
 import { digitsOnly, phoneChars, isEmail } from '../../utils/fieldInput';
+import { useT } from '../../i18n';
 
 // Add / edit a client. Same modal shape as CrewManager's form so the two screens
 // feel like one app.
@@ -18,6 +19,7 @@ const EMPTY = {
 };
 
 export default function ClientForm({ client = null, onSave, onClose }) {
+  const { t } = useT();
   const [form, setForm] = useState(() => ({ ...EMPTY, ...(client || {}) }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -42,7 +44,7 @@ export default function ClientForm({ client = null, onSave, onClose }) {
     // Email is judged whole, not per keystroke — an address is only wrong once
     // it is finished being typed.
     if (!isEmail(form.email)) {
-      setError('Enter a valid email address, or leave it empty.');
+      setError(t('client.error.email'));
       return;
     }
     setSaving(true);
@@ -53,7 +55,7 @@ export default function ClientForm({ client = null, onSave, onClose }) {
     } catch (err) {
       // The server's own message is more useful than a generic one — it names
       // the offending field.
-      setError(err.message || 'Could not save the client');
+      setError(err.message || t('client.error.save'));
       setSaving(false);
     }
   };
@@ -62,67 +64,67 @@ export default function ClientForm({ client = null, onSave, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{client ? 'Edit Client' : 'Add Client'}</h2>
+          <h2>{client ? t('clients.edit') : t('clients.add')}</h2>
           <IconButton onClick={onClose}>✕</IconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="show-form">
           <div className="form-grid">
             <div className="form-group span-2">
-              <label>Client name *</label>
+              <label>{t('client.nameRequired')}</label>
               <input
                 dir="auto" name="name" value={form.name} onChange={set}
-                required autoFocus placeholder="Agency, production company or brand"
+                required autoFocus placeholder={t('client.namePlaceholder')}
               />
             </div>
 
             <div className="form-group">
-              <label>Business number</label>
+              <label>{t('client.businessNumber')}</label>
               <input dir="auto" name="businessId" value={form.businessId} onChange={set}
-                     inputMode="numeric" placeholder="ח.פ. / ע.מ." />
+                     inputMode="numeric" placeholder={t('client.businessPlaceholder')} />
             </div>
 
             <div className="form-group">
-              <label>Payment terms</label>
+              <label>{t('client.paymentTerms')}</label>
               <select name="paymentTerms" value={form.paymentTerms} onChange={set}>
-                {PAYMENT_TERMS.map((t) => (
-                  <option key={t} value={t}>Net {t}</option>
+                {PAYMENT_TERMS.map((days) => (
+                  <option key={days} value={days}>{t('client.net')} {days}</option>
                 ))}
               </select>
               <span className="field-hint">
-                Sets the invoice due date on this client&#39;s projects.
+                {t('client.paymentTermsHint')}
               </span>
             </div>
 
             <div className="form-group">
-              <label>Contact name</label>
+              <label>{t('client.contactName')}</label>
               <input dir="auto" name="contactName" value={form.contactName} onChange={set}
-                     placeholder="Who you actually talk to" />
+                     placeholder={t('client.contactPlaceholder')} />
             </div>
 
             <div className="form-group">
-              <label>Phone</label>
+              <label>{t('admin.phone')}</label>
               <input dir="auto" name="phone" value={form.phone} onChange={set} inputMode="tel" />
             </div>
 
             <div className="form-group span-2">
-              <label>Email</label>
+              <label>{t('admin.email')}</label>
               {/* type="text" with our own check on submit, not type="email": the
                   native validation bubble is styled and worded by the browser and
                   ignores this app's error line. isEmail() allows an empty value,
                   because the field is optional. */}
               <input dir="auto" name="email" value={form.email} onChange={set}
-                     inputMode="email" placeholder="name@company.com" />
+                     inputMode="email" placeholder={t('client.emailPlaceholder')} />
             </div>
 
             <div className="form-group span-2">
-              <label>Invoice address</label>
+              <label>{t('client.invoiceAddress')}</label>
               <input dir="auto" name="invoiceAddress" value={form.invoiceAddress} onChange={set}
-                     placeholder="Where the invoice is sent" />
+                     placeholder={t('client.invoicePlaceholder')} />
             </div>
 
             <div className="form-group span-2">
-              <label>Notes</label>
+              <label>{t('admin.notes')}</label>
               <textarea dir="auto" name="notes" rows={3} value={form.notes} onChange={set} />
             </div>
           </div>
@@ -130,9 +132,9 @@ export default function ClientForm({ client = null, onSave, onClose }) {
           {error && <p className="adm-form-error">{error}</p>}
 
           <div className="form-actions">
-            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
             <button type="submit" className="btn-primary" disabled={saving || !form.name.trim()}>
-              {saving ? 'Saving…' : client ? 'Save changes' : 'Add client'}
+              {saving ? t('common.saving') : client ? t('common.saveChanges') : t('clients.add')}
             </button>
           </div>
         </form>

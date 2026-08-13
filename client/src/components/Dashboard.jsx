@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import SegmentedControl from './ui/SegmentedControl';
+import { useT } from '../i18n';
 
 // ── Artist colour palette (stable by index) ────────────────────────────────────
 const PALETTE = [
@@ -121,6 +122,7 @@ function ProgressRing({ done, total, color }) {
 
 // ── Checklist Card ─────────────────────────────────────────────────────────────
 function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checkedIds, onToggle, onDelete, isAdded, onAdd }) {
+  const { t } = useT();
   const [addingText, setAddingText] = useState('');
   const [adding, setAdding] = useState(false);
   const inputRef = useRef(null);
@@ -157,7 +159,7 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
                 className={`cl-check${done ? ' cl-check--done' : ''}`}
                 style={done ? { background: accentColor, borderColor: accentColor } : {}}
                 onClick={() => onToggle(item.id)}
-                aria-label={done ? 'Mark incomplete' : 'Mark complete'}
+                aria-label={done ? t('dashboard.markIncomplete') : t('dashboard.markComplete')}
               >
                 {done && (
                   <svg width="10" height="8" viewBox="0 0 10 8">
@@ -166,7 +168,7 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
                 )}
               </button>
               <span className="cl-row-text" dir="auto">{item.text}</span>
-              <button className="cl-row-del" onClick={() => onDelete(item.id, added)} aria-label="Remove">✕</button>
+              <button className="cl-row-del" onClick={() => onDelete(item.id, added)} aria-label={t('common.remove')}>✕</button>
             </div>
           );
         })}
@@ -185,11 +187,11 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
                 if (e.key === 'Escape') { setAdding(false); setAddingText(''); }
               }}
               onBlur={handleAdd}
-              placeholder="הוסף משימה..."
+              placeholder={t('dashboard.addTask')}
             />
           </div>
         ) : (
-          <button className="cl-add-btn" onClick={() => setAdding(true)}>+ Add task</button>
+          <button className="cl-add-btn" onClick={() => setAdding(true)}>{t('dashboard.addTaskButton')}</button>
         )}
       </div>
     </div>
@@ -198,6 +200,7 @@ function ChecklistCard({ label, accentColor, timeLabel, items, doneCount, checke
 
 // ── Guest-List Card (compact + editable — mirrors the Logistics guest list) ──────
 function GuestListCard({ show, onSaveGuests }) {
+  const { t } = useT();
   const [text, setText] = useState(() => guestListToText(show.guestList));
   const [copied, setCopied] = useState(false);
 
@@ -251,8 +254,7 @@ function GuestListCard({ show, onSaveGuests }) {
     <div className="cl-card gl-card">
       <div className="cl-card-header gl-card-header">
         <div className="cl-card-title-group">
-          <span className="cl-card-title">Guest list</span>
-          <span className="cl-card-time" dir="auto">רשימת מוזמנים</span>
+          <span className="cl-card-title">{t('dashboard.guestList')}</span>
         </div>
         {count > 0 && <span className="gl-count-pill">{count}</span>}
         {trimmed && (
@@ -261,25 +263,25 @@ function GuestListCard({ show, onSaveGuests }) {
               type="button"
               className="gl-copy-btn"
               onClick={addDivider}
-              title="Add a divider line under the last name — separates guests already handed over from new ones"
+              title={t('dashboard.addGuestDivider')}
             >
-              Handed
+              {t('dashboard.handed')}
             </button>
             <button
               type="button"
               className={`gl-copy-btn${copied ? ' gl-copy-btn--ok' : ''}`}
               onClick={copy}
-              title="Copy the guest names (divider lines excluded)"
+              title={t('dashboard.copyGuestNames')}
             >
-              {copied ? 'Copied ✓' : 'Copy'}
+              {copied ? t('common.copied') : t('common.copy')}
             </button>
             <button
               type="button"
               className="gl-copy-btn"
               onClick={sort}
-              title="Sort the guest list alphabetically (א–ב)"
+              title={t('dashboard.sortGuests')}
             >
-              Sort א–ב
+              {t('dashboard.sortGuestsButton')}
             </button>
           </div>
         )}
@@ -291,7 +293,7 @@ function GuestListCard({ show, onSaveGuests }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => save()}
-        placeholder={'שם מוזמן\nשם מוזמן נוסף'}
+        placeholder={t('dashboard.guestPlaceholder')}
         rows={4}
       />
     </div>
@@ -300,6 +302,7 @@ function GuestListCard({ show, onSaveGuests }) {
 
 // ── Show-Day Banner ────────────────────────────────────────────────────────────
 function ShowDayBanner({ show, checklist, onSaveGuests }) {
+  const { t, tx } = useT();
   const lsKey       = `ph-cl-${show.id}`;
   const collapseKey = `ph-cl-open-${show.id}-${todayStr()}`;
 
@@ -379,7 +382,7 @@ function ShowDayBanner({ show, checklist, onSaveGuests }) {
       <div className="showday-hdr" onClick={toggleOpen} role="button" tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && toggleOpen()}>
         <div className="showday-hdr-left">
-          <span className="showday-badge">Show today</span>
+          <span className="showday-badge">{t('dashboard.showToday')}</span>
           <span className="showday-name" dir="auto">{show.name}</span>
           {show.venue && (
             <>
@@ -397,9 +400,9 @@ function ShowDayBanner({ show, checklist, onSaveGuests }) {
       {open && (
         <div className="showday-body">
           <ChecklistCard
-            label="Before you leave"
+            label={t('dashboard.beforeLeave')}
             accentColor="var(--orange)"
-            timeLabel={departTime ? `Depart ${departTime}` : ''}
+            timeLabel={departTime ? tx('dashboard.depart', { time: departTime }) : ''}
             items={beforeItems}
             doneCount={beforeDone}
             checkedIds={state.checkedIds}
@@ -409,9 +412,9 @@ function ShowDayBanner({ show, checklist, onSaveGuests }) {
             onAdd={(text) => addItem('before', text)}
           />
           <ChecklistCard
-            label="At the venue"
+            label={t('dashboard.atVenue')}
             accentColor="var(--accent)"
-            timeLabel={arriveTime ? `Arrive ${arriveTime}` : ''}
+            timeLabel={arriveTime ? tx('dashboard.arrive', { time: arriveTime }) : ''}
             items={venueItems}
             doneCount={venueDone}
             checkedIds={state.checkedIds}
@@ -446,6 +449,7 @@ function EventPill({ show, onClick }) {
 
 // ── Quick-view Popover ─────────────────────────────────────────────────────────
 function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
+  const { t, tx, lang } = useT();
   const ref    = useRef(null);
   const artist = artists.find((a) => a.id === show.artistId);
 
@@ -458,7 +462,7 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
   }, [onClose]);
 
   const dateStr = show.date
-    ? new Date(show.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? new Date(show.date + 'T12:00:00').toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
   const scheduleLines = parseScheduleLines(show.schedule);
@@ -470,17 +474,17 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
         style={{ '--qv-color': artistColor, '--qv-soft': artist?.soft || 'var(--accent-soft)' }}>
         <div className="qv-top-band" />
         <div className="qv-body">
-          <button className="qv-close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="qv-close" onClick={onClose} aria-label={t('common.close')}>✕</button>
           {artist && (
             <div className="qv-artist" style={{ color: artistColor }}>
               <span className="qv-artist-dot" /> {artist.name}
             </div>
           )}
           <h3 className="qv-show-name" dir="auto">{show.name}</h3>
-          <p className="qv-date">{dateStr}{show.loadIn ? ` · Doors ${show.loadIn}` : ''}</p>
+          <p className="qv-date">{dateStr}{show.loadIn ? tx('dashboard.doors', { time: show.loadIn }) : ''}</p>
           {(show.venue || show.address) && (
             <div className="qv-venue-row">
-              <span className="qv-venue-label">Venue</span>
+              <span className="qv-venue-label">{t('card.venue')}</span>
               <div className="qv-venue-val">
                 {show.venue   && <span dir="auto">{show.venue}</span>}
                 {show.address && <span className="qv-venue-addr" dir="auto">{show.address}</span>}
@@ -489,7 +493,7 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
           )}
           {scheduleLines.length > 0 && (
             <div className="qv-section">
-              <p className="qv-section-label">Schedule · לו״ז</p>
+              <p className="qv-section-label">{t('dashboard.schedule')}</p>
               <div className="qv-sched">
                 {scheduleLines.map((line, i) => (
                   <div key={i} className="qv-sched-row">
@@ -502,7 +506,7 @@ function QuickViewPopover({ show, artists, onClose, onOpenShow }) {
           )}
           <div className="qv-footer">
             <button className="qv-open-link" onClick={() => { onOpenShow(show); onClose(); }}>
-              Open show <span className="mirror" aria-hidden="true">→</span>
+              {t('dashboard.openShow')} <span className="mirror" aria-hidden="true">→</span>
             </button>
           </div>
         </div>
@@ -517,6 +521,7 @@ function sundayOfWeek(d) {
 }
 
 function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
+  const { t, lang } = useT();
   const [view, setView]     = useState('month');
   const [month, setMonth]   = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [weekStart, setWeekStart] = useState(() => sundayOfWeek(new Date()));
@@ -551,7 +556,7 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
     return { date, dateStr, isToday: dateStr === today, shows: filtered.filter((s) => toDateStr(s.date) === dateStr && !s.archived) };
   });
 
-  const displayedMonth = (view === 'week' ? weekStart : month).toLocaleString('default', { month: 'long' });
+  const displayedMonth = (view === 'week' ? weekStart : month).toLocaleString(lang === 'he' ? 'he-IL' : 'en-GB', { month: 'long' });
   const displayedYear  = view === 'week' ? weekStart.getFullYear() : year;
 
   const prevMonth = () => setMonth(new Date(year, m - 1, 1));
@@ -571,17 +576,17 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
           <span className="mcal-year">{displayedYear}</span>
         </div>
         <div className="mcal-nav">
-          <button className="mcal-nav-btn" onClick={handlePrev} aria-label="Previous"><span className="mirror" aria-hidden="true">‹</span></button>
-          <button className="mcal-today-btn" onClick={goToday}>Today</button>
-          <button className="mcal-nav-btn" onClick={handleNext} aria-label="Next"><span className="mirror" aria-hidden="true">›</span></button>
+          <button className="mcal-nav-btn" onClick={handlePrev} aria-label={t('dashboard.previous')}><span className="mirror" aria-hidden="true">‹</span></button>
+          <button className="mcal-today-btn" onClick={goToday}>{t('dashboard.today')}</button>
+          <button className="mcal-nav-btn" onClick={handleNext} aria-label={t('dashboard.next')}><span className="mirror" aria-hidden="true">›</span></button>
         </div>
-        <SegmentedControl items={[{ id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }]} activeId={view} onChange={setView} />
+        <SegmentedControl items={[{ id: 'month', label: t('dashboard.month') }, { id: 'week', label: t('dashboard.week') }]} activeId={view} onChange={setView} />
       </div>
 
       {view === 'month' ? (
         <div className="mcal-grid">
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
-            <div key={i} className="mcal-day-hdr">{d}</div>
+          {['sun','mon','tue','wed','thu','fri','sat'].map((day, i) => (
+            <div key={i} className="mcal-day-hdr">{t(`dashboard.day.${day}`)}</div>
           ))}
           {cells.map(({ date, dateStr, isCurrentMonth, isToday, shows }) => (
             <div key={dateStr} className={['mcal-cell', !isCurrentMonth ? 'mcal-cell--out' : '', isToday ? 'mcal-cell--today' : ''].filter(Boolean).join(' ')}>
@@ -598,7 +603,7 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
           {weekCells.map(({ date, dateStr, isToday, shows }) => (
             <div key={dateStr} className={['mcal-week-col', isToday ? 'mcal-week-col--today' : ''].filter(Boolean).join(' ')}>
               <div className="mcal-week-col-hdr">
-                <span className="mcal-week-wday">{date.toLocaleString('default', { weekday: 'short' })}</span>
+                <span className="mcal-week-wday">{date.toLocaleString(lang === 'he' ? 'he-IL' : 'en-GB', { weekday: 'short' })}</span>
                 <span className={`mcal-week-daynum${isToday ? ' mcal-week-daynum--today' : ''}`}>{date.getDate()}</span>
               </div>
               <div className="mcal-week-col-body">
@@ -618,6 +623,7 @@ function MasterCalendar({ allShows, artists, selectedArtists, onOpenShow }) {
 
 // ── Up Next ────────────────────────────────────────────────────────────────────
 function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
+  const { t, lang } = useT();
   const today = todayStr();
   const rows  = allShows
     .filter((s) => !s.archived && toDateStr(s.date) >= today)
@@ -627,9 +633,9 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
 
   return (
     <div className="upnext">
-      <div className="upnext-header"><h2 className="upnext-title">Up Next</h2></div>
+      <div className="upnext-header"><h2 className="upnext-title">{t('dashboard.upNext')}</h2></div>
       <div className="upnext-list">
-      {rows.length === 0 && <p className="upnext-empty">No upcoming shows.</p>}
+      {rows.length === 0 && <p className="upnext-empty">{t('dashboard.noUpcomingShows')}</p>}
       {rows.map((show) => {
         const artist = artists.find((a) => a.id === show.artistId);
         const date   = new Date(show.date + 'T12:00:00');
@@ -639,8 +645,8 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
             onClick={() => onOpenShow(show)}>
             <div className="upnext-datecol">
               <span className="upnext-day">{date.getDate()}</span>
-              <span className="upnext-mon">{date.toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
-              <span className="upnext-wday">{date.toLocaleString('default', { weekday: 'short' }).toUpperCase()}</span>
+              <span className="upnext-mon">{date.toLocaleString(lang === 'he' ? 'he-IL' : 'en-GB', { month: 'short' }).toUpperCase()}</span>
+              <span className="upnext-wday">{date.toLocaleString(lang === 'he' ? 'he-IL' : 'en-GB', { weekday: 'short' }).toUpperCase()}</span>
             </div>
             <div className="upnext-colorbar" />
             <div className="upnext-info">
@@ -667,6 +673,7 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
 
 // ── My Tasks ───────────────────────────────────────────────────────────────────
 function MyTasks({ tasks, allShows, artists, onToggleTask }) {
+  const { t } = useT();
   const today  = todayStr();
   const myTasks = [...tasks]
     .filter((t) => !t.completed)
@@ -681,14 +688,14 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
     <div className="mytasks">
       <div className="mytasks-header">
         <div className="mytasks-header-text">
-          <h2 className="mytasks-title">My Tasks</h2>
-          <p className="mytasks-sub">assigned to you</p>
+          <h2 className="mytasks-title">{t('dashboard.myTasks')}</h2>
+          <p className="mytasks-sub">{t('dashboard.assignedToYou')}</p>
         </div>
         <span className="mytasks-count-badge">{myTasks.length}</span>
       </div>
       <div className="mytasks-card">
         {myTasks.length === 0 ? (
-          <p className="mytasks-empty">All clear.</p>
+          <p className="mytasks-empty">{t('dashboard.allClear')}</p>
         ) : (
           <div className="mytasks-grid">
             {myTasks.map((task) => {
@@ -703,7 +710,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
                   <button
                     className={`mytask-check${task.completed ? ' mytask-check--done' : ''}`}
                     onClick={() => onToggleTask(task.id, !task.completed)}
-                    aria-label={task.completed ? 'Mark incomplete' : 'Mark complete'}
+                    aria-label={task.completed ? t('dashboard.markIncomplete') : t('dashboard.markComplete')}
                   >
                     {task.completed && (
                       <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
@@ -739,6 +746,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
 
 // ── Dashboard root ─────────────────────────────────────────────────────────────
 export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {}, onOpenTimeLog, demoMode = false, demoShows = null }) {
+  const { t, lang } = useT();
   const artists = withColor(rawArtists);
   const [allShows, setAllShows]       = useState([]);
   const [loadingShows, setLoading]    = useState(true);
@@ -827,7 +835,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
   }, []);
 
   // Date label
-  const dateLabel = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dateLabel = now.toLocaleDateString(lang === 'he' ? 'he-IL' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   // Artist chip counts
   const artistCounts = artists.map((a) => ({
@@ -846,21 +854,21 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
         {/* Row 1: title + date LEFT / stat strip RIGHT */}
         <div className="dash-hdr-row1">
           <div className="dash-hdr-left">
-            <h1 className="dash-title">Today<span className="dash-title-period">.</span></h1>
+            <h1 className="dash-title">{t('dashboard.today')}<span className="dash-title-period">.</span></h1>
             <span className="dash-date-label">{dateLabel}</span>
           </div>
           <div className="dash-stats">
             <div className="dash-stat">
               <span className="dash-stat-value">{String(artists.length).padStart(2, '0')}</span>
-              <span className="dash-stat-label">Artists</span>
+              <span className="dash-stat-label">{t('dashboard.artists')}</span>
             </div>
             <div className="dash-stat">
               <span className="dash-stat-value">{String(allUpcoming.length).padStart(2, '0')}</span>
-              <span className="dash-stat-label">Shows</span>
+              <span className="dash-stat-label">{t('dashboard.shows')}</span>
             </div>
             <div className="dash-stat">
               <span className="dash-stat-value">{String(openTasks.length).padStart(2, '0')}</span>
-              <span className="dash-stat-label">Tasks</span>
+              <span className="dash-stat-label">{t('dashboard.tasks')}</span>
             </div>
           </div>
         </div>
@@ -878,13 +886,13 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
 
         {/* Row 3: 2px divider + artist filter chips */}
         <div className="dash-filter-divider">
-          <span className="dash-filter-eyebrow">Artists</span>
+          <span className="dash-filter-eyebrow">{t('dashboard.artists')}</span>
           <div className="dash-filter-chips">
             <button
               className={`dash-chip${selectedArtists.length === 0 ? ' dash-chip--active' : ''}`}
               onClick={() => setSelected([])}
             >
-              All artists
+              {t('dashboard.allArtists')}
             </button>
             {artistCounts.map((a) => {
               const active = selectedArtists.includes(a.id);
@@ -916,7 +924,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
 
       {/* ── Body ── */}
       {loadingShows ? (
-        <div className="dash-loading"><div className="spinner" /><p>Loading shows…</p></div>
+        <div className="dash-loading"><div className="spinner" /><p>{t('dashboard.loadingShows')}</p></div>
       ) : (
         <>
           <div className="dash-body">

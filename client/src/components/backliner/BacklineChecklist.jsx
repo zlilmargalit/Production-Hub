@@ -1,8 +1,10 @@
 import { useState, useCallback } from 'react';
+import { useT } from '../../i18n';
 
 const uuidv4 = () => crypto.randomUUID();
 
 export default function BacklineChecklist({ show, onUpdateShow }) {
+  const { t } = useT();
   const [newText,  setNewText]  = useState({ loadIn: '', loadOut: '' });
   const [isRental, setIsRental] = useState({ loadIn: false, loadOut: false });
 
@@ -52,11 +54,11 @@ export default function BacklineChecklist({ show, onUpdateShow }) {
           <span className={`bk-checklist-text${item.checked ? ' bk-checklist-text--done' : ''}`}>
             {item.text}
           </span>
-          {item.rental && <span className="bk-rental-tag">Rental</span>}
+          {item.rental && <span className="bk-rental-tag">{t('backline.rental')}</span>}
           <span className="bk-item-actions">
             <button
               className="bk-icon-btn bk-icon-btn--danger"
-              title="Remove"
+              title={t('common.remove')}
               onClick={() => removeItem(phase, item.id)}
             >
               ✕
@@ -67,7 +69,7 @@ export default function BacklineChecklist({ show, onUpdateShow }) {
       <div className="bk-add-row">
         <input
           className="bk-add-input"
-          placeholder="Add item…"
+          placeholder={t('backline.addItem')}
           dir="auto"
           value={newText[phase]}
           onChange={(e) => setNewText((prev) => ({ ...prev, [phase]: e.target.value }))}
@@ -77,10 +79,10 @@ export default function BacklineChecklist({ show, onUpdateShow }) {
           className={`bk-rental-toggle${isRental[phase] ? ' on' : ''}`}
           onClick={() => setIsRental((prev) => ({ ...prev, [phase]: !prev[phase] }))}
         >
-          Rental
+          {t('backline.rental')}
         </button>
         <button className="btn-ghost" onClick={() => addItem(phase)} disabled={!newText[phase].trim()}>
-          Add
+          {t('common.add')}
         </button>
       </div>
     </div>
@@ -98,8 +100,8 @@ export default function BacklineChecklist({ show, onUpdateShow }) {
         </div>
       )}
       <div className="bk-checklist-cols">
-        <Col phase="loadIn"  label="Load In"  />
-        <Col phase="loadOut" label="Load Out" />
+        <Col phase="loadIn"  label={t('backline.loadIn')}  />
+        <Col phase="loadOut" label={t('backline.loadOut')} />
       </div>
     </div>
   );

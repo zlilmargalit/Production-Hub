@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import IconButton from '../ui/IconButton';
 import { decimalOnly } from '../../utils/fieldInput';
+import { useT } from '../../i18n';
 import { ils } from './adminFormat';
 
 // Create / edit a project.
@@ -15,19 +16,19 @@ import { ils } from './adminFormat';
 // parent's onSave owns that sequencing; see saveProject in App.jsx.
 
 const PROJECT_TYPES = [
-  ['advertising', 'Advertising'],
-  ['film',        'Film'],
-  ['talent',      'Talent'],
-  ['other',       'Other'],
+  ['advertising', 'projectForm.type.advertising'],
+  ['film',        'projectForm.type.film'],
+  ['talent',      'projectForm.type.talent'],
+  ['other',       'projectForm.type.other'],
 ];
 
 const STATUSES = [
-  ['proposed',          'Proposed'],
-  ['awaiting_contract', 'Awaiting contract'],
-  ['confirmed',         'Confirmed'],
-  ['completed',         'Completed'],
-  ['invoiced',          'Invoiced'],
-  ['paid',              'Paid'],
+  ['proposed',          'projectForm.status.proposed'],
+  ['awaiting_contract', 'projectForm.status.awaitingContract'],
+  ['confirmed',         'projectForm.status.confirmed'],
+  ['completed',         'projectForm.status.completed'],
+  ['invoiced',          'projectForm.status.invoiced'],
+  ['paid',              'projectForm.status.paid'],
 ];
 
 const EMPTY = {
@@ -43,6 +44,7 @@ const blankDay = () => ({ localKey: `new-${rowSeq++}`, date: '' });
 const ADD_CLIENT = '__add_client__';
 
 export default function ProjectForm({ project = null, clients = [], onSave, onCreateClient, onClose }) {
+  const { t, tx } = useT();
   const [form, setForm] = useState(() => {
     if (!project) return { ...EMPTY };
     return {
@@ -93,7 +95,7 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
       setForm((f) => ({ ...f, clientId: created.id }));
       setAddingClient(false);
     } catch (err) {
-      setError(err.message || 'Could not create the client');
+      setError(err.message || t('projectForm.createClientFailed'));
     } finally {
       setClientBusy(false);
     }
@@ -120,8 +122,11 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
     // error — drop it rather than making them find and clear it.
     const filled = days.filter((d) => d.date);
     const dupe = filled.map((d) => d.date).find((d, i, all) => all.indexOf(d) !== i);
-    if (dupe) { setError(`Two work days share the date ${dupe}.`); return; }
-    if (vatNum < 0 || vatNum > 1) { setError('VAT must be between 0 and 100 percent.'); return; }
+    if (dupe) {
+      setError(tx('projectForm.duplicateDate', { date: <span className="ltr">{dupe}</span> }));
+      return;
+    }
+    if (vatNum < 0 || vatNum > 1) { setError(t('projectForm.vatRange')); return; }
 
     setSaving(true);
     setError(null);
@@ -137,7 +142,7 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
       );
       onClose();
     } catch (err) {
-      setError(err.message || 'Could not save the project');
+      setError(err.message || t('projectForm.saveFailed'));
       setSaving(false);
     }
   };
@@ -146,31 +151,31 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{project ? 'Edit Project' : 'New Project'}</h2>
-          <IconButton onClick={onClose}>✕</IconButton>
+          <h2>{t(project ? 'projectForm.editTitle' : 'projectForm.newTitle')}</h2>
+          <IconButton onClick={onClose} title={t('common.close')}>✕</IconButton>
         </div>
 
         <form onSubmit={handleSubmit} className="show-form">
           <div className="form-grid">
             <div className="form-group span-2">
-              <label>Project name *</label>
+              <label>{t('projectForm.projectName')} *</label>
               <input dir="auto" name="name" value={form.name} onChange={set}
-                     required autoFocus placeholder="What this job is called" />
+                     required autoFocus placeholder={t('projectForm.projectNamePlaceholder')} />
             </div>
 
             <div className="form-group">
-              <label>Client</label>
-              <select name="clientId" value={form.clientId} onChange={set}>
-                <option value="">— No client —</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                <option value={ADD_CLIENT}>＋ Add new client…</option>
+              <label>{t('projectForm.client')}</label>
+              <select dir="auto" name="clientId" value={form.clientId} onChange={set}>
+                <option value="">— {t('projectForm.noClient')} —</option>
+                {clients.map((c) => <option dir="auto" key={c.id} value={c.id}>{c.name}</option>)}
+                <option value={ADD_CLIENT}>＋ {t('projectForm.addNewClient')}</option>
               </select>
 
               {addingClient ? (
                 <div className="adm-inline-add">
                   <input
                     autoFocus dir="auto" value={newClient.name}
-                    placeholder="Client name"
+                    placeholder={t('projectForm.clientName')}
                     onChange={(e) => setNewClient((c) => ({ ...c, name: e.target.value }))}
                     onKeyDown={(e) => {
                       // Enter must not submit the project — the user is naming a
@@ -179,84 +184,87 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
                       if (e.key === 'Escape') { e.preventDefault(); cancelNewClient(); }
                     }}
                   />
-                  <select
+                  <select dir="auto"
                     value={newClient.paymentTerms}
                     onChange={(e) => setNewClient((c) => ({ ...c, paymentTerms: Number(e.target.value) }))}
                   >
-                    {[30, 60, 90].map((t) => <option key={t} value={t}>Net {t}</option>)}
+                    {[30, 60, 90].map((term) => (
+                      <option key={term} value={term}>{t(`projectForm.net${term}`)}</option>
+                    ))}
                   </select>
                   <button type="button" className="btn-primary btn-sm"
                           onClick={confirmNewClient} disabled={clientBusy || !newClient.name.trim()}>
-                    {clientBusy ? '…' : 'Add'}
+                    {clientBusy ? '…' : t('common.add')}
                   </button>
                   <button type="button" className="btn-secondary btn-sm" onClick={cancelNewClient}>
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               ) : !clients.length ? (
-                <span className="field-hint">No clients yet — add one above, or save without.</span>
+                <span className="field-hint">{t('projectForm.noClientsHint')}</span>
               ) : null}
             </div>
 
             <div className="form-group">
-              <label>Brand</label>
+              <label>{t('projectForm.brand')}</label>
               <input dir="auto" name="brand" value={form.brand} onChange={set}
-                     placeholder="The brand being shot for" />
+                     placeholder={t('projectForm.brandPlaceholder')} />
             </div>
 
             <div className="form-group">
-              <label>Type</label>
+              <label>{t('projectForm.type')}</label>
               <select name="projectType" value={form.projectType} onChange={set}>
-                {PROJECT_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {PROJECT_TYPES.map(([v, key]) => <option key={v} value={v}>{t(key)}</option>)}
               </select>
             </div>
 
             <div className="form-group">
-              <label>Status</label>
+              <label>{t('projectForm.status')}</label>
               <select name="status" value={form.status} onChange={set}>
-                {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {STATUSES.map(([v, key]) => <option key={v} value={v}>{t(key)}</option>)}
               </select>
             </div>
 
             <div className="form-group">
-              <label>Rate, before VAT</label>
+              <label>{t('projectForm.rateBeforeVat')}</label>
               <input dir="ltr" name="rate" value={form.rate} onChange={set}
                      inputMode="decimal" placeholder="0" />
             </div>
 
             <div className="form-group">
-              <label>VAT %</label>
+              <label>{t('projectForm.vatPercent')}</label>
               <input dir="ltr" name="vatPercent" value={form.vatPercent} onChange={set}
                      inputMode="decimal" />
               <span className="field-hint">
-                {rateNum > 0 ? `${ils(withVat)} including VAT` : 'Total appears once a rate is set.'}
+                {rateNum > 0 ? (
+                  <><span className="ltr">{ils(withVat)}</span> {t('projectForm.includingVat')}</>
+                ) : t('projectForm.totalAfterRate')}
               </span>
             </div>
 
             {/* Work days drive the whole Projects list — the date range on the
                 card, upcoming vs past, and the contract alarm. */}
             <div className="form-group span-2">
-              <label>Work days</label>
+              <label>{t('projectForm.workDays')}</label>
               {days.length === 0 && (
                 <span className="field-hint">
-                  No work days yet. A day is what assistants are paid for and what
-                  purchases attach to — without one this project has no date.
+                  {t('projectForm.noWorkDaysHint')}
                 </span>
               )}
               {days.map((d) => (
                 <div key={d.localKey} className="adm-day-row">
-                  <input type="date" value={d.date || ''}
+                  <input className="ltr" type="date" value={d.date || ''}
                          onChange={(e) => setDay(d.localKey, 'date', e.target.value)} />
-                  <IconButton danger onClick={() => removeDay(d.localKey)} title="Remove work day">✕</IconButton>
+                  <IconButton danger onClick={() => removeDay(d.localKey)} title={t('projectForm.removeWorkDay')}>✕</IconButton>
                 </div>
               ))}
               <button type="button" className="btn-ghost btn-sm adm-day-add" onClick={addDay}>
-                + Add work day
+                + {t('projectForm.addWorkDay')}
               </button>
             </div>
 
             <div className="form-group span-2">
-              <label>Notes</label>
+              <label>{t('projectForm.notes')}</label>
               <textarea dir="auto" name="notes" rows={3} value={form.notes} onChange={set} />
             </div>
           </div>
@@ -264,9 +272,9 @@ export default function ProjectForm({ project = null, clients = [], onSave, onCr
           {error && <p className="adm-form-error">{error}</p>}
 
           <div className="form-actions">
-            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
             <button type="submit" className="btn-primary" disabled={saving || !form.name.trim()}>
-              {saving ? 'Saving…' : project ? 'Save changes' : 'Create project'}
+              {saving ? t('common.saving') : project ? t('common.saveChanges') : t('projectForm.createProject')}
             </button>
           </div>
         </form>

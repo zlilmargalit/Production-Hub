@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useT } from '../../i18n';
 
 const uuidv4 = () => crypto.randomUUID();
 
@@ -10,6 +11,7 @@ const fmtMs = (ms) => {
 };
 
 export default function TechnicalSetlist({ show, onUpdateShow }) {
+  const { t } = useT();
   const [editingId, setEditingId] = useState(null);
   const [editNote,  setEditNote]  = useState('');
   const [newSong,   setNewSong]   = useState('');
@@ -34,7 +36,7 @@ export default function TechnicalSetlist({ show, onUpdateShow }) {
     <div>
       {setlist.length === 0 ? (
         <p className="bk-setlist-import-hint">
-          No setlist added. Add songs manually below.
+          {t('backline.noSetlist')}
         </p>
       ) : (
         <div className="bk-setlist-list">
@@ -48,7 +50,7 @@ export default function TechnicalSetlist({ show, onUpdateShow }) {
                     className="bk-add-input"
                     style={{ marginTop: 4 }}
                     autoFocus
-                    placeholder="Tech note (e.g. Drop D tuning)…"
+                    placeholder={t('backline.techNote')}
                     value={editNote}
                     onChange={(e) => setEditNote(e.target.value)}
                     onBlur={() => saveNote(song.id)}
@@ -63,8 +65,8 @@ export default function TechnicalSetlist({ show, onUpdateShow }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {song.durationMs && <span className="bk-setlist-duration">{fmtMs(song.durationMs)}</span>}
-                <button className="bk-icon-btn" title="Edit tech note" onClick={() => startEdit(song)}>✎</button>
-                <button className="bk-icon-btn bk-icon-btn--danger" title="Remove" onClick={() => removeSong(song.id)}>✕</button>
+                <button className="bk-icon-btn" title={t('backline.editTechNote')} onClick={() => startEdit(song)}>✎</button>
+                <button className="bk-icon-btn bk-icon-btn--danger" title={t('common.remove')} onClick={() => removeSong(song.id)}>✕</button>
               </div>
             </div>
           ))}
@@ -73,13 +75,13 @@ export default function TechnicalSetlist({ show, onUpdateShow }) {
       <div className="bk-add-form">
         <input
           className="bk-add-input"
-          placeholder="Add song…"
+          placeholder={t('backline.addSong')}
           dir="auto"
           value={newSong}
           onChange={(e) => setNewSong(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') addSong(); }}
         />
-        <button className="btn-ghost" onClick={addSong} disabled={!newSong.trim()}>Add</button>
+        <button className="btn-ghost" onClick={addSong} disabled={!newSong.trim()}>{t('common.add')}</button>
       </div>
     </div>
   );

@@ -39,6 +39,46 @@ No validation; `POST` stores `{ id, ...req.body }`.
 `GET /` · `POST /` · `PUT /:id` · `DELETE /:id`. The authoritative task store.
 `POST` requires non-blank `text`. Assignment changes trigger `notifyAssigned`.
 
+For an artist-scoped shared-member request, `GET /?artistId=…` returns only
+tasks assigned to that authenticated member. Generic scoped `POST`, `PUT`, and
+`DELETE` are owner/admin-only. A shared member may only use
+`PATCH /api/tasks/assigned/:artistId/:id` to set their own assigned task's
+`completed` boolean; every other field is rejected.
+
+`productionProjectId` is an optional task field, but generic task `POST` and
+`PUT` reject attempts to set or change it. Associations are validated and
+managed through the Production Project endpoints below.
+
+### `production-projects` → `/api/production-projects`
+
+Production-workspace-only, artist-scoped project coordination. `GET /members`
+is owner-only and returns eligible team-picker records only (`id`, safe `label`,
+`accessRole`), using the same current-artist grant rule as `PUT /:id/team`.
+`GET /:id/team-members` returns that same minimal shape only for explicit
+members of a project the requester may read; it never exposes a workspace roster
+to shared members.
+Requires `?artistId=…`, the existing artist-scope authorization, and a
+Production workspace. Owners/admins see all projects. A shared user sees only
+projects containing their authenticated id in `teamMemberIds` and may append,
+but not edit or delete, communication-log entries.
+
+`GET|POST /` · `GET|PUT|DELETE /:id` ·
+`POST /:id/milestones` · `PUT|DELETE /:id/milestones/:milestoneId` ·
+`POST /:id/communication-log` ·
+`PUT|DELETE /:id/communication-log/:entryId` ·
+`PUT /:id/team` ·
+`GET|POST /:id/tasks` · `PUT|DELETE /:id/tasks/:taskId`.
+
+Project progress and overdue state are derived on reads and are never accepted
+or persisted as client input. Task create/attach/detach is owner/admin-only;
+shared members may list only linked tasks assigned to them and complete those
+through the boolean-only assigned-task endpoint. Attach validates the project
+and task in the same artist scope and rejects an existing link to another
+project. Project deletion clears associations without deleting task records.
+`PUT /:id/team` is owner/admin-only and accepts `{ teamMemberIds: [...] }`;
+every id must identify an authenticated user with current access to the same
+artist. Removing an id never changes communication entries or author snapshots.
+
 ### `calendar` → `/api/calendar`
 | Method | Path | Note |
 |---|---|---|
