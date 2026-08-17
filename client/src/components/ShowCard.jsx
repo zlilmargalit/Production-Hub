@@ -56,7 +56,7 @@ function ProgressBar({ pct, missing = [] }) {
 }
 
 function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onConfirmImport }) {
-  const { t } = useT();
+  const { t, tx } = useT();
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [showTech, setShowTech] = useState(false);
@@ -147,7 +147,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       if (!res.ok) {
         if (!reset) {
           setBriefStatus('error');
-          setBriefError(data.error || 'Brief creation failed');
+          setBriefError(data.error || t('card.briefCreationFailed'));
           setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
         }
         return;
@@ -170,7 +170,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
           if (sd.status === 'error') {
             if (!reset) {
               setBriefStatus('error');
-              setBriefError(sd.error || 'Brief creation failed');
+              setBriefError(sd.error || t('card.briefCreationFailed'));
               setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
             }
             return;
@@ -183,13 +183,13 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       // timed out
       if (!reset) {
         setBriefStatus('error');
-        setBriefError('Timed out — check Google Drive in a few minutes');
+        setBriefError(t('card.briefTimedOut'));
         setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 5000);
       }
     } catch (e) {
       if (!reset) {
         setBriefStatus('error');
-        setBriefError(e.message || 'Network error');
+        setBriefError(e.message || t('common.networkError'));
         setTimeout(() => { setBriefStatus(null); setBriefError(null); }, 4000);
       }
     }
@@ -203,7 +203,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setPdfStatus('error');
-        setPdfError(data.details || data.error || 'PDF generation failed');
+        setPdfError(data.details || data.error || t('card.pdfGenerationFailed'));
         setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 2000);
         return;
       }
@@ -221,7 +221,7 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 2000);
     } catch (e) {
       setPdfStatus('error');
-      setPdfError(e.message || 'Network error');
+      setPdfError(e.message || t('common.networkError'));
       setTimeout(() => { setPdfStatus(null); setPdfError(null); }, 2000);
     }
   };
@@ -237,14 +237,14 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setCalStatus('error');
-        setCalMsg(data.error || 'Calendar export failed');
+        setCalMsg(data.error || t('card.calendarExportFailed'));
       } else {
         setCalStatus('done');
-        setCalMsg(`Schedule added to "${data.eventName || show.name}" ✓`);
+        setCalMsg(tx('card.scheduleAddedTo', { eventName: data.eventName || show.name }));
       }
     } catch (e) {
       setCalStatus('error');
-      setCalMsg(e.message || 'Network error');
+      setCalMsg(e.message || t('common.networkError'));
     }
     setTimeout(() => { setCalStatus(null); setCalMsg(null); }, 5000);
   };

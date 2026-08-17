@@ -25,6 +25,7 @@ const {
   replaceProjectTeam,
   validateTeamFromCurrentAccess,
   eligibleWorkspaceMembers,
+  currentProjectTeamMembers,
 } = require('../utils/productionProjectTeam');
 const {
   ValidationError,
@@ -32,6 +33,7 @@ const {
   validateMilestone,
   validateCommunicationLogEntry,
   deriveProductionProject,
+  buildProductionProjectAgenda,
 } = require('../utils/productionProjects');
 const {
   requireProductionWorkspace,
@@ -111,6 +113,19 @@ router.get('/members', requireProductionProjectOwner, async (req, res, next) => 
   } catch (error) { next(error); }
 });
 
+// Read-only agenda for Global Home. The client supplies a date window derived
+// from the authenticated user's /api/me timezone; this route applies access
+// filtering before producing any project details.
+router.get('/agenda', async (req, res, next) => {
+  try {
+    const projects = projectsVisibleToRequester(await readProjects(req.userId), req);
+    res.json(buildProductionProjectAgenda(projects, {
+      today: req.query.from,
+      endDate: req.query.to,
+    }));
+  } catch (error) { respondError(res, error, next); }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const project = (await readProjects(req.userId)).find((item) => item.id === req.params.id);
@@ -132,8 +147,7 @@ router.get('/:id/team-members', async (req, res, next) => {
     if (!canReadProductionProject(req, project)) {
       return res.status(403).json({ error: 'You are not a member of this Production Project' });
     }
-    const allowed = new Set(project.teamMemberIds || []);
-    res.json(eligibleWorkspaceMembers(req.workspace.id).filter((member) => allowed.has(member.id)));
+    res.json(currentProjectTeamMembers(project, req.workspace.id));
   } catch (error) { next(error); }
 });
 
@@ -154,7 +168,7 @@ router.post('/:id/communication-log', async (req, res, next) => {
         ...validateCommunicationLogEntry(req.body, null, {
           id: req.authUserId || req.userId,
           name: req.username || null,
-        }, now),
+        }, now, { teamMembers: currentProjectTeamMembers(project, req.workspace.id) }),
       };
       return {
         ...project,
@@ -348,7 +362,13 @@ router.put('/:id/communication-log/:entryId', async (req, res, next) => {
       if (index === -1) return null;
       entry = {
         ...entries[index],
-        ...validateCommunicationLogEntry(req.body, entries[index], {}, now),
+        ...validateCommunicationLogEntry(
+          req.body,
+          entries[index],
+          {},
+          now,
+          { teamMembers: currentProjectTeamMembers(project, req.workspace.id) },
+        ),
       };
       const next = [...entries];
       next[index] = entry;

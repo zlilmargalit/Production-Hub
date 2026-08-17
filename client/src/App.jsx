@@ -25,6 +25,7 @@ import AssistantForm from './components/admin/AssistantForm';
 import { isOverdue } from './components/admin/adminFormat';
 import { DIR_FOR_LANG, LANGS, storeLang, switchLanguage, useT } from './i18n';
 import { applyDirection } from './utils/direction';
+import { loadAuthenticatedWorkspaces } from './utils/appBootstrap';
 import ProductionProjectsPage from './components/production-projects/ProductionProjectsPage';
 
 function App({ demoMode = false }) {
@@ -49,11 +50,13 @@ function App({ demoMode = false }) {
   const [username, setUsername] = useState(null);
   const [workspaceRole, setWorkspaceRole] = useState(null); // 'producer' | 'backliner' | null
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [userTimezone, setUserTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jerusalem');
   const [showSettings, setShowSettings] = useState(false);
   const [tasks,       setTasks]       = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
   const [wsToast, setWsToast] = useState(null);
   const [productionProjects, setProductionProjects] = useState([]);
+  const [requestedProductionProjectId, setRequestedProductionProjectId] = useState(null);
 
   // ── Multi-artist state ────────────────────────────────────────────────────
   const [artists, setArtists] = useState([]);
@@ -364,7 +367,7 @@ function App({ demoMode = false }) {
           setEventTypes(d.eventTypes || []);
           setArtists(d.artists || []);
         })
-        .catch(() => setError('Could not load demo data'))
+        .catch(() => setError(t('app.demoLoadFailed')))
         .finally(() => setLoading(false));
       return;
     }
@@ -381,6 +384,7 @@ function App({ demoMode = false }) {
           setUserRole(meData.role);
           setUsername(meData.username);
           if (meData.avatarUrl) setAvatarUrl(meData.avatarUrl);
+          if (meData.timezone) setUserTimezone(meData.timezone);
           const wr = meData.workspaceRole || 'producer';
           setWorkspaceRole(wr);
           if (wr === 'backliner') setPage('backliner');
@@ -397,14 +401,11 @@ function App({ demoMode = false }) {
           return;
         }
 
-        // Admin → own artists list; guest → permitted artists from admin's workspace
-        const artistsEndpoint = meData?.role === 'admin' ? '/api/artists' : '/api/team/artists';
-        const artistDataResult = await fetch(artistsEndpoint)
-          .then((r) => r.ok ? r.json() : [])
-          .catch(() => []);
+        // Admin → own artists list; guest → permitted artists from admin's workspace.
+        const { artists: artistDataResult, initialWorkspace: first } =
+          await loadAuthenticatedWorkspaces(meData?.role);
 
         setArtists(artistDataResult);
-        const first = artistDataResult[0] || null;
         if (first) {
           currentArtistRef.current = first.id;   // sync — must precede fetches below
           setCurrentArtist(first);
@@ -421,7 +422,7 @@ function App({ demoMode = false }) {
           fetchProductionProjects(),
         ]);
       } catch (err) {
-        setError(err.message || 'Could not connect to server');
+        setError(err.message || t('app.connectFailed'));
       } finally {
         setLoading(false);
       }
@@ -787,14 +788,21 @@ function App({ demoMode = false }) {
     setPage('shows');
   }, [artists, switchToArtist]);
 
+  const openProductionProjectFromDashboard = useCallback(async (item) => {
+    const artist = artists.find((candidate) => candidate.id === item.artistId);
+    if (artist && artist.id !== currentArtistRef.current) await switchToArtist(artist);
+    setRequestedProductionProjectId(item.projectId);
+    setPage('production-projects');
+  }, [artists, switchToArtist]);
+
   // ── Workspace selector: switch to an artist workspace ─────────────────────
   const handleWorkspaceSwitch = useCallback(async (artist) => {
-    setWsToast(`Entering ${artist.name}'s workspace…`);
+    setWsToast(tx('app.enteringWorkspace', { artist: artist.name }));
     // switchToArtist already lands on the template's defaultPage — do not
     // override it here, or an administration workspace opens on Shows.
     await switchToArtist(artist);
     setTimeout(() => setWsToast(null), 2200);
-  }, [switchToArtist]);
+  }, [switchToArtist, tx]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -982,10 +990,12 @@ function App({ demoMode = false }) {
             tasks={tasks}
             crew={crew}
             onOpenShow={openShowFromDashboard}
+            onOpenProductionProject={openProductionProjectFromDashboard}
             onToggleTask={toggleTask}
             eventTypeChecklists={eventTypeChecklists}
             demoMode={demoMode}
             demoShows={shows}
+            timezone={userTimezone}
           />
         ) : page === 'projects' ? (
           <ProjectsPage
@@ -1044,6 +1054,7 @@ function App({ demoMode = false }) {
             api={productionProjectsApi}
             onRefresh={async () => { await Promise.all([fetchProductionProjects(), fetchTasks()]); }}
             onToggleAssignedTask={toggleTask}
+            initialProjectId={requestedProductionProjectId}
           />
         ) : page === 'automations' ? (
           <AutomationsPage />

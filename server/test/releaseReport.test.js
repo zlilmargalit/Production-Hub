@@ -27,6 +27,24 @@ describe('local release report classification', () => {
     })).toMatchObject({ status: 'unknown', classification: 'setup_failure' });
   });
 
+  it('classifies a sandbox EPERM while opening the test listener as unknown setup', () => {
+    expect(classifyExecution({
+      toolExists: true,
+      status: 1,
+      stdout: '',
+      stderr: 'Error: listen EPERM: operation not permitted 0.0.0.0',
+    })).toMatchObject({ status: 'unknown', classification: 'setup_failure' });
+  });
+
+  it('does not hide a real assertion failure behind setup classification', () => {
+    expect(classifyExecution({
+      toolExists: true,
+      status: 1,
+      stdout: '',
+      stderr: 'AssertionError: expected /api/artists to equal /api/team/artists',
+    })).toMatchObject({ status: 'fail', classification: 'application_regression' });
+  });
+
   it('aggregates fail before unknown, then degraded, while retaining the failed step', () => {
     expect(aggregateSteps([
       { id: 'server-tests', status: 'unknown' },

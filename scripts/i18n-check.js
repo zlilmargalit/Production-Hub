@@ -6,6 +6,7 @@
 //
 //   node scripts/i18n-check.js
 //   node scripts/i18n-check.js --en client/src/i18n/en.js --he client/src/i18n/he.js
+//   node scripts/i18n-check.js --src /tmp/main/client/src
 //
 // Reports three things and exits 1 if any of them is non-empty:
 //
@@ -29,13 +30,13 @@
 const fs   = require('fs');
 const path = require('path');
 
-const ROOT     = path.resolve(__dirname, '..');
-const SRC_DIR  = path.join(ROOT, 'client', 'src');
+const ROOT = path.resolve(__dirname, '..');
 
 function arg(flag, fallback) {
   const i = process.argv.indexOf(flag);
   return i !== -1 && process.argv[i + 1] ? path.resolve(ROOT, process.argv[i + 1]) : fallback;
 }
+const SRC_DIR = arg('--src', path.join(ROOT, 'client', 'src'));
 const EN_PATH = arg('--en', path.join(SRC_DIR, 'i18n', 'en.js'));
 const HE_PATH = arg('--he', path.join(SRC_DIR, 'i18n', 'he.js'));
 
@@ -77,6 +78,9 @@ const COPY_KEYS =
 const DEFAULT_PROP =
   /\b(label|title|text|heading|message|placeholder|caption|tooltip|empty|confirmText|helper|hint)\s*=\s*'([^'\\]{2,})'/g;
 
+const USER_MESSAGE_CALL =
+  /\b((?:set[A-Za-z0-9_]*(?:Toast|Message|Msg|Error)|toast(?:\.[A-Za-z0-9_]+)?|(?:window\.)?(?:alert|confirm|prompt)))\s*\(([^;\n]*)\)/g;
+
 // Attribute values written as a braced literal rather than a plain string:
 //   placeholder={'שם מוזמן'}   placeholder={`שם מוזמן`}
 const BRACED_ATTR =
@@ -105,6 +109,29 @@ const isComparisonOperand = (line, i) => /(?:===|!==|==|!=)\s*$/.test(line.slice
 // are copy. A real key also opens its position — line start, "{" or ",".
 const isObjectKey = (line, startIndex, endIndex) =>
   /^\s*:/.test(line.slice(endIndex)) && /(^\s*|[{,]\s*)$/.test(line.slice(0, startIndex));
+
+function isDomainEntityName(line, startIndex, endIndex) {
+  const objectStart = line.lastIndexOf('{', startIndex);
+  const objectEnd = line.indexOf('}', endIndex);
+  if (objectStart === -1 || objectEnd === -1) return false;
+  const record = line.slice(objectStart, objectEnd + 1);
+  return /\bid\s*:\s*['"`][a-z0-9_-]+['"`]/.test(record)
+    && /\bcolor\s*:\s*['"`]#[0-9a-f]{3,8}['"`]/i.test(record);
+}
+
+const hasJsxClosingBoundary = (line, match) =>
+  /[A-Za-z/]/.test(line[match.index + match[0].length] || '');
+
+function isTechnicalCodeText(line, match) {
+  const before = line.slice(0, match.index + 1);
+  const opening = before.match(/<([A-Za-z][\w.-]*)\b[^>]*>$/);
+  if (!opening) return false;
+  if (/^(code|kbd|samp|pre)$/i.test(opening[1])) return true;
+  return /\bclassName\s*=\s*['"][^'"]*\bltr\b[^'"]*['"]/.test(opening[0])
+    && /^[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(match[1].trim());
+}
+
+const LOOKS_LIKE_I18N_KEY = /^[A-Za-z][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)+$/;
 
 // ── Exclusions ───────────────────────────────────────────────────────────────
 
@@ -164,9 +191,9 @@ function walk(dir, out = []) {
   return out;
 }
 
-function scanFile(file) {
+function scanSource(source) {
   const hits = [];
-  const lines = fs.readFileSync(file, 'utf8').split('\n');
+  const lines = source.split('\n');
 
   // Block-comment state has to be tracked across lines: a continuation line of
   // a {/* … */} comment starts with ordinary prose, so per-line tests miss it.
@@ -196,10 +223,32 @@ function scanFile(file) {
       hits.push({ line: i + 1, value: v, kind, hebrew: HEBREW.test(v) });
     };
 
-    for (const re of [USER_FACING_ATTRS, COPY_KEYS, DEFAULT_PROP, BRACED_ATTR]) {
+    for (const re of [USER_FACING_ATTRS, DEFAULT_PROP, BRACED_ATTR]) {
       re.lastIndex = 0;
       let m;
       while ((m = re.exec(line))) push(m[2], m.index, 'attr/config');
+    }
+
+    USER_MESSAGE_CALL.lastIndex = 0;
+    let messageMatch;
+    while ((messageMatch = USER_MESSAGE_CALL.exec(line))) {
+      ANY_LITERAL.lastIndex = 0;
+      let literalMatch;
+      while ((literalMatch = ANY_LITERAL.exec(messageMatch[2]))) {
+        if (LOOKS_LIKE_I18N_KEY.test(literalMatch[2])) continue;
+        if (literalMatch[1] === '`'
+            && !isProse(literalMatch[2].replace(/\$\{[^}]*\}/g, ''))) continue;
+        const argsOffset = messageMatch[0].indexOf(messageMatch[2]);
+        push(literalMatch[2], messageMatch.index + argsOffset + literalMatch.index, 'user-message');
+      }
+    }
+
+    COPY_KEYS.lastIndex = 0;
+    let copyMatch;
+    while ((copyMatch = COPY_KEYS.exec(line))) {
+      if (copyMatch[1] === 'name'
+          && isDomainEntityName(line, copyMatch.index, copyMatch.index + copyMatch[0].length)) continue;
+      push(copyMatch[2], copyMatch.index, 'attr/config');
     }
 
     // Hebrew pass. Any Hebrew literal anywhere is a hit regardless of where it
@@ -220,6 +269,8 @@ function scanFile(file) {
     JSX_TEXT.lastIndex = 0;
     let m;
     while ((m = JSX_TEXT.exec(line))) {
+      if (!hasJsxClosingBoundary(line, m)) continue;
+      if (isTechnicalCodeText(line, m)) continue;
       // Skip when the ">" closes a tag carrying a code-only attribute on the
       // same line and the capture is really the tail of that markup.
       if (CODE_ATTR.test(line) && LOOKS_LIKE_CLASSES.test(m[1].trim())) continue;
@@ -228,6 +279,10 @@ function scanFile(file) {
   });
 
   return hits;
+}
+
+function scanFile(file) {
+  return scanSource(fs.readFileSync(file, 'utf8'));
 }
 
 // ── Report ───────────────────────────────────────────────────────────────────
@@ -241,7 +296,7 @@ function section(title, lines) {
   lines.forEach((l) => console.log('  ' + l));
 }
 
-(async function main() {
+async function main() {
   const enKeys = await loadKeys(EN_PATH);
   const heKeys = await loadKeys(HE_PATH);
 
@@ -302,4 +357,8 @@ function section(title, lines) {
   const failed = !dictsLoaded || missing.length || orphaned.length || literalCount;
   console.log(failed ? '\nFAIL' : '\nOK');
   process.exit(failed ? 1 : 0);
-})();
+}
+
+if (require.main === module) main();
+
+module.exports = { isProse, scanSource };

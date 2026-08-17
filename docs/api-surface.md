@@ -63,14 +63,31 @@ projects containing their authenticated id in `teamMemberIds` and may append,
 but not edit or delete, communication-log entries.
 
 `GET|POST /` · `GET|PUT|DELETE /:id` ·
+`GET /agenda?from=YYYY-MM-DD&to=YYYY-MM-DD` ·
 `POST /:id/milestones` · `PUT|DELETE /:id/milestones/:milestoneId` ·
 `POST /:id/communication-log` ·
 `PUT|DELETE /:id/communication-log/:entryId` ·
+`GET /:id/team-members` ·
 `PUT /:id/team` ·
 `GET|POST /:id/tasks` · `PUT|DELETE /:id/tasks/:taskId`.
 
 Project progress and overdue state are derived on reads and are never accepted
-or persisted as client input. Task create/attach/detach is owner/admin-only;
+or persisted as client input. Project create/update accepts optional free-text
+`category` and optional `startDate`; `startDate` may not be after `deadline`
+when both are present. Milestone create/update accepts optional `dueDate`.
+Missing optional fields are returned as `null` without rewriting old records.
+Communication create/update accepts optional `contact`. For a selected member,
+the client sends `{ contact: { teamMemberId } }`; the server requires current
+membership in that exact project and creates the readable snapshot. For an
+external contact the client sends `{ contact: { externalName } }`, which is
+trimmed and stored as a snapshot. Client-supplied member snapshots are ignored.
+Communication entries also accept an optional free-text `channel` and an
+optional `{ followUp: { dueDate, status } }`; follow-up status is `open`,
+`done`, or `cancelled` and never creates a Task. The read-only agenda returns
+active project deadlines, incomplete milestone due dates, and open follow-ups
+that are overdue or no later than the supplied `to` date. The client derives
+the 14-day window from the authenticated timezone returned by `/api/me`.
+Task create/attach/detach is owner/admin-only;
 shared members may list only linked tasks assigned to them and complete those
 through the boolean-only assigned-task endpoint. Attach validates the project
 and task in the same artist scope and rejects an existing link to another

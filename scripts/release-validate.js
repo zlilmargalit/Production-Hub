@@ -19,6 +19,7 @@ const SETUP_FAILURE_PATTERNS = [
   /module_not_found/i,
   /could not determine executable to run/i,
   /no such file or directory/i,
+  /\blisten EPERM\b/i,
 ];
 
 function tail(value, limit = OUTPUT_LIMIT) {
@@ -50,7 +51,7 @@ function classifyExecution({ toolExists, error, status, signal, stdout, stderr }
     return {
       status: 'unknown',
       classification: 'setup_failure',
-      summary: 'Step could not be evaluated because a local dependency/tool is missing.',
+      summary: 'Step could not be evaluated because the local setup or sandbox blocked it.',
     };
   }
   return {
@@ -144,6 +145,7 @@ function main() {
       command: 'npm',
       args: ['test', '--prefix', 'server'],
       requiredTool: 'server/node_modules/.bin/vitest',
+      env: { NODE_ENV: 'test' },
     },
     {
       id: 'client-build',

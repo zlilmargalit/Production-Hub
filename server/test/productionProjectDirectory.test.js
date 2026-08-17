@@ -33,4 +33,33 @@ describe('Production Project member directory', () => {
     await member.get(`/api/production-projects/${project.body.id}/team-members`).query({ artistId }).expect(200)
       .expect(({ body }) => expect(body).toEqual([{ id: memberId, label: 'fixture-member', accessRole: 'producer' }]));
   });
+
+  it('filters the read-only agenda to projects visible to the authenticated member', async () => {
+    const { app, dataDir, artistId, memberId } = fixture();
+    fs.writeFileSync(path.join(dataDir, 'team-settings.json'), JSON.stringify({
+      userArtistAccess: { [memberId]: { [artistId]: { role: 'producer' } } }, userPermissions: {},
+    }));
+    const admin = await signIn(app, 'fixture-admin', 'fixture-admin-password');
+    const visibleProject = await admin.post('/api/production-projects').query({ artistId })
+      .send({ name: 'Visible deadline', deadline: '2026-08-20', status: 'planned' }).expect(201);
+    await admin.put(`/api/production-projects/${visibleProject.body.id}/team`).query({ artistId })
+      .send({ teamMemberIds: [memberId] }).expect(200);
+    await admin.post('/api/production-projects').query({ artistId })
+      .send({ name: 'Private deadline', deadline: '2026-08-21', status: 'planned' }).expect(201);
+
+    const member = await signIn(app, 'fixture-member', 'fixture-member-password');
+    await member.get('/api/production-projects/agenda').query({
+      artistId,
+      from: '2026-08-17',
+      to: '2026-08-31',
+    }).expect(200).expect(({ body }) => {
+      expect(body).toHaveLength(1);
+      expect(body[0]).toMatchObject({
+        projectId: visibleProject.body.id,
+        projectName: 'Visible deadline',
+        kind: 'project_deadline',
+        dueDate: '2026-08-20',
+      });
+    });
+  });
 });

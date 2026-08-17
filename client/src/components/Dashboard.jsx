@@ -24,6 +24,23 @@ function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function dateInTimeZone(timezone) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone || undefined,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  } catch {
+    return todayStr();
+  }
+}
+function addCalendarDays(dateString, days) {
+  const date = new Date(`${dateString}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 function localDateStr(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -671,6 +688,35 @@ function UpNext({ allShows, artists, selectedArtists, onOpenShow }) {
   );
 }
 
+// ── Project agenda ────────────────────────────────────────────────────────────
+function ProjectAgenda({ items, selectedArtists, onOpenProject }) {
+  const { t } = useT();
+  const visible = items.filter((item) => (
+    selectedArtists.length === 0 || selectedArtists.includes(item.artistId)
+  ));
+
+  return <div className="project-agenda">
+    <div className="mytasks-header">
+      <div className="mytasks-header-text">
+        <h2 className="mytasks-title">{t('dashboard.projectAgenda')}</h2>
+        <p className="mytasks-sub">{t('dashboard.projectAgendaWindow')}</p>
+      </div>
+      <span className="mytasks-count-badge">{visible.length}</span>
+    </div>
+    <div className="project-agenda-card">
+      {visible.length === 0 ? <p className="mytasks-empty">{t('dashboard.noProjectAgenda')}</p> : visible.map((item) => <button type="button" className={`project-agenda-row${item.isOverdue ? ' project-agenda-row--overdue' : ''}`} key={`${item.artistId}:${item.id}`} onClick={() => onOpenProject(item)}>
+        <time className="project-agenda-date" dir="ltr">{item.dueDate}</time>
+        <span className="project-agenda-main">
+          <span className="project-agenda-kind">{t(`dashboard.agendaKind.${item.kind}`)}</span>
+          <strong dir="auto">{item.title}</strong>
+          <small><span dir="auto">{item.projectName}</span>{item.artistName && <> · <span dir="auto">{item.artistName}</span></>}</small>
+        </span>
+        {item.isOverdue && <span className="project-agenda-overdue">{t('productionProjects.overdue')}</span>}
+      </button>)}
+    </div>
+  </div>;
+}
+
 // ── My Tasks ───────────────────────────────────────────────────────────────────
 function MyTasks({ tasks, allShows, artists, onToggleTask }) {
   const { t } = useT();
@@ -745,7 +791,7 @@ function MyTasks({ tasks, allShows, artists, onToggleTask }) {
 }
 
 // ── Dashboard root ─────────────────────────────────────────────────────────────
-export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onToggleTask, eventTypeChecklists = {}, onOpenTimeLog, demoMode = false, demoShows = null }) {
+export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow, onOpenProductionProject, onToggleTask, eventTypeChecklists = {}, onOpenTimeLog, demoMode = false, demoShows = null, timezone = null }) {
   const { t, lang } = useT();
   const artists = withColor(rawArtists);
   const [allShows, setAllShows]       = useState([]);
@@ -755,6 +801,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
   // happened to come from). Each task is tagged with its owning artist so the
   // shared home view always shows everyone's tasks with the right label.
   const [allTasks, setAllTasks] = useState([]);
+  const [projectAgenda, setProjectAgenda] = useState([]);
 
   useEffect(() => {
     // Demo: all shows are already in memory — tag each with its artist's meta
@@ -792,6 +839,20 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
       )
     ).then((results) => setAllTasks(results.flat()));
   }, [rawArtists, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (demoMode || !artists.length) { setProjectAgenda([]); return; }
+    const from = dateInTimeZone(timezone);
+    const to = addCalendarDays(from, 14);
+    Promise.all(artists.map((artist) => fetch(
+      `/api/production-projects/agenda?artistId=${encodeURIComponent(artist.id)}&from=${from}&to=${to}`,
+      { credentials: 'include' },
+    )
+      .then((response) => response.ok ? response.json() : [])
+      .then((items) => items.map((item) => ({ ...item, artistId: artist.id, artistName: artist.name, color: artist.color })))
+      .catch(() => [])))
+      .then((results) => setProjectAgenda(results.flat().sort((a, b) => a.dueDate.localeCompare(b.dueDate))));
+  }, [rawArtists, demoMode, timezone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Toggle a task using ITS OWN artist scope (not the current workspace's), so
   // completing any artist's task from the shared home hits the right file.
@@ -931,6 +992,7 @@ export default function Dashboard({ artists: rawArtists, tasks, crew, onOpenShow
             <MasterCalendar allShows={allShows} artists={artists} selectedArtists={selectedArtists} onOpenShow={onOpenShow} />
             <UpNext allShows={allShows} artists={artists} selectedArtists={selectedArtists} onOpenShow={onOpenShow} />
           </div>
+          <ProjectAgenda items={projectAgenda} selectedArtists={selectedArtists} onOpenProject={onOpenProductionProject} />
           <MyTasks tasks={allTasks} allShows={allShows} artists={artists} onToggleTask={toggleGlobalTask} />
         </>
       )}

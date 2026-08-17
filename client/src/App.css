@@ -4241,17 +4241,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .pp-project-card { display: grid; width: 100%; text-align: start; gap: 5px; padding: 12px; margin: 0 0 8px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
 .pp-project-card:hover, .pp-project-card--active { border-color: var(--accent); background: var(--accent-bg); }
 .pp-project-card small, .pp-meta { color: var(--text-3); font-size: .78rem; }
+.pp-category { margin: 4px 0 8px; color: var(--text-2); }
 .pp-status { width: fit-content; font-size: .72rem; font-weight: 600; color: var(--text-2); }
 .pp-status--completed { color: var(--sage); }.pp-status--cancelled, .pp-overdue, .pp-danger { color: var(--clay); }
 .pp-overdue { font-size: .75rem; font-weight: 700; }.pp-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
 .pp-section > p { color: var(--text-2); font-size: .85rem; }.pp-rows { list-style: none; margin: 10px 0; padding: 0; }
 .pp-rows li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }.pp-rows input { flex: none; }
+.pp-milestone-content { display: grid; gap: 3px; min-width: 0; }.pp-milestone-content small { color: var(--text-3); font-size: .75rem; }.pp-milestone-edit { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px; width: 100%; }.pp-milestone-edit input { min-width: 0; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--text); background: var(--bg); font: inherit; }.pp-milestone-add input[type="date"] { flex: 0 1 180px; }
 .pp-done { text-decoration: line-through; color: var(--text-3); }.pp-text-btn { border: 0; background: transparent; color: var(--text-2); cursor: pointer; font-size: .75rem; margin-inline-start: auto; }.pp-text-btn + .pp-text-btn { margin-inline-start: 0; }
 .pp-inline { margin-top: 9px; }.pp-inline input, .pp-inline select, .pp-form input, .pp-form select, .pp-log-add textarea, .pp-log-add input { width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--text); background: var(--bg); font: inherit; }
 .pp-form { display: grid; gap: 13px; max-width: 600px; }.pp-form label { display: grid; gap: 5px; font-size: .83rem; color: var(--text-2); }.pp-form-actions { justify-content: flex-end; }
 .pp-members { display: flex; flex-wrap: wrap; gap: 6px; }.pp-members span { padding: 3px 7px; background: var(--bg); border-radius: 99px; }.pp-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 7px; }.pp-picker label { font-size: .85rem; }
 .pp-log article { border-bottom: 1px solid var(--border); padding: 10px 0; }.pp-log article div { display: flex; justify-content: space-between; gap: 12px; font-size: .8rem; }.pp-log time { color: var(--text-3); }.pp-log p { white-space: pre-wrap; margin: 6px 0 0; }.pp-log-add { display: grid; gap: 8px; margin-top: 12px; }.pp-log-add textarea { min-height: 80px; resize: vertical; }.pp-error { color: var(--clay); }.pp-empty { color: var(--text-3); font-style: italic; }
-@media (max-width: 760px) { .pp-layout { grid-template-columns: 1fr; }.pp-detail { min-width: 0; }.pp-inline { flex-wrap: wrap; }.pp-inline .btn-ghost { margin-inline-start: auto; } }
+.pp-log .pp-log-contact { color: var(--text-3); font-size: .78rem; }.pp-log .pp-log-contact strong { color: var(--text-2); }.pp-contact-control { position: relative; display: grid; gap: 5px; }.pp-contact-control label { color: var(--text-2); font-size: .83rem; }.pp-contact-control small { color: var(--text-3); font-size: .72rem; }.pp-contact-options { position: absolute; z-index: 20; inset: 100% 0 auto; display: grid; max-height: 190px; overflow-y: auto; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); box-shadow: var(--shadow-md); }.pp-contact-options button { border: 0; border-bottom: 1px solid var(--border); padding: 8px 10px; background: transparent; color: var(--text); font: inherit; text-align: start; cursor: pointer; }.pp-contact-options button:hover, .pp-contact-options button[aria-selected="true"] { background: var(--accent-bg); }
+.pp-follow-up { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 8px; padding: 7px 9px; border-inline-start: 3px solid var(--accent); background: var(--accent-soft); font-size: .78rem; }.pp-follow-up--done, .pp-follow-up--cancelled { opacity: .65; border-inline-start-color: var(--text-3); background: var(--surface-sunk); }.pp-follow-up-actions { display: inline-flex; gap: 5px; margin-inline-start: auto; }.pp-follow-up-toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--text-2); font-size: .83rem; }.pp-follow-up-toggle input { width: auto; }
+@media (max-width: 760px) { .pp-layout { grid-template-columns: 1fr; }.pp-detail { min-width: 0; }.pp-inline { flex-wrap: wrap; }.pp-inline .btn-ghost { margin-inline-start: auto; }.pp-milestone-edit { grid-template-columns: 1fr; }.pp-milestone-edit .pp-text-btn { margin-inline-start: 0; justify-self: start; } }
 .crew-task-badge {
   display: inline-flex;
   align-items: center;
@@ -8300,6 +8304,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
   flex-shrink: 0;
   margin-top: 2px;
 }
+.project-agenda { width: 100%; margin: 30px 0; }
+.project-agenda-card { border: 1px solid var(--text); background: var(--surface); box-shadow: 4px 4px 0 var(--surface-sunk); }
+.project-agenda-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text); text-align: start; cursor: pointer; font: inherit; }.project-agenda-row:last-child { border-bottom: 0; }.project-agenda-row:hover { background: var(--surface-sunk); }.project-agenda-row--overdue { border-inline-start: 3px solid var(--danger); }
+.project-agenda-date { color: var(--text-2); font-size: .8rem; }.project-agenda-main { display: grid; gap: 2px; min-width: 0; }.project-agenda-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.project-agenda-main small, .project-agenda-kind { color: var(--text-3); font-size: .72rem; }.project-agenda-kind { letter-spacing: .04em; text-transform: uppercase; }.project-agenda-overdue { color: var(--danger); font-size: .75rem; font-weight: 700; }
 .mytasks-card {
   background: var(--surface);
   border: 1px solid var(--text);
@@ -8307,6 +8315,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: 0;
   overflow: hidden;
 }
+@media (max-width: 620px) { .project-agenda-row { grid-template-columns: 1fr auto; }.project-agenda-date { grid-column: 1 / -1; }.project-agenda-main strong { white-space: normal; } }
 .mytasks-empty {
   padding: 28px 20px;
   font-family: 'Assistant', sans-serif;

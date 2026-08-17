@@ -76,6 +76,16 @@ function eligibleWorkspaceMembers(artistId, { users = loadUsers(), settings = lo
     }));
 }
 
+function projectTeamMembers(project, eligibleMembers) {
+  const allowed = new Set(validateStoredProjectTeam(project?.teamMemberIds));
+  return (Array.isArray(eligibleMembers) ? eligibleMembers : [])
+    .filter((member) => allowed.has(member.id));
+}
+
+function currentProjectTeamMembers(project, artistId) {
+  return projectTeamMembers(project, eligibleWorkspaceMembers(artistId));
+}
+
 module.exports = {
   ProjectTeamError,
   validateProjectTeamMemberIds,
@@ -85,4 +95,6 @@ module.exports = {
   replaceProjectTeam,
   validateTeamFromCurrentAccess,
   eligibleWorkspaceMembers,
+  projectTeamMembers,
+  currentProjectTeamMembers,
 };

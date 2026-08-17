@@ -198,6 +198,12 @@ trade — safety over speed — recorded so nobody "optimises" it without knowin
 It works as a click-to-complete control, but a checkbox that never appears
 checked is a confusing affordance.
 
+**The production client bundle exceeds Vite's 500 kB warning threshold**
+Confirmed by the production build: the main JavaScript chunk is about 570 kB
+before gzip (about 158 kB gzipped). Cost: first load and update downloads can be
+slower, especially on mobile; fixing it requires deliberate route/component
+splitting and is outside the current feature integration.
+
 ---
 
 ## Fixed while found (kept for the record)

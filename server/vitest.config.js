@@ -11,6 +11,7 @@ module.exports = defineConfig({
       'test/writeSafety.test.js',
       'test/productionProjectDirectory.test.js',
       'test/clientBindings.test.js',
+      'test/clientBootstrap.test.js',
     ],
     fileParallelism: false,
     clearMocks: true,

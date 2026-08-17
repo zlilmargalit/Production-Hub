@@ -85,6 +85,8 @@ artist's data directory; it does not carry an `artistId` of its own.
 {
   "id": "<UUID>",
   "name": "<PROJECT_NAME>",
+  "category": "<FREE_TEXT_CATEGORY>",
+  "startDate": "2026-09-01",
   "deadline": "2026-12-31",
   "status": "in_progress",
   "teamMemberIds": ["<USER_ID>"],
@@ -92,6 +94,7 @@ artist's data directory; it does not carry an `artistId` of its own.
     {
       "id": "<UUID>",
       "title": "<MILESTONE_TITLE>",
+      "dueDate": "2026-10-15",
       "completed": false,
       "completedAt": null,
       "createdAt": "<ISO_8601>"
@@ -102,6 +105,16 @@ artist's data directory; it does not carry an `artistId` of its own.
       "id": "<UUID>",
       "occurredAt": "<ISO_8601>",
       "note": "<FREE_TEXT_NOTE>",
+      "channel": "WhatsApp",
+      "contact": {
+        "kind": "team_member",
+        "teamMemberId": "<USER_ID>",
+        "nameSnapshot": "<READABLE_NAME>"
+      },
+      "followUp": {
+        "dueDate": "2026-10-20",
+        "status": "open"
+      },
       "authorId": "<USER_ID>",
       "authorNameSnapshot": "<USER_NAME>",
       "createdAt": "<ISO_8601>"
@@ -114,6 +127,12 @@ artist's data directory; it does not carry an `artistId` of its own.
 
 - `status` is one of `planned`, `in_progress`, `on_hold`, `completed`, or
   `cancelled`.
+- `category` is optional free text. `startDate`, `deadline`, and each
+  milestone's `dueDate` are optional `YYYY-MM-DD` dates. When both project
+  dates exist, `startDate` must be on or before `deadline`.
+- Records written before these optional fields existed remain valid. Reads
+  normalize missing `category`, `startDate`, `deadline`, and milestone
+  `dueDate` values to `null` without rewriting the stored JSON.
 - Progress is not stored. Reads derive `milestoneTotal`,
   `completedMilestoneCount`, and `progressPercent`; `progressPercent` is
   `null` when there are no milestones.
@@ -124,6 +143,16 @@ artist's data directory; it does not carry an `artistId` of its own.
   on older records is read as `[]`.
 - The communication log is returned newest-first by `occurredAt`; author
   snapshots are retained when an entry is edited or a team member is removed.
+- `contact` is optional and missing values on older entries read as `null`
+  without rewriting the file. A selected project member is stored as
+  `{ kind: "team_member", teamMemberId, nameSnapshot }`; the server validates
+  current project membership and generates the snapshot. A free-text contact
+  is stored as `{ kind: "external", teamMemberId: null, nameSnapshot }`.
+  Removing a team member never changes a historical contact snapshot.
+- `channel` is optional free text. `followUp` is also optional and remains
+  part of the communication entry; it is never copied into `tasks.json`.
+  Follow-up status is `open`, `done`, or `cancelled`, with no owner/assignee in
+  V1.1. Missing legacy values read as `null` without rewriting the record.
 - Associated tasks remain canonical records in the artist's `tasks.json`; the
   project does not duplicate task ids. Deleting the project clears matching
   `tasks[].productionProjectId` values and preserves the task records.

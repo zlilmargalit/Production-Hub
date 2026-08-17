@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { canAccessProductionProjects } = require('../utils/productionProjectsAccess');
-const { validateCommunicationLogEntry } = require('../utils/productionProjects');
+const { ValidationError, validateCommunicationContact, validateCommunicationLogEntry } = require('../utils/productionProjects');
 const {
   ProjectTeamError,
   validateProjectTeamMemberIds,
@@ -10,6 +10,7 @@ const {
   projectsVisibleToRequester,
   replaceProjectTeam,
   eligibleWorkspaceMembers,
+  projectTeamMembers,
 } = require('../utils/productionProjectTeam');
 
 const USERS = [
@@ -37,6 +38,7 @@ const PROJECT = {
     id: 'entry-1',
     occurredAt: '2026-08-10T10:00:00.000Z',
     note: 'Original note',
+    contact: { kind: 'team_member', teamMemberId: 'member-a', nameSnapshot: 'Member A' },
     authorId: 'member-a',
     authorNameSnapshot: 'Member A',
     createdAt: '2026-08-10T10:01:00.000Z',
@@ -75,6 +77,22 @@ test('unknown, cross-artist, and unpermitted membership attempts are denied', ()
   }), (error) => error instanceof ProjectTeamError && error.status === 403);
 });
 
+test('contact selection is isolated to current members of the same project', () => {
+  const eligible = eligibleWorkspaceMembers('artist-a', { users: USERS, settings: SETTINGS });
+  const directory = projectTeamMembers(PROJECT, eligible);
+  assert.deepEqual(directory, [{ id: 'member-a', label: 'Member A', accessRole: 'producer' }]);
+
+  assert.deepEqual(validateCommunicationContact({ teamMemberId: 'member-a' }, null, {
+    teamMembers: directory,
+  }), { kind: 'team_member', teamMemberId: 'member-a', nameSnapshot: 'Member A' });
+  assert.throws(() => validateCommunicationContact({ teamMemberId: 'member-b' }, null, {
+    teamMembers: directory,
+  }), ValidationError);
+  assert.throws(() => validateCommunicationContact({ teamMemberId: 'other-artist' }, null, {
+    teamMembers: directory,
+  }), ValidationError);
+});
+
 test('only explicit project members may read a shared project', () => {
   const memberReq = { teamMemberView: true, authUserId: 'member-a' };
   const outsiderReq = { teamMemberView: true, authUserId: 'member-b' };
@@ -103,6 +121,7 @@ test('removing a team member preserves communication history and author snapshot
   assert.deepEqual(updated.teamMemberIds, []);
   assert.deepEqual(updated.communicationLog, PROJECT.communicationLog);
   assert.equal(updated.communicationLog[0].authorNameSnapshot, 'Member A');
+  assert.equal(updated.communicationLog[0].contact.nameSnapshot, 'Member A');
   assert.equal(canReadProductionProject({ teamMemberView: true, authUserId: 'member-a' }, updated), false);
 });
 
