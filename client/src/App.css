@@ -2114,6 +2114,44 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 [data-theme="dark"] .btn-confirm-import:hover { background: transparent; color: var(--orange); }
 
+/* Reject sits next to Confirm on a draft. Secondary weight — a quiet ghost
+   button that warms to a danger tone on hover, so Confirm stays the primary
+   action. The parent .show-card-review flips order automatically under RTL. */
+.show-card-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-reject-import {
+  font-family: 'Bricolage Grotesque', 'Assistant', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.btn-reject-import:hover {
+  border-color: var(--clay);
+  color: var(--clay);
+  background: var(--clay-bg);
+}
+[data-theme="dark"] .btn-reject-import {
+  border-color: var(--border-strong);
+  color: var(--text-3);
+}
+[data-theme="dark"] .btn-reject-import:hover {
+  border-color: var(--clay);
+  color: var(--clay);
+  background: transparent;
+}
+
 /* Colored top band — event type identity */
 .show-card-band {
   background: var(--et-color);

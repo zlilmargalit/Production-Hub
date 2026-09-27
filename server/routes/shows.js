@@ -651,6 +651,42 @@ router.post('/confirm-import', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/shows/reject-import  { id }
+// Reject a single auto-imported draft: remember its identity so future syncs
+// skip the same row, then delete the draft. Only allowed on a draft
+// (importPending) show — confirmed shows are the user's own data and are
+// deleted through the normal DELETE route, without being remembered.
+//
+// The rejected store is per-scope (uid = req.userId, already artist-scoped by
+// the ?artistId middleware), so a rejection in one workspace never leaks into
+// another. Both writes go through updateJsonAndCache for locking + atomicity.
+router.post('/reject-import', async (req, res, next) => {
+  if (req.teamMemberView) return res.status(403).json({ error: 'Read-only access' });
+  try {
+    const id = req.body?.id;
+    if (!id) return res.status(400).json({ error: 'Missing show id' });
+
+    const shows = await readShows(req.userId);
+    const show = shows.find((s) => s.id === id);
+    if (!show) return res.status(404).json({ error: 'Show not found' });
+    if (!show.importPending) {
+      return res.status(409).json({ error: 'Only an unreviewed imported draft can be rejected' });
+    }
+
+    const { importKey, readRejected, writeRejected } = require('./import');
+    const key = importKey(show);
+    const rejected = await readRejected(req.userId);
+    if (!rejected.some((r) => importKey(r) === key)) {
+      await writeRejected(req.userId, [
+        ...rejected,
+        { date: show.date, name: show.name, venue: show.venue, rejectedAt: new Date().toISOString() },
+      ]);
+    }
+    await writeShows(req.userId, shows.filter((s) => s.id !== id));
+    res.json({ rejected: true, id });
+  } catch (err) { next(err); }
+});
+
 // POST /api/shows/mark-imported  (admin only)
 // The inverse of confirm-import: puts shows *back* into the awaiting-review
 // state. Two uses — undoing a mis-clicked "Confirm all", and backfilling shows

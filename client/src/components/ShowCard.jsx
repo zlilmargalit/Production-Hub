@@ -55,7 +55,7 @@ function ProgressBar({ pct, missing = [] }) {
   );
 }
 
-function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onConfirmImport }) {
+function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onConfirmImport, onRejectImport }) {
   const { t, tx } = useT();
   const [expanded, setExpanded] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
@@ -275,15 +275,26 @@ function ShowCard({ show, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, 
       {pending && (
         <div className="show-card-review">
           <span className="badge badge-import" title={t('import.badgeTitle')}>{t('import.badge')}</span>
-          {onConfirmImport && (
-            <button
-              className="btn-confirm-import"
-              onClick={() => onConfirmImport([show.id])}
-              title={t('import.confirmTitle')}
-            >
-              {t('import.confirm')}
-            </button>
-          )}
+          <div className="show-card-review-actions">
+            {onRejectImport && (
+              <button
+                className="btn-reject-import"
+                onClick={() => onRejectImport(show)}
+                title={t('import.rejectTitle')}
+              >
+                {t('import.reject')}
+              </button>
+            )}
+            {onConfirmImport && (
+              <button
+                className="btn-confirm-import"
+                onClick={() => onConfirmImport([show.id])}
+                title={t('import.confirmTitle')}
+              >
+                {t('import.confirm')}
+              </button>
+            )}
+          </div>
         </div>
       )}
       <div className={`show-card-header${expanded ? ' show-card-header--sticky' : ''}`}>

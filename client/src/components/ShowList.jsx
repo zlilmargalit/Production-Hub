@@ -142,7 +142,7 @@ function FilterDropdown({ monthOptions, typeOptions, filterMonth, filterType, on
 }
 
 function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow, artistId, onNew, workspaceRole,
-                    onSync, syncStatus, onApplyCrew, applyStatus, onConfirmImport }) {
+                    onSync, syncStatus, onApplyCrew, applyStatus, onConfirmImport, onRejectImport }) {
   const { t, tx } = useT();
   const [filter,      setFilter]      = useState('upcoming');
   const [filterMonth, setFilterMonth] = useState('');
@@ -373,6 +373,7 @@ function ShowList({ shows, crew, fieldTemplates, onEdit, onDelete, onUpdateShow,
               artistId={artistId}
               workspaceRole={workspaceRole}
               onConfirmImport={onConfirmImport}
+              onRejectImport={onRejectImport}
             />
           ))}
         </div>

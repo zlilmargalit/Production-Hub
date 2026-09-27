@@ -601,6 +601,35 @@ function App({ demoMode = false }) {
     )));
   }, [demoMode]);
 
+  // Reject an auto-imported draft: the server remembers the row so future syncs
+  // skip it, then deletes the draft. Guarded by a Hebrew confirmation dialog —
+  // rejecting is destructive (the draft is deleted), so it asks first, like
+  // deleteShow. Draft-only is already enforced on the server.
+  const rejectImportedShow = useCallback((show) => {
+    setConfirmModal({
+      title: t('import.rejectConfirmTitle'),
+      message: tx('import.rejectConfirmMsg', { name: show.name }),
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        if (demoMode) {
+          setShows((prev) => prev.filter((s) => s.id !== show.id));
+          return;
+        }
+        const res = await fetch(`/api/shows/reject-import${artistQS()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: show.id }),
+        });
+        if (!res.ok) {
+          console.error('[rejectImportedShow] POST failed', res.status);
+          return;
+        }
+        setShows((prev) => prev.filter((s) => s.id !== show.id));
+      },
+    });
+  }, [demoMode, t, tx]);
+
   const syncShows = useCallback(async () => {
     if (demoMode) return;
     setSyncStatus('loading');
@@ -1045,6 +1074,7 @@ function App({ demoMode = false }) {
             onApplyCrew={!demoMode ? applyCrewTemplates : null}
             applyStatus={applyStatus}
             onConfirmImport={userRole === 'admin' ? confirmImportedShows : null}
+            onRejectImport={userRole === 'admin' ? rejectImportedShow : null}
           />
         ) : page === 'production-projects' ? (
           <ProductionProjectsPage

@@ -91,7 +91,7 @@ async function checkGmail({ force = false, notify = !force } = {}) {
     const threads = listRes.data.threads || [];
     if (threads.length === 0) return { added: 0 };
 
-    const { findNewShows, IMPORT_UID, IMPORT_MAX } = require('./routes/import');
+    const { findNewShows, IMPORT_UID, IMPORT_MAX, readRejected } = require('./routes/import');
 
     // Gmail API returns threads newest-first by default — no manual sort needed.
     // Only import from the first (newest) thread; label all threads as processed.
@@ -125,6 +125,8 @@ async function checkGmail({ force = false, notify = !force } = {}) {
           await require('fs').promises.mkdir(path.dirname(showsPath), { recursive: true });
           const templates = await readJsonCached(cacheKey(IMPORT_UID, 'templates'), dataPath(IMPORT_UID, 'templates.json'), {});
           const crew      = await readJsonCached(cacheKey(IMPORT_UID, 'crew'),      dataPath(IMPORT_UID, 'crew.json'),      []);
+          // Rows the user rejected — skipped unless the row changed (see import.js).
+          const rejected  = await readRejected(IMPORT_UID);
 
           // This cron runs while shows are being edited in the UI. Reading the
           // list and later writing back "existing + new" would silently discard
@@ -133,7 +135,7 @@ async function checkGmail({ force = false, notify = !force } = {}) {
           let added = 0;
           let justAdded = [];
           await updateJsonAndCache(showsKey, showsPath, (existing) => {
-            const newShows = findNewShows(XLSX_PATH, existing, { templates, crew });
+            const newShows = findNewShows(XLSX_PATH, existing, { templates, crew, rejected });
             if (newShows.length > IMPORT_MAX) {
               console.error(`[gmail] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue; nothing written`);
               return undefined;   // abort without writing

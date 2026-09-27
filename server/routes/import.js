@@ -38,6 +38,27 @@ const writeShows     = (uid, shows) => writeJsonAndCache(cacheKey(uid, 'shows'),
 const readCrew       = (uid) => readJsonCached(cacheKey(uid, 'crew'),      dataPath(uid, 'crew.json'),      []);
 const readTemplates  = (uid) => readJsonCached(cacheKey(uid, 'templates'), dataPath(uid, 'templates.json'), {});
 
+// ── Rejected imports ───────────────────────────────────────────────────────
+// The schedule xlsx always carries the full season, so a show the user rejected
+// would otherwise reappear on every sync. We remember rejections in a per-scope
+// store keyed by the row's identity, and skip re-importing a row whose key is
+// stored — but ONLY while the row is unchanged. Change the date/name/venue and
+// the key changes, so it imports again as a fresh draft. This is a separate,
+// exact check layered on top of the fuzzy dedup in findNewShows, not a
+// replacement for it.
+//
+// Entries are stored readable ({date,name,venue,rejectedAt}), not hashed, so the
+// file is inspectable. importKey() is the ONE definition of "the same row" —
+// change REJECT_KEY_FIELDS here and both the store and the skip check follow.
+const REJECT_KEY_FIELDS = ['date', 'name', 'venue'];
+function importKey(obj) {
+  return REJECT_KEY_FIELDS
+    .map((f) => String(obj?.[f] ?? '').trim().replace(/\s+/g, ' '))
+    .join('\u0000');
+}
+const readRejected  = (uid) => readJsonCached(cacheKey(uid, 'rejected-imports'), dataPath(uid, 'rejected-imports.json'), []);
+const writeRejected = (uid, list) => writeJsonAndCache(cacheKey(uid, 'rejected-imports'), dataPath(uid, 'rejected-imports.json'), list);
+
 // Attach the default crew for a show's event type (same rule as the "Apply crew"
 // button) so imported shows arrive with their standard crew already assigned.
 // crewIds get every templated member; technicalCrew text excludes musicians.
@@ -270,15 +291,22 @@ function sameEvent(a, b) {
   return as.some((x) => bs.some((y) => placesMatch(x, y)));
 }
 
-function findNewShows(xlsxPath, existingShows, { templates, crew } = {}) {
+function findNewShows(xlsxPath, existingShows, { templates, crew, rejected } = {}) {
   const wb = XLSX.readFile(xlsxPath);
   const newShows = [];
   const floor = importFloorStr();
+  // Exact keys of rows the user rejected. An unchanged rejected row is skipped
+  // silently; a changed one has a different key and imports as a new draft.
+  const rejectedKeys = new Set((rejected || []).map(importKey));
 
   for (const sheetName of ['אסף אמדורסקי', 'אני גיטרה']) {
     for (const s of parseSheet(wb, sheetName)) {
       // Only import upcoming shows — never past ones (a new schedule adds new gigs)
       if (s.date < floor) continue;
+
+      // Skip rows the user explicitly rejected (exact match on date+name+venue).
+      // Layered on top of the fuzzy dedup below, not instead of it.
+      if (rejectedKeys.has(importKey(s))) continue;
 
       // Robust dedup: same date + fuzzy place/name match = same show
       const isDupe = [...existingShows, ...newShows].some((e) => isSameShow(e, s));
@@ -317,8 +345,8 @@ router.post('/preview', async (req, res) => {
     return res.status(404).json({ error: 'Excel file not found', path: xlsxPath });
   }
   try {
-    const existing = await readShows(IMPORT_UID);
-    const newShows = findNewShows(xlsxPath, existing);
+    const [existing, rejected] = await Promise.all([readShows(IMPORT_UID), readRejected(IMPORT_UID)]);
+    const newShows = findNewShows(xlsxPath, existing, { rejected });
     res.json({
       count: newShows.length,
       shows: newShows.map(s => ({ date: s.date, name: s.name, eventType: s.eventType })),
@@ -345,10 +373,10 @@ router.post('/sync', async (req, res) => {
     return res.json({ added: gmailAdded });
   }
   try {
-    const [existing, templates, crew] = await Promise.all([
-      readShows(IMPORT_UID), readTemplates(IMPORT_UID), readCrew(IMPORT_UID),
+    const [existing, templates, crew, rejected] = await Promise.all([
+      readShows(IMPORT_UID), readTemplates(IMPORT_UID), readCrew(IMPORT_UID), readRejected(IMPORT_UID),
     ]);
-    const newShows = findNewShows(xlsxPath, existing, { templates, crew });
+    const newShows = findNewShows(xlsxPath, existing, { templates, crew, rejected });
     if (newShows.length > IMPORT_MAX) {
       console.error(`[sync] Refusing to import ${newShows.length} shows (> ${IMPORT_MAX}) — likely a parse/dedup issue`);
       return res.status(409).json({
@@ -364,4 +392,7 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-module.exports = { router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID, IMPORT_MAX, sameEvent };
+module.exports = {
+  router, findNewShows, DEFAULT_XLSX, IMPORT_ARTIST_ID, IMPORT_UID, IMPORT_MAX, sameEvent,
+  importKey, readRejected, writeRejected,
+};
