@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notification Settings — Handoff</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F1EEE9; --surface:#FDFAF5; --ink:#1A1714; --ink-2:#6B6259; --ink-3:#A39A91;
+    --rule:#D4CEC6; --blue:#3852B4; --blue-bg:#EDF0FA; --danger:#A84030;
+    --ok:#3B6B52; --ok-bg:#E3EFE8; --code-bg:#F5F2EE;
+  }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Assistant',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+  .bb { font-family:'Bricolage Grotesque','Assistant',sans-serif; }
+  .mono { font-family:'JetBrains Mono',monospace; }
+  .wrap { max-width:860px; margin:0 auto; padding:60px 32px 120px; }
+  h1 { font-family:'Bricolage Grotesque',sans-serif; font-size:clamp(2.4rem,4vw,3.4rem); font-weight:700; letter-spacing:-.05em; line-height:.9; margin-bottom:20px; }
+  h2 { font-family:'Bricolage Grotesque',sans-serif; font-size:1.35rem; font-weight:700; letter-spacing:-.025em; margin:52px 0 6px; padding-top:20px; border-top:2px solid var(--ink); }
+  h3 { font-family:'Bricolage Grotesque',sans-serif; font-size:1rem; font-weight:700; letter-spacing:-.01em; margin:28px 0 6px; color:var(--ink); }
+  p { font-size:.88rem; color:var(--ink-2); max-width:600px; line-height:1.7; margin-bottom:12px; }
+  .lead { font-size:.98rem; color:var(--ink-2); max-width:640px; line-height:1.7; margin-bottom:0; }
+  code { font-family:'JetBrains Mono',monospace; font-size:.78rem; background:var(--code-bg); border:1px solid var(--rule); padding:1px 6px; color:var(--ink); }
+  pre { font-family:'JetBrains Mono',monospace; font-size:.78rem; background:var(--code-bg); border:1px solid var(--rule); border-left:3px solid var(--blue); padding:16px 18px; overflow-x:auto; color:var(--ink); line-height:1.6; margin:14px 0 20px; white-space:pre; }
+  .cap { font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); }
+  .rule { border:none; border-top:1px solid var(--rule); margin:24px 0; }
+  table { width:100%; border-collapse:collapse; margin:16px 0 24px; font-size:.84rem; }
+  th { text-align:left; padding:9px 12px; font-weight:700; font-size:.7rem; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3); border-bottom:2px solid var(--ink); }
+  td { padding:10px 12px; border-bottom:1px solid var(--rule); color:var(--ink-2); vertical-align:top; }
+  td:first-child { color:var(--ink); font-weight:600; }
+  .tag { display:inline-block; padding:2px 8px; font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+  .tag-new { background:var(--blue-bg); color:var(--blue); }
+  .tag-mod { background:#FBF1E7; color:#C26C1F; }
+  .tag-api { background:var(--ok-bg); color:var(--ok); }
+  .tag-ui  { background:#F3E8FA; color:#7B3FA0; }
+  .screens { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:20px 0 32px; }
+  @media(max-width:640px){ .screens{grid-template-columns:1fr} }
+  .screen-card { border:1px solid var(--rule); overflow:hidden; }
+  .screen-card img { width:100%; display:block; border-bottom:1px solid var(--rule); }
+  .screen-card-label { padding:9px 12px; font-size:.72rem; font-weight:700; color:var(--ink-2); letter-spacing:.02em; background:var(--surface); }
+  .spec-row { display:flex; align-items:baseline; gap:16px; padding:10px 0; border-bottom:1px solid var(--rule); }
+  .spec-key { font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); width:140px; flex-shrink:0; }
+  .spec-val { font-size:.84rem; color:var(--ink); }
+  .flow-step { display:flex; gap:16px; padding:14px 0; border-bottom:1px solid var(--rule); align-items:flex-start; }
+  .flow-n { font-family:'Bricolage Grotesque',sans-serif; font-size:1.4rem; font-weight:700; color:var(--rule); width:32px; flex-shrink:0; line-height:1; }
+  .flow-body h4 { font-weight:700; font-size:.9rem; margin-bottom:3px; }
+  .flow-body p { font-size:.8rem; margin:0; max-width:none; }
+  .badge { display:inline-block; background:var(--blue); color:#fff; font-size:.58rem; font-weight:800; padding:2px 6px; letter-spacing:.05em; vertical-align:middle; margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- header -->
+  <div style="border-top:3px solid var(--ink); padding-top:24px; margin-bottom:40px;">
+    <div class="cap" style="margin-bottom:12px;">Production Hub · Feature handoff</div>
+    <h1 class="bb">Notification<br>settings<span style="color:var(--blue)">.</span></h1>
+    <p class="lead" style="margin-top:16px;">
+      A global notification settings screen, reachable from within the Tasks tab.
+      Covers five configurable rules, per-task manual alerts, and a push/email channel selector.
+      This document contains full visual specs, state model, API requirements, and integration notes.
+    </p>
+    <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+      <span class="tag tag-new">New feature</span>
+      <span class="tag tag-mod">Modifies GlobalTaskPanel</span>
+      <span class="tag tag-api">Requires new API endpoints</span>
+      <span class="tag tag-ui">Push notification integration</span>
+    </div>
+  </div>
+
+  <!-- screens -->
+  <h2>Screens</h2>
+  <p>All designs live in <code>task-notifications/Task Notifications v5.html</code> — fully interactive, click Notifications to enter settings.</p>
+  <div class="screens">
+    <div class="screen-card">
+      <img src="01-tasks.png" alt="Tasks screen">
+      <div class="screen-card-label">01 — Tasks screen with NOTIFICATIONS button + auto-rule note</div>
+    </div>
+    <div class="screen-card">
+      <img src="02-task-menu.png" alt="Task ··· menu">
+      <div class="screen-card-label">02 — ··· menu: Edit task / Add alert / Delete</div>
+    </div>
+    <div class="screen-card">
+      <img src="01-03-settings-top.png" alt="Settings screen">
+      <div class="screen-card-label">03 — Settings screen (rules section)</div>
+    </div>
+    <div class="screen-card">
+      <img src="04-phone-preview.png" alt="Phone preview">
+      <div class="screen-card-label">04 — Phone lock-screen preview (live in settings)</div>
+    </div>
+    <div class="screen-card" style="grid-column:span 2;">
+      <img src="05-channels.png" alt="Channels + save">
+      <div class="screen-card-label">05 — Channels (Push / Email) + Save settings</div>
+    </div>
+  </div>
+
+  <!-- navigation flow -->
+  <h2>Navigation flow</h2>
+  <div>
+    <div class="flow-step">
+      <div class="flow-n">1</div>
+      <div class="flow-body">
+        <h4>Tasks page — entry point</h4>
+        <p>Top-right of the Tasks header: <strong>NOTIFICATIONS</strong> button (ghost, ink border). A blue badge shows the count of active alerts. Clicking sets <code>screen = 'settings'</code>. No modal — full-page swap within the Tasks route.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n">2</div>
+      <div class="flow-body">
+        <h4>Settings screen — global rules</h4>
+        <p>Five toggle-rows with optional sub-controls. Each row: title (Bricolage, 0.95rem), description (Assistant, 0.8rem), toggle right. Sub-controls only visible when ON. Back link at top returns to tasks.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n">3</div>
+      <div class="flow-body">
+        <h4>Per-task manual alert — ··· menu</h4>
+        <p>Every task row has a <strong>···</strong> button. Opens a dropdown: <em>Edit task</em> / <em>Add alert</em> (blue) / <em>Delete</em> (red). If a manual alert already exists: <em>Edit alert</em> / <em>Remove alert</em>. Add/Edit opens an inline time picker.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n">4</div>
+      <div class="flow-body">
+        <h4>Alert picker</h4>
+        <p>If task has a time: four relative chips (1h / 3h / 5h / Day before) with computed fire-time shown. If no time: stepper to pick an absolute time. Manual alert stored on the task and overrides the global auto-reminder rule.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- design tokens -->
+  <h2>Design tokens</h2>
+  <div>
+    <div class="spec-row"><div class="spec-key">Background</div><div class="spec-val"><code>#F1EEE9</code> — warm cream</div></div>
+    <div class="spec-row"><div class="spec-key">Surface</div><div class="spec-val"><code>#FDFAF5</code> — notification cards, dropdowns</div></div>
+    <div class="spec-row"><div class="spec-key">Ink</div><div class="spec-val"><code>#1A1714</code> — headings, active labels</div></div>
+    <div class="spec-row"><div class="spec-key">Ink-2</div><div class="spec-val"><code>#6B6259</code> — body descriptions</div></div>
+    <div class="spec-row"><div class="spec-key">Ink-3</div><div class="spec-val"><code>#A39A91</code> — captions, helper text, caps labels</div></div>
+    <div class="spec-row"><div class="spec-key">Blue (accent)</div><div class="spec-val"><code>#3852B4</code> — toggles ON, active pills, Save button shadow</div></div>
+    <div class="spec-row"><div class="spec-key">Rule</div><div class="spec-val"><code>#D4CEC6</code> — section dividers, table rows</div></div>
+    <div class="spec-row"><div class="spec-key">Display font</div><div class="spec-val">Bricolage Grotesque — page titles, rule titles, notification card bold</div></div>
+    <div class="spec-row"><div class="spec-key">Body font</div><div class="spec-val">Assistant — descriptions, labels, all Hebrew content</div></div>
+    <div class="spec-row"><div class="spec-key">Section labels</div><div class="spec-val">0.6rem / weight 700 / letter-spacing 0.12em / UPPERCASE / ink-3</div></div>
+    <div class="spec-row"><div class="spec-key">Rule thickness</div><div class="spec-val">Section header: <code>2px solid var(--ink)</code> — Row dividers: <code>1px solid var(--rule)</code></div></div>
+    <div class="spec-row"><div class="spec-key">Border radius</div><div class="spec-val"><strong>0 everywhere</strong> — toggles are the only rounded element (borderRadius:999)</div></div>
+    <div class="spec-row"><div class="spec-key">Shadows</div><div class="spec-val">Only on SAVE SETTINGS button: <code>3px 3px 0 #3852B4</code> (editorial offset)</div></div>
+  </div>
+
+  <!-- state model -->
+  <h2>State model</h2>
+  <p>A single <code>notificationSettings</code> object stored per-user (persist to <code>/api/notification-settings</code>).</p>
+<pre>{
+  autoTimed: {
+    on: true,
+    offset: 3          // hours before task time (1–12)
+  },
+  digest: {
+    on: true,
+    time: "08:00",     // HH:MM, 30-min increments
+    days: [0,1,2,3,4]  // 0=Sun … 6=Sat; default Sun–Thu
+  },
+  overdue: {
+    on: true,
+    time: "09:00"      // daily nudge fire time
+  },
+  assigned: {
+    on: true           // no sub-config needed
+  },
+  quiet: {
+    on: false,
+    from: "22:00",
+    to:   "07:00"
+  },
+  channels: {
+    push:  true,
+    email: false
+  }
+}</pre>
+
+  <h3>Per-task alert override</h3>
+  <p>Stored on the task object. Overrides <code>autoTimed</code> for that task.</p>
+<pre>// On a task:
+reminder: null
+  // or
+reminder: { type: "rel", offset: 1 }   // 1h before task.time
+reminder: { type: "rel", offset: 3 }   // 3h before task.time
+reminder: { type: "abs", at: "09:00" } // absolute time (tasks with no time)</pre>
+
+  <!-- rules reference -->
+  <h2>Rules reference</h2>
+  <table>
+    <thead><tr><th>Rule</th><th>Trigger</th><th>Sub-controls</th><th>Override?</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Auto reminder</td>
+        <td>Any task with a time — fires <em>N</em> hours before</td>
+        <td>Offset stepper (1–12h)</td>
+        <td>Yes — per-task <code>reminder</code> wins</td>
+      </tr>
+      <tr>
+        <td>Daily digest</td>
+        <td>Every selected day at chosen time</td>
+        <td>Time stepper + day chips (S M T W T F S)</td>
+        <td>No per-task override</td>
+      </tr>
+      <tr>
+        <td>Overdue nudge</td>
+        <td>Any task past dueDate, still incomplete — fires once/day</td>
+        <td>Time stepper (nudge time)</td>
+        <td>No per-task override</td>
+      </tr>
+      <tr>
+        <td>Assigned to me</td>
+        <td>Immediate — when a task is assigned via team</td>
+        <td>None</td>
+        <td>No per-task override</td>
+      </tr>
+      <tr>
+        <td>Quiet hours</td>
+        <td>Suppresses all alerts between <em>from</em> and <em>to</em></td>
+        <td>From + To time steppers</td>
+        <td>Daily digest respects it</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- api -->
+  <h2>API requirements</h2>
+  <table>
+    <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>/api/notification-settings</code></td>
+        <td>GET</td>
+        <td>Load user's current notification settings object</td>
+      </tr>
+      <tr>
+        <td><code>/api/notification-settings</code></td>
+        <td>PUT</td>
+        <td>Save full settings object on "Save settings" click</td>
+      </tr>
+      <tr>
+        <td><code>/api/tasks/:id</code></td>
+        <td>PUT</td>
+        <td>Already exists — extend to persist <code>reminder</code> field</td>
+      </tr>
+      <tr>
+        <td><code>/api/automations/push/test</code></td>
+        <td>POST</td>
+        <td>Already exists — reuse for push delivery</td>
+      </tr>
+      <tr>
+        <td><code>/api/notifications/digest</code></td>
+        <td>POST (cron)</td>
+        <td>New — scheduled job: compile today's tasks + fire push/email</td>
+      </tr>
+      <tr>
+        <td><code>/api/notifications/reminders</code></td>
+        <td>POST (cron)</td>
+        <td>New — runs every 15 min: check task times, fire auto-reminder or manual alerts</td>
+      </tr>
+      <tr>
+        <td><code>/api/notifications/overdue</code></td>
+        <td>POST (cron)</td>
+        <td>New — daily: find overdue open tasks, send nudge at configured time</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- integration -->
+  <h2>Integration into GlobalTaskPanel.jsx</h2>
+  <h3>1. Add screen state</h3>
+<pre>// inside GlobalTaskPanel
+const [screen, setScreen] = useState('tasks'); // 'tasks' | 'settings'
+const [notifSettings, setNotifSettings] = useState(null);
+
+// load on mount
+useEffect(() => {
+  fetch('/api/notification-settings')
+    .then(r => r.json())
+    .then(setNotifSettings);
+}, []);</pre>
+
+  <h3>2. Conditional render in return()</h3>
+<pre>return (
+  &lt;div className="gtask-page"&gt;
+    {screen === 'settings'
+      ? &lt;NotificationSettingsScreen
+          settings={notifSettings}
+          onSave={async (s) => {
+            await fetch('/api/notification-settings', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(s),
+            });
+            setNotifSettings(s);
+            setScreen('tasks');
+          }}
+          onBack={() => setScreen('tasks')}
+        /&gt;
+      : &lt;&gt;
+          {/* existing header + form */}
+          &lt;NotificationsEntryButton
+            count={armedCount}
+            onClick={() => setScreen('settings')}
+          /&gt;
+          {/* existing filter bar, task list */}
+        &lt;/&gt;
+    }
+  &lt;/div&gt;
+);</pre>
+
+  <h3>3. Extend task PUT to include reminder field</h3>
+<pre>// in updateTask:
+const res = await fetch(`/api/tasks/${id}${artistQS()}`, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    ...data,
+    reminder: data.reminder ?? null,  // ← add this
+  }),
+});</pre>
+
+  <h3>4. Auto-rule pill in existing task rows</h3>
+  <p>When <code>notifSettings.autoTimed.on</code> and task has a <code>time</code> and no manual <code>reminder</code>, render a subtle pill:</p>
+<pre>// in task row render:
+const autoFire = notifSettings?.autoTimed?.on && task.time && !task.reminder
+  ? formatTime(toMin(task.time) - notifSettings.autoTimed.offset * 60)
+  : null;
+
+{autoFire &amp;&amp; (
+  &lt;span className="gtask-pill" style={{ background:'var(--surface-sunk)', color:'var(--text-2)' }}&gt;
+    Auto · {autoFire}
+  &lt;/span&gt;
+)}</pre>
+
+  <!-- push logic -->
+  <h2>Push delivery logic</h2>
+  <p>Push infrastructure already exists (<code>subscribeToPush</code>, <code>/api/automations/push/test</code>). The new cron jobs consume the same subscription table.</p>
+
+  <h3>Reminder cron (every 15 min)</h3>
+<pre>// pseudo-code
+for each user with autoTimed.on or tasks with manual reminders:
+  for each open task with a time:
+    fireAt = task.time - (task.reminder?.offset ?? settings.autoTimed.offset) hours
+    if now is within current 15-min window of fireAt:
+      if not already_sent(userId, taskId, date):
+        sendPush(userId, { title: "Task reminder", body: task.text })
+        markSent(userId, taskId, date)</pre>
+
+  <h3>Digest cron (daily, at user's chosen time)</h3>
+<pre>// pseudo-code
+for each user with digest.on and today in digest.days:
+  if user's local time matches digest.time (±7.5 min):
+    todayTasks = tasks where dueDate = today OR (timed AND date = today)
+    sendPush(userId, {
+      title: "Daily digest",
+      body: `${todayTasks.length} tasks today`,
+      data: { tasks: todayTasks.map(t => ({ text: t.text, time: t.time })) }
+    })</pre>
+
+  <!-- files -->
+  <h2>Files in this handoff</h2>
+  <table>
+    <thead><tr><th>File</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>Task Notifications v5.html</code></td><td>Final interactive design — open this to click through all states</td></tr>
+      <tr><td><code>handoff/01-tasks.png</code></td><td>Tasks screen: NOTIFICATIONS button + auto-rule strip</td></tr>
+      <tr><td><code>handoff/02-task-menu.png</code></td><td>Task ··· menu with Add alert option</td></tr>
+      <tr><td><code>handoff/01-03-settings-top.png</code></td><td>Settings screen — rules section</td></tr>
+      <tr><td><code>handoff/04-phone-preview.png</code></td><td>Phone lock-screen preview (digest + auto reminder cards)</td></tr>
+      <tr><td><code>handoff/05-channels.png</code></td><td>Channels + SAVE SETTINGS button</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="rule" style="margin-top:60px;">
+  <p style="font-size:.74rem; color:var(--ink-3);">Production Hub · Notification Settings · Design handoff · June 2026</p>
+</div>
+</body>
+</html>

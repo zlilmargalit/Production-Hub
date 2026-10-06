@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Production Hub — Hebrew Interface Mode</title>
+<link rel="stylesheet" href="hebrew-mode/ph.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="hebrew-mode/data.js"></script>
+<script src="hebrew-mode/i18n.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="hebrew-mode/shell.jsx"></script>
+<script type="text/babel" src="hebrew-mode/screens-shows.jsx"></script>
+<script type="text/babel" src="hebrew-mode/screens-today.jsx"></script>
+<script type="text/babel" src="hebrew-mode/screens-rest.jsx"></script>
+<script type="text/babel" src="hebrew-mode/lab.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const store = (k, d) => { try { return localStorage.getItem("ph-he-" + k) || d; } catch (e) { return d; } };
+const put = (k, v) => { try { localStorage.setItem("ph-he-" + k, v); } catch (e) {} };
+
+function App() {
+  const [lang, setLang] = useState(() => store("lang", "he"));
+  const [theme, setThemeS] = useState(() => store("theme", "light"));
+  const [mode, setModeS] = useState(() => store("mode", "b"));
+  const [route, setRoute] = useState("shows");
+  const [editing, setEditing] = useState(null);
+  const [settings, setSettings] = useState(false);
+  const [signup, setSignup] = useState(false);
+  const [notes, setNotes] = useState(false);
+  const [veil, setVeil] = useState(false);
+  const t = makeT(lang);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = t.dir;
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [lang, theme]);
+
+  const setTheme = (v) => { setThemeS(v); put("theme", v); };
+  const setMode = (v) => { setModeS(v); put("mode", v); };
+  // Switching language reloads the page in the product. The demo stages the reload.
+  const requestLang = (v) => {
+    if (v === lang) { setSettings(false); setSignup(false); return; }
+    put("lang", v); setVeil(true);
+    setTimeout(() => { setLang(v); setSettings(false); setSignup(false); window.scrollTo(0, 0); }, 260);
+    setTimeout(() => setVeil(false), 700);
+  };
+
+  const screens = {
+    shows: <ShowsScreen t={t} mode={mode} onEdit={setEditing} />,
+    today: <TodayScreen t={t} mode={mode} setRoute={setRoute} />,
+    crew: <CrewScreen t={t} mode={mode} />,
+    tasks: <TasksScreen t={t} mode={mode} />,
+    automations: <AutomationsScreen t={t} mode={mode} />,
+    teams: <TeamsScreen t={t} mode={mode} />,
+    tools: <ToolsScreen t={t} mode={mode} />,
+    timelog: <TimeLogScreen t={t} mode={mode} />,
+    lab: <LabScreen t={t} mode={mode} />,
+  };
+
+  return (
+    <div className="app">
+      <Header t={t} route={route} setRoute={setRoute} onSettings={() => setSettings(true)} theme={theme} setTheme={setTheme} />
+      <main key={lang + route}>{screens[route]}</main>
+      {editing && <ShowModal t={t} show={editing} onClose={() => setEditing(null)} />}
+      {settings && <SettingsModal t={t} onClose={() => setSettings(false)} lang={lang} requestLang={requestLang} theme={theme} setTheme={setTheme} />}
+      {signup && <RegistrationStep t={t} onClose={() => setSignup(false)} lang={lang} requestLang={requestLang} />}
+      {notes && <NotesDrawer t={t} onClose={() => setNotes(false)} mode={mode} />}
+      <DemoRail t={t} lang={lang} requestLang={requestLang} theme={theme} setTheme={setTheme} mode={mode} setMode={setMode}
+        onNotes={() => setNotes(!notes)} onSignup={() => setSignup(true)} />
+      {veil && <div className="veil"><div className="spin"></div><span>{t("reloading")}</span></div>}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
