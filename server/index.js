@@ -124,6 +124,9 @@ const INVITATIONS_FILE   = path.join(DATA_DIR, 'invitations.json');
 const TEAM_SETTINGS_FILE = path.join(DATA_DIR, 'team-settings.json');
 const TEAMS_FILE         = path.join(DATA_DIR, 'teams.json');
 const JOIN_REQUESTS_FILE = path.join(DATA_DIR, 'join-requests.json');
+// New accounts must originate from a signed invitation. This is an emergency
+// escape hatch for a deliberate, temporary reopening — never enable by default.
+const ALLOW_OPEN_REGISTRATION = process.env.ALLOW_OPEN_REGISTRATION === 'true';
 
 function loadJoinRequests() {
   try { return JSON.parse(fs.readFileSync(JOIN_REQUESTS_FILE, 'utf8')); } catch { return []; }
@@ -314,6 +317,7 @@ app.post('/logout', (req, res) => {
 
 // Registration
 app.post('/api/auth/register', async (req, res) => {
+  if (!ALLOW_OPEN_REGISTRATION) return res.sendStatus(403);
   try {
     const { username, password, password2 } = req.body || {};
 

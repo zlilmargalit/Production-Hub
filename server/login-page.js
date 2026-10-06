@@ -1,6 +1,10 @@
 // Self-contained login + register page.
 // No external assets — works on first paint even before the app bundle loads.
 
+// Public self-registration is deliberately opt-in. Team members join through
+// a signed invitation link, which is rendered by invite-page.js instead.
+const allowOpenRegistration = process.env.ALLOW_OPEN_REGISTRATION === 'true';
+
 module.exports = function loginPage({ error = false, username = '', tab = 'login', regError = '', step = '', error2fa = '', message = '' } = {}) {
   // ── 2FA verification screen ───────────────────────────────────────────────
   if (step === '2fa') {
@@ -204,10 +208,10 @@ module.exports = function loginPage({ error = false, username = '', tab = 'login
       <h1>Production Hub</h1>
     </div>
 
-    <div class="tabs">
+    ${allowOpenRegistration ? `<div class="tabs">
       <button class="tab-btn ${tab === 'login' ? 'active' : ''}" onclick="showTab('login')">Sign in</button>
       <button class="tab-btn ${tab === 'register' ? 'active' : ''}" onclick="showTab('register')">Create account</button>
-    </div>
+    </div>` : ''}
 
     <!-- Login panel -->
     <div id="panel-login" class="panel ${tab === 'login' ? 'active' : ''}">
@@ -224,7 +228,7 @@ module.exports = function loginPage({ error = false, username = '', tab = 'login
       </form>
     </div>
 
-    <!-- Register panel -->
+    ${allowOpenRegistration ? `<!-- Register panel -->
     <div id="panel-register" class="panel ${tab === 'register' ? 'active' : ''}">
       <form method="POST" action="/api/auth/register" autocomplete="off">
         <label for="reg-username">Username</label>
@@ -244,10 +248,10 @@ module.exports = function loginPage({ error = false, username = '', tab = 'login
         <button class="submit-btn" type="submit">Create account</button>
         ${regError ? `<div class="error">${escapeHtml(regError)}</div>` : ''}
       </form>
-    </div>
+    </div>` : ''}
   </div>
 
-  <script>
+  ${allowOpenRegistration ? `<script>
     function showTab(t) {
       document.getElementById('panel-login').classList.toggle('active', t === 'login');
       document.getElementById('panel-register').classList.toggle('active', t === 'register');
@@ -255,7 +259,7 @@ module.exports = function loginPage({ error = false, username = '', tab = 'login
         b.classList.toggle('active', (i === 0 && t === 'login') || (i === 1 && t === 'register'));
       });
     }
-  </script>
+  </script>` : ''}
 </body>
 </html>`;
 };

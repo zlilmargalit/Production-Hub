@@ -12,6 +12,14 @@ Each row says what it is, how it was confirmed, and what it would cost to leave.
 
 ### Data / correctness
 
+**Railway has no platform-level volume backups on the current plan**
+Confirmed in Railway on 2026-10-06: its Backups screen says volume backups and
+point-in-time recovery require Pro, and this volume has no platform snapshots.
+The application's own six-hour archives are currently healthy (local and Drive
+both reported `ok` throughout the preceding week), but they are the only
+recoverable copies. Cost of leaving it: a defect in the app's backup path or
+Google credentials would have no independent Railway restore point.
+
 **Route-level read-modify-write can still drop an update**
 Deliberately deferred when review item 3 was fixed. `updateJsonAndCache` exists
 and the cron races are closed, but route handlers still read a list, modify it,

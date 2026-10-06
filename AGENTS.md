@@ -11,6 +11,15 @@ selected interface language through the existing i18n layer. User-entered
 content (project, client, shop and people names, notes) is never translated;
 it renders exactly as stored and uses its own text direction.
 
+## Work continuity
+
+Treat the user's current work plan as the authoritative tracker. In every
+substantive progress update, state: what was completed, what is in progress or
+blocked, and the next step. Proactively recommend a new Codex task when the
+current conversation changes workstream, reaches a completed phase, or becomes
+too context-heavy for a reliable handoff. When recommending one, provide a
+short copy-ready opening prompt with the active goal and current status.
+
 ## Found issues log
 
 While working, append anything noticed in passing to `docs/found-issues.md` —
